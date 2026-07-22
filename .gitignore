@@ -1,0 +1,42 @@
+# .gitignore base — evita versionar deps, segredos e cruft
+# (a maior causa de anexo de GB nos seus projetos foi versionar/zipar isto)
+
+# Segredos (NUNCA versione o .env real — só o exemplo)
+.env
+.env.local
+*.pem
+*.key
+session_secret
+
+# Cruft / temporários
+*.bak
+*.tmp
+*.orig
+*.old
+.fuse_hidden*
+.DS_Store
+Thumbs.db
+
+# --- Python (perfil dados) ---
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.sqlite
+*.db
+# dados grandes/derivados (versione só os *.example e os curados pequenos)
+open-data/
+*.npy
+
+# --- Node / Next (perfil web) ---
+node_modules/
+.next/
+dist/
+build/
+*.tsbuildinfo
+npm-debug.log*
+
+# Backups (versione a ROTINA de backup, não os arquivos)
+backups/
+*.backup
