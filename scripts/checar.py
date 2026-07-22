@@ -26,6 +26,13 @@ if ctx.exists():
 else:
     falhas.append("CONTEXT.md não encontrado na raiz.")
 
+# 1b. DECISIONS.md inchado (projeto longo)
+dec = raiz / "DECISIONS.md"
+if dec.exists() and len(dec.read_text(encoding="utf-8")) > 12000:
+    falhas.append(
+        "DECISIONS.md acima de 12.000 caracteres — arquive SUPERSEDIDAS/rejeitadas antigas em dev/decisions-arquivo.md."
+    )
+
 # 2. Fonte única (regra 6)
 for nome in ("BACKLOG.md", "CONTEXT.md", "DECISIONS.md"):
     achados = visiveis(nome)

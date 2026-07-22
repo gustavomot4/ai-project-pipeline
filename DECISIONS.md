@@ -2,6 +2,7 @@
 
 > **Append-only:** decisão nova = linha nova; reversão = linha nova com `SUPERSEDE D-XX`, nunca editar a antiga.
 > **Teto: 2 frases por linha.** Evidência longa (números, ICs, ângulos testados) vira nota em `dev/<slug>.md` linkada na coluna Evidência — senão este arquivo incha e a Fase 5, que o carrega inteiro, fica cara.
+> **Projeto longo:** passou de ~12.000 caracteres, mova SUPERSEDIDAS e rejeitadas antigas para `dev/decisions-arquivo.md` (IDs preservados) e deixe um ponteiro aqui.
 
 ## Decisões
 | # | Data | Status | Decisão (curta) | Evidência (número-chave + link) |

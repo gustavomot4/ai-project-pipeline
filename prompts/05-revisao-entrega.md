@@ -16,4 +16,5 @@ Acesso à pasta do projeto + `CHECKLIST.md`.
 ## Saída
 1. Lista do que remover/ajustar (caminho exato).
 2. Comando de empacotamento excluindo deps/segredos/bancos/backups.
-3. **Conferência obrigatória:** liste o conteúdo do zip gerado (`unzip -l`) e confirme arquivos-chave presentes + peso coerente (MB, não GB). Nunca entregue zip sem ter listado o conteúdo.
+3. Se o projeto roda continuamente: confirme que existe `RUNBOOK.md` (rotina, falhas, o que nunca fazer) — entrega sem runbook não segura operação.
+4. **Conferência obrigatória:** liste o conteúdo do zip gerado (`unzip -l`) e confirme arquivos-chave presentes + peso coerente (MB, não GB). Nunca entregue zip sem ter listado o conteúdo.
