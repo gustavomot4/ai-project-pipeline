@@ -1,17 +1,19 @@
-# BACKLOG.md — quadro de tarefas
+# BACKLOG.md — quadro de tarefas (fonte única)
 
-> Leve. Uma tarefa = uma linha. Cada tarefa tem um ID para citar em commits e em `DECISIONS.md`.
-> A coluna "Em andamento" deve ter **no máximo 1 item** (= a "Tarefa ativa" do `CONTEXT.md`).
+> **Só existe UM backlog: este.** Não crie outro em subpastas — dois quadros divergem, sempre.
+> Estado numérico (versão, métricas, contagens) NÃO mora aqui — mora no `CONTEXT.md`. Aqui, só tarefas.
+
+## Ações do dono (máquina real)
+- [ ] A-01 — <ex.: rodar testes oficiais / download com chave / push>
 
 ## A fazer
-- [ ] T-01 — <tarefa>
-- [ ] T-02 — <tarefa>
+- [ ] T-01 — <tarefa; se tiver portão de aceite, escreva-o no card>
 
-## Em andamento (máx. 1)
+## Em andamento (máx 1 — espelha "Em andamento" do CONTEXT.md)
 - [ ] T-00 — <a tarefa do momento>
 
-## Feito
-- [x] T-… — <tarefa> (ver CHANGELOG)
+## Feito (mover para cá; detalhe no CHANGELOG)
+- [x] T-… — <tarefa>
 
-## Ideias / talvez (não comprometidas)
-- <ideias soltas; não são tarefas até serem promovidas acima>
+## Ideias (não comprometidas)
+- <solta; só vira T-NN quando promovida>

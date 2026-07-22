@@ -1,28 +1,37 @@
-# CHECKLIST.md — antes de aceitar um output da IA
+# CHECKLIST.md — portões por tipo de entrega
 
-> Rode esta lista antes de dar "aceito" em qualquer entrega da IA — um módulo, um doc, um deploy.
-> É a sua trava contra o desperdício e contra "parece bom, então tá bom".
+> Use a seção do tipo da entrega. Falhou um item ⇒ devolve pedindo **delta**, nunca "refaz tudo".
 
-## Qualidade / correção
-- [ ] Passou no **portão objetivo** definido no `CONTEXT.md` (teste / IC / typecheck / build / QA)?
-- [ ] Cada afirmação de ganho tem **número e incerteza** ("Brier −0,004 IC>0"), não "melhorou"?
-- [ ] Casos de borda cobertos (entrada vazia, zero, ausente, nome desconhecido)?
-- [ ] Sem invariante quebrada (probabilidades somam 1; dinheiro em Int; datas em UTC; etc.)?
+## Qualquer entrega
+- [ ] Passou no portão objetivo do `CONTEXT.md` (não em "parece bom")?
+- [ ] Veio como **delta** (só o alterado), não regeneração?
+- [ ] Decisão → D-NN · bug → QA-NN citado no commit · pendência do dono → Q-NN?
+- [ ] `CONTEXT.md` atualizado por substituição (≤ 4.000 chars) e o datado foi para o `CHANGELOG.md`?
+- [ ] Nenhum dado/fonte inventado (lacuna continua declarada)?
 
-## Eficiência / anti-desperdício
-- [ ] A mudança veio como **delta**, não como regeração do arquivo inteiro?
-- [ ] `CONTEXT.md` foi atualizado **por substituição** e segue ≤1 página?
-- [ ] O histórico datado foi para o `CHANGELOG.md` (não ficou no contexto)?
-- [ ] Versões/contagens antigas foram **removidas ou marcadas como históricas** (sem "v0.4 vs v0.5" conflitante)?
+## Código
+- [ ] Teste do módulo veio junto e está verde **na máquina do dono** (sandbox é indicativo, não portão)
+- [ ] Bordas cobertas: vazio, zero, ausente, desconhecido, divisão por zero
+- [ ] Invariantes do domínio intactos (somas, unidades, datas UTC…)
+- [ ] Integração externa foi escrita a partir de **amostra real** (payload/estrutura), não de suposição?
+- [ ] Mudou fórmula/contrato de saída? ⇒ bump de versão + rebuild documentado
 
-## Rastreabilidade
-- [ ] Decisão que fecha assunto virou **D-NN** em `DECISIONS.md` (com motivo)?
-- [ ] Bug corrigido tem **QA-NN** citado no commit/código?
-- [ ] Mensagem de commit diz **o quê** (`fix(vendas): QA-071 …`), não "FIX: correções"?
+## Afirmação numérica ("melhorou X")
+- [ ] Número com incerteza (IC/n/seed declarados), não adjetivo
+- [ ] Comparação pareada com baseline, sem vazamento treino/teste
+- [ ] Sem regressão nas métricas não-alvo
+- [ ] Amostra insuficiente foi declarada como "reprova por falta de dado", não maquiada
 
-## Higiene / entrega
-- [ ] Sem **segredo** versionado (`.env` real, chaves) — só `.env.example`?
-- [ ] Sem **cruft** (`*.bak`, `*.tmp`, `.fuse_hidden`, `.DS_Store`, temporários)?
-- [ ] `.gitignore` cobre deps/build/banco/backups?
-- [ ] Para compartilhar: zip só de **fonte + docs** (sem `.venv`/`node_modules`/`.git`/backups)?
-- [ ] **Abriu o zip e conferiu** que os arquivos certos estão lá? (lição do `.lnk` quebrado)
+## QA (Fase 4)
+- [ ] Sessão de QA tem **relatório registrado** (`dev/qa-AAAA-MM-DD.md`) — achado incidental não conta como Fase 4
+- [ ] Cada achado tem reprodução (comando + observado × esperado)
+- [ ] Crítico/alto corrigidos e citados no commit
+
+## Documentos
+- [ ] Estado numérico só no `CONTEXT.md` — os outros docs **apontam**, não repetem
+- [ ] Doc novo tem status (atual/rascunho/histórico/congelado) + data
+- [ ] Nenhum par de números conflitante entre docs (varra versões/contagens citadas)
+
+## Empacotamento (Fase 6)
+- [ ] Zip só com fonte + docs + dados curados (sem `.venv`/`node_modules`/`.git`/bancos/backups/segredos)
+- [ ] **Abriu o zip e conferiu** a lista de arquivos e o peso (MB, não GB)?

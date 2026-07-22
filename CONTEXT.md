@@ -1,45 +1,42 @@
 # CONTEXT.md — <NOME DO PROJETO>
 
-> ⚠️ REGRA DE OURO: este arquivo tem **teto de ~1 página** e é **atualizado por substituição**.
-> Nada de "▶ Atualização tal data" no fim. Histórico datado → `CHANGELOG.md`. Decisões → `DECISIONS.md`.
-> Este é o ÚNICO arquivo que toda sessão de IA recebe por padrão. Se ele incha, toda sessão fica cara.
+> **Orçamento: ≤ 4.000 caracteres** (valide com `python scripts/checar.py`). Atualize **por substituição** — reescreva a seção, nunca anexe no fim.
+> Histórico datado → `CHANGELOG.md`. Decisão + evidência → `DECISIONS.md`. Detalhe de domínio → `contexto/`.
+> Este é o único arquivo que TODA sessão carrega: cada caractere daqui é pago em cada sessão.
 
-## Objetivo (3 linhas, no máximo)
-<O que o sistema faz e para quem. Uma frase de valor. Uma frase de não-objetivo.>
+## Objetivo (3 linhas)
+<O que o sistema faz e para quem. Uma frase de valor. Um não-objetivo explícito.>
 
 ## Restrições inegociáveis (violou = inválido)
-- <ex.: roda local / custo R$0 / sem dado pago>
-- <ex.: probabilidades, nunca certezas — ou o equivalente do seu domínio>
-- <ex.: nenhum segredo versionado no repo>
-- <ex.: registro/auditoria imutável, se aplicável>
+- <ex.: custo R$ 0 · roda local · nenhum segredo versionado · não inventar dados — lacuna declarada fica declarada>
 
-## Stack + restrições da stack  ← preencha ANTES de pedir código (lição do SPO)
+## Stack + restrições da stack (preencha ANTES de pedir código)
 - **Stack:** <linguagem, framework, banco, runtime>
-- **Restrições da stack** (o que essa combinação NÃO suporta / exige):
-  - <ex.: Prisma + SQLite: sem enum nativo (usar String); evitar DateTime nativo>
-  - <ex.: dinheiro sempre em Int (centavos); taxas em basis points>
-  - <ex.: IDs opacos (cuid/uuid), nunca sequenciais>
-- (Veja `perfis/` e cole aqui os itens do perfil escolhido.)
+- **Restrições:** <o que a stack NÃO suporta/exige — copie do perfil em `perfis/`>
+- **Quem roda o quê:** agente = código + testes indicativos no sandbox · dono = testes oficiais, downloads/chaves, git push, deploy
 
-## Critério de aceite (o "portão") ← defina no dia 1
-Nada entra como pronto sem passar nisto:
-- <ex.: `npm run typecheck` + `npm run build` passam>
-- <ex.: teste do módulo verde / backtest com IC que não cruza zero>
-- <ex.: revisão do agente de QA adversarial sem achado crítico/alto aberto>
+## Critério de aceite (o portão)
+- <comando objetivo, ex.: `pytest -q` verde na máquina do dono>
+- <métrica com limiar, ex.: Δmétrica pareada com IC que não cruza zero, sem regressão das demais>
 
-## Estado atual (só o presente — reescreva, não acumule)
-- **Versão/baseline atual:** <ex.: v1.0 — só a atual>
-- **O que está pronto:** <módulos concluídos>
-- **Tarefa ativa:** <a única coisa em andamento agora>
-- **Próximo passo:** <o que vem depois>
+## Estado atual (formato fixo — 1 linha por item, SEM prosa corrida)
+- **Versão:** <baseline/versão vigente, só ela>
+- **Pronto:** <módulos concluídos, só nomes>
+- **Em andamento (máx 1):** <a única tarefa ativa>
+- **Próximo:** <o passo seguinte>
+- **Bloqueado/pendente:** <o que espera o dono ou dado externo>
+- **Questões abertas:** <só os IDs Q-NN — detalhe no DECISIONS.md>
 
-## Mapa rápido (onde está o quê)
-- Plano: `PLANO.md` · Decisões: `DECISIONS.md` · Backlog: `BACKLOG.md` · Histórico: `CHANGELOG.md`
-- Código: `<pasta>` · Testes: `<pasta>` · Prompts: `prompts/`
+## Mapa de leitura (o agente lê SOB DEMANDA, nunca por padrão)
+| Arquivo | Ler quando |
+|---|---|
+| `DECISIONS.md` | Fase 5 (evolução) inteiro; nas demais, só o D-NN citado |
+| `PLANO.md` | implementar módulo novo (só o contrato dele) |
+| `contexto/<tema>.md` | a tarefa tocar o tema (liste aqui os temas do projeto) |
+| `BACKLOG.md` | início de sessão de trabalho |
+| `CHANGELOG.md`, `dev/` | **nunca** (só se o dono pedir) |
 
-## Retomada para uma sessão nova (handoff)
-Se você é um agente novo pegando o projeto, faça nesta ordem:
-1. Leia este arquivo → `DECISIONS.md` (o que já foi decidido/rejeitado) → `BACKLOG.md`.
-2. Estado em 1 linha: <preencha>.
-3. Valide o ambiente: `<comando para rodar os testes/build>`.
-4. Pegue a "Tarefa ativa" acima. Trabalhe por **delta**; registre D-NN/QA-NN; atualize este arquivo por substituição.
+## Protocolo do agente (toda sessão)
+1. Leia este arquivo + o prompt do papel + só o arquivo do momento. **Não varra o repositório.**
+2. Trabalhe por **delta**: devolva só trechos alterados/arquivos novos.
+3. Fechamento: D-NN/QA-NN registrados → "Estado atual" reescrito por substituição → datado no `CHANGELOG.md` → mensagem de commit (`tipo(escopo): D-NN/QA-NN …`) → lição nova? 1 linha no `APRENDIZADOS.md`.

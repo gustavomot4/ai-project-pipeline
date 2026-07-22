@@ -1,38 +1,41 @@
-# Perfil — dados / Python (tipo SCM)
+# Perfil — dados / Python
 
-> Para projetos de análise/modelagem/dados em Python. Cole os itens relevantes no `CONTEXT.md`
-> (seção "Stack + restrições" e "Critério de aceite"). São defaults destilados do SCM — ajuste.
+> Cole os blocos marcados no `CONTEXT.md` e ajuste. Defaults destilados de SCM + SCB.
 
 ## Stack típica
-Python 3.x · NumPy/pandas · SQLite · pytest · (opcional) Flask para UI local.
+Python 3.11+ · NumPy/pandas · SQLite · pytest · Flask local (opcional) · argparse.
 
-## Restrições da stack (cole no CONTEXT.md)
-- Ambiente isolado: **`.venv`** sempre; `requirements.txt` com **teto de major** nas libs.
-- Dados crus e derivados **não** vão no git (`*.sqlite`, `*.npy`, snapshots grandes). Versione só os
-  **`*.example`** e os dados curados pequenos. O build dos dados deve ser **reproduzível e determinístico**
-  (seed fixa em qualquer Monte Carlo/aleatório).
-- Nenhuma previsão/cálculo lê a internet **no momento do cálculo** — só snapshots em disco (se o seu
-  projeto tiver essa exigência).
+## Restrições da stack (→ CONTEXT.md)
+- `.venv` sempre; `requirements.txt` com teto de major.
+- Dados crus/derivados fora do git (`*.sqlite`, `*.npy`, snapshots grandes); versione `*.example` + curados pequenos.
+- Build de dados reproduzível e determinístico (seed fixa em qualquer aleatório/Monte Carlo).
+- Nada lê a internet no momento do cálculo — download é passo à parte, para snapshot em disco.
+- SQLite: sem enum nativo (TEXT + CHECK); datas ISO; invariantes declarados no DDL.
 
-## Critério de aceite (o "portão") — sugestão
-- **`pytest -q` verde** + cobertura dos invariantes (somas de probabilidade, monotonia, bordas λ→0).
-- Para qualquer mudança que afete números: **ΔMétrica com intervalo de confiança que não cruza zero**
-  (bootstrap, seed fixa), comparado a um baseline trivial — e **sem regressão** das outras métricas.
-- **Anti-look-ahead** explícito: features ponto-no-tempo, treino/teste separados por data.
+## Quem roda o quê (→ CONTEXT.md)
+- **Sandbox do agente:** escrever código puro + testes. `pytest` do sandbox é indicativo, **não é o portão**.
+- **Máquina do dono:** `pytest -q` oficial, downloads/APIs (chave via env, nunca versionada), rebuilds, git push, servidor web.
+- Servidor/processo vivo tem cache: mudança de código exige restart + hard refresh — avise o dono, sempre.
 
-## Armadilhas conhecidas (do SCM — já te custaram token)
-- **Cache `.pyc` velho** pode rodar código antigo → use `PYTHONPYCACHEPREFIX=/tmp/pyc` ou limpe
-  `__pycache__` antes de validar uma edição.
-- **Não regenere o documento de planejamento inteiro** a cada revisão — congele a versão e use changelog.
-- Não confunda "passou no backtest histórico" com "muda o caso real de hoje" — reporte os dois separados.
+## Critério de aceite (→ CONTEXT.md)
+- `pytest -q` verde na máquina do dono, cobrindo invariantes e bordas.
+- Mudança que afeta números: Δmétrica pareada com IC (bootstrap, seed fixa) que não cruza zero, sem regressão das demais.
+- Anti-look-ahead: features ponto-no-tempo; treino/teste separados por data; teste PIT obrigatório no pytest.
+- Fórmula mudou → bump de versão do modelo + rebuild completo documentado.
 
-## Estrutura de pastas sugerida
+## Armadilhas pagas (não repague)
+- Parser sem amostra real do payload = retrabalho garantido. Peça a amostra primeiro.
+- Coletor sem `try/finally` + resume perde tudo num rate-limit (429).
+- Cache `.pyc`/processo velho valida código antigo — limpe/reinicie antes de julgar uma edição.
+- "Passou no histórico" ≠ "muda o caso real de hoje" — reporte os dois separados.
+- Ganho de um dataset/liga não transfere: re-rode o portão no contexto novo.
+
+## Estrutura sugerida
 ```
 projeto/
-├── CONTEXT.md  DECISIONS.md  CHANGELOG.md  BACKLOG.md  CHECKLIST.md  README.md
-├── prompts/                  (copiados deste kit)
-├── pacote/                   código (um módulo por arquivo: ingest, engine, features, predictor…)
-├── tests/                    um test_*.py por módulo
-├── dados/                    só *.example e curados pequenos (o resto é .gitignore)
+├── CONTEXT.md DECISIONS.md CHANGELOG.md BACKLOG.md CHECKLIST.md APRENDIZADOS.md README.md
+├── prompts/ · contexto/ · dev/ (evidências e relatórios de QA)
+├── pacote/ (um módulo por arquivo) · tests/ (um test_*.py por módulo)
+├── dados/ (*.example + curados pequenos) · scripts/ (coletas que o dono roda)
 └── requirements.txt
 ```

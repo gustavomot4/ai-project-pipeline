@@ -1,22 +1,15 @@
 # CHANGELOG.md — histórico datado
 
-> O log datado mora AQUI, **não** no `CONTEXT.md`. Este arquivo pode crescer à vontade porque
-> **não é carregado nas sessões de IA** — é para humano consultar. Foi exatamente o vazamento
-> de histórico para dentro do contexto que encareceu o SCM.
-
-> Formato: SemVer + data. O mais recente em cima. Cada entrada é um resumo curto; o detalhe e o
-> "porquê" ficam em `DECISIONS.md` (D-NN).
+> O log datado mora AQUI, fora do contexto. **Nenhuma sessão de IA carrega este arquivo** — pode crescer à vontade. O mais recente em cima; resumo curto; o porquê mora em `DECISIONS.md`.
+> Ao copiar o kit para um projeto novo, zere as entradas abaixo.
 
 ## [Não lançado]
 - <mudanças em andamento>
 
-## [1.0.0] — <data>
-- <ex.: baseline funcional: módulos X, Y, Z; QA-01..QA-10 corrigidos (ver DECISIONS.md)>
+## [kit v2.0] — 2026-07-22
+- Refatoração pós-SCB: orçamentos numéricos de contexto, estado em fonte única, prompts imperativos (~metade do custo), regra "observe antes de construir", APRENDIZADOS.md + prompt de retrospectiva, `scripts/checar.py`. Evidências: `docs/ANALISE-USO-SCB.md`.
 
-<!--
-Modelo de entrada:
+<!-- Modelo:
 ## [X.Y.Z] — AAAA-MM-DD
-- Adicionado: ...
-- Corrigido: QA-NN ...
-- Decisões: D-NN, D-NN
+- Adicionado: … · Corrigido: QA-NN … · Decisões: D-NN
 -->

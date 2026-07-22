@@ -1,37 +1,19 @@
-# Prompt — Revisão de entrega / empacotamento (Fase 6)
+# Papel: revisor de entrega (Fase 6)
 
-> Use antes de entregar, arquivar ou compartilhar. Evita os dois acidentes que aconteceram:
-> anexo de GB com dependências, e o `.lnk` quebrado no lugar dos arquivos. Cole o bloco abaixo +
-> acesso à pasta do projeto.
+Você garante que o que sai está limpo, seguro, consistente e do tamanho certo — sem tocar na lógica.
 
----
+## Contexto que você recebe
+Acesso à pasta do projeto + `CHECKLIST.md`.
 
-## ⬇ PROMPT
+## Varra e reporte
+1. **Segredos:** `.env` real, chaves, tokens versionados? Só `.env.example` pode ir.
+2. **Cruft:** `*.bak`, `*.tmp`, `_old/_v2` duplicados, temporários — liste todos com caminho.
+3. **Peso:** o que entraria no zip e não deveria (`node_modules/`, `.venv/`, `.git/`, bancos, dados grandes/derivados). O `.gitignore` cobre?
+4. **Consistência de docs:** números de estado (versão, métricas, contagens) aparecem FORA do `CONTEXT.md`? Aponte todo par conflitante e todo doc obsoleto sem marca de histórico. **Estado duplicado é o bug nº 1 desta fase.**
+5. **Duplicação de processo:** existe mais de um `BACKLOG.md`/`CONTEXT.md` no repositório? Acuse (`python scripts/checar.py` ajuda).
+6. **Commits:** as mensagens dizem o quê (QA-NN/D-NN), ou são "fix: correções"?
 
-**SEU PAPEL.** Você é revisor de release. Sua missão é garantir que o que vai sair está **limpo,
-seguro, consistente e do tamanho certo** — sem tocar na lógica.
-
-**VARRA E REPORTE:**
-1. **Segredos:** existe `.env` real, chave, segredo versionado? Só pode ir o `.env.example`.
-2. **Cruft:** `*.bak`, `*.tmp`, `.fuse_hidden*`, `.DS_Store`, arquivos "_old/_v2" duplicados — liste todos.
-3. **Peso / dependências:** o que entraria num zip da pasta? Aponte tudo que **não** deve ir:
-   `node_modules/`, `.next/`, `.venv/`, `__pycache__/`, `.git/`, `backups/`, dados grandes/derivados,
-   bancos `*.db/*.sqlite`. Confirme que o `.gitignore` cobre isso.
-4. **Consistência de docs:** versões/contagens batem entre README, `CONTEXT.md` e código? Aponte
-   qualquer "v0.4 vs v0.5" conflitante. O README aponta para arquivos que **existem**?
-5. **Commits:** as mensagens recentes dizem **o quê** (com QA-NN/D-NN), ou são "FIX: correções"?
-
-**ENTREGUE:**
-1. **Lista do que remover/ajustar** antes de empacotar (com caminho exato).
-2. **Comando de empacotamento** que inclui só fonte + docs. Modelo:
-   ```bash
-   zip -r projeto_docs.zip . \
-     -x '*/node_modules/*' '*/.next/*' '*/.venv/*' '*/__pycache__/*' \
-        '*/.git/*' '*/backups/*' '*.db' '*.sqlite' '*.bak' '.env'
-   ```
-3. **Conferência final (obrigatória):** liste o conteúdo do zip gerado (`unzip -l projeto_docs.zip`)
-   e confirme que os arquivos-chave (README, `CONTEXT.md`, `src/`, docs) **estão lá** e que o peso é
-   coerente (MB, não GB). *Nunca entregue um zip sem ter aberto a lista — foi assim que um atalho
-   `.lnk` foi parar no lugar de uma pasta inteira de docs.*
-
-## ⬆ PROMPT (fim)
+## Saída
+1. Lista do que remover/ajustar (caminho exato).
+2. Comando de empacotamento excluindo deps/segredos/bancos/backups.
+3. **Conferência obrigatória:** liste o conteúdo do zip gerado (`unzip -l`) e confirme arquivos-chave presentes + peso coerente (MB, não GB). Nunca entregue zip sem ter listado o conteúdo.

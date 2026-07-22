@@ -1,91 +1,60 @@
-# Pipeline para começar projetos com IA — kit pessoal do Gustavo
+# Pipeline para projetos com IA — kit pessoal do Gustavo (v2)
 
-Kit reutilizável destilado dos seus dois projetos (SCM e SPO). Copie esta pasta inteira para cada projeto novo e siga as fases. O objetivo é **manter o seu rigor** (portão de aceite, decisões rastreáveis, QA adversarial) **gastando muito menos token** (contexto enxuto, evoluir por delta, não regenerar).
+Kit reutilizável para começar e tocar projetos com agentes de IA mantendo **rigor** (portões objetivos, decisões rastreáveis, QA adversarial) e gastando o **mínimo de tokens** (contexto com orçamento numérico, leitura sob demanda, evolução por delta).
+
+**v2 (2026-07-22):** refatorado com as evidências do primeiro projeto real que usou o kit (SCB). O que funcionou, o que falhou e por que cada mudança existe: **`docs/ANALISE-USO-SCB.md`**. Este README é o único lugar com "por quês" — os arquivos que os agentes carregam são só instrução.
+
+## Como usar num projeto novo
+Copie tudo **exceto `docs/` e `.git`** para a pasta do projeto. Preencha o `CONTEXT.md` (Fase 0), cole o perfil de `perfis/` e siga as fases. A qualquer momento: `python scripts/checar.py` valida a higiene (orçamento, fonte única, cruft).
 
 ## O que vem na caixa
 ```
-pipeline-projetos-IA/
-├── README.md            ← este guia (o pipeline em 6 fases)
-├── CONTEXT.md           ← contexto-fonte, ENXUTO e atualizado por substituição
-├── DECISIONS.md         ← ADRs (D-01, D-02…) — memória durável das decisões
-├── CHANGELOG.md         ← o log datado mora AQUI, fora do contexto
-├── BACKLOG.md           ← quadro simples de tarefas
-├── CHECKLIST.md         ← o que conferir antes de aceitar um output da IA
-├── .gitignore           ← evita versionar deps/segredos/cruft
-├── prompts/             ← papéis reutilizáveis (cole no início da sessão)
-│   ├── 00-bootstrap-contexto.md
-│   ├── 01-planejador.md
-│   ├── 02-implementador.md
-│   ├── 03-qa-adversarial.md
-│   ├── 04-auditor-evolucao.md
-│   └── 05-revisao-entrega.md
-└── perfis/              ← ajustes por tipo de projeto
-    ├── perfil-dados-python.md   (tipo SCM)
-    └── perfil-web-nextjs.md     (tipo SPO)
+├── README.md          ← este guia (humano; nenhuma sessão carrega)
+├── CONTEXT.md         ← contexto-fonte, ≤4.000 chars, com Mapa de leitura e Protocolo do agente
+├── DECISIONS.md       ← D-NN (2 frases + link) · Q-NN (dono) · QA-NN
+├── BACKLOG.md         ← fonte única de tarefas, com lane "Ações do dono"
+├── CHANGELOG.md       ← histórico datado (fora do contexto)
+├── CHECKLIST.md       ← portões por tipo de entrega
+├── APRENDIZADOS.md    ← lições vivas, alimentadas pela retrospectiva
+├── prompts/00–06      ← papéis por fase (curtos, imperativos)
+├── perfis/            ← dados-python · web-nextjs (restrições prontas p/ colar)
+├── contexto/          ← docs de domínio por tema (leitura sob demanda)
+├── dev/               ← notas de evidência (gates, relatórios de QA) — nunca carregadas
+└── scripts/checar.py  ← valida orçamento do CONTEXT, fonte única, WIP=1, cruft
 ```
 
-## As 5 regras que valem em TODAS as fases
-Estas regras são o coração do kit — vêm direto das lições da sua análise.
+## As 7 regras (valem em todas as fases)
+1. **Contexto com orçamento em número.** `CONTEXT.md` ≤ 4.000 caracteres, medível por script, atualizado por substituição. *Por quê: "≤ 1 página" sem número virou, no SCB, um parágrafo-parede de ~640 tokens relido em toda sessão.*
+2. **Histórico fora do contexto.** Datado → `CHANGELOG.md`, que nenhuma sessão carrega.
+3. **Delta, nunca regenerar.** Só o trecho alterado — em docs e em código. Regenerar foi o maior custo dos projetos SCM/SPO.
+4. **Decisão rastreável.** Assunto fechado → D-NN (2 frases; evidência longa em `dev/`). Bug → QA-NN no commit. Decisão pendente do dono → Q-NN. *Por quê do teto: sem ele, o DECISIONS do SCB chegou a ~7.700 tokens e a Fase 5 pagava tudo.*
+5. **Nada entra sem portão.** Critério de aceite objetivo no dia 1; "parece bom" não passa. Rejeição registrada vale tanto quanto adoção.
+6. **Estado mora num lugar só.** Versões/métricas/contagens vigentes só no `CONTEXT.md`; todo outro doc aponta. *Por quê: no SCB o estado vivia em 4 arquivos e divergiu (backlog pedindo rebuild com números de duas versões atrás).*
+7. **Observe antes de construir.** Parser/integração só com amostra real da estrutura na mão. *Por quê: chutar a estrutura de uma fonte custou 6 ciclos de QA no SCB (QA-05..QA-10).*
 
-1. **Contexto enxuto e substituível.** O `CONTEXT.md` tem teto de ~1 página e é **atualizado por substituição** (você reescreve o "Estado atual", não anexa no fim). *Por quê:* o `CLAUDE.md` do SCM virou um log de ~30 seções relido a cada sessão — você pagava o histórico inteiro toda vez.
-2. **O histórico mora fora do contexto.** Todo "fizemos X em tal data" vai para o `CHANGELOG.md`, que **não** é carregado nas sessões. O contexto guarda só o presente.
-3. **Evoluir por delta, nunca regenerar.** Para mudar um doc/código, peça e devolva **só o trecho alterado**. Não reescreva o documento inteiro nem mande a árvore de versões. *Por quê:* o planejamento v1→v5 do SCM guardou ~35k palavras de rewrites; o schema do SPO foi refeito 6× em 7 dias.
-4. **Decisão = registro rastreável.** Toda escolha que "fecha" um assunto vira uma linha no `DECISIONS.md` (D-NN) com o motivo. Bug corrigido ganha um ID (QA-NN) citado no commit/código. *Por quê:* foi o que deixou seus dois projetos auditáveis — generalize.
-5. **Nada é aceito sem passar no portão.** Defina o critério de aceite **no dia 1** (teste, IC, typecheck, QA adversarial) e só aceite o que passa nele — não o que "parece bom". *Por quê:* é o que impede a IA de "vencer pelo texto".
+## As fases e seus portões
+| Fase | Prompt | Contexto do agente | Portão |
+|---|---|---|---|
+| 0 Bootstrap | `00` | descrição crua (ou CONTEXT atual) | CONTEXT ≤ 4k chars + aceite escrito |
+| 1 Plano | `01` | CONTEXT | plano aprovado = congelado (D-NN) |
+| 2 Dados/schema | `02` | CONTEXT + trecho de dados do plano | schema valida na stack real |
+| 3 Implementação | `02` | CONTEXT + contrato do módulo | teste do módulo verde no portão |
+| 4 QA adversarial | `03` | CONTEXT + código | **relatório registrado** + crítico/alto corrigidos |
+| 5 Evolução | `04` | CONTEXT + DECISIONS | só adota o que passa o portão; rejeição vira D-NN |
+| 6 Entrega | `05` | pasta + CHECKLIST | zip conferido; docs sem estado duplicado |
+| Retro (fecha milestone) | `06` | trabalho recém-feito | APRENDIZADOS.md atualizado |
 
----
+## O ciclo de toda sessão (90% do dia a dia)
+> prompt do papel + `CONTEXT.md` + só o arquivo do momento → pedir **delta** → passar no **portão** → registrar D-NN/QA-NN → `CONTEXT.md` por substituição, datado no `CHANGELOG.md` → commit citando IDs.
 
-## O pipeline em 6 fases
+## O papel do dono (o que a IA não faz por você)
+1. **Guardião do portão** — aceite = rodar a seção certa do `CHECKLIST.md`; falhou → devolve pedindo delta.
+2. **Decisor** — toda Q-NN é sua; agente não muda regra de negócio nem rumo.
+3. **Operador da máquina real** — testes oficiais, downloads com chave, push, deploy. O sandbox do agente é indicativo, não portão.
+4. **Fonte dos dados manuais** — o que você não preencher fica lacuna declarada, nunca inventada.
+5. **Higiene** — `python scripts/checar.py` de vez em quando; conferir que o estado está num lugar só.
 
-Cada fase diz: **o que você faz**, **qual prompt usar**, **que contexto o agente recebe** (sempre o mínimo) e **o portão** para liberar a próxima fase.
+**Frases de segurança:** "Isso passou no portão? Mostra o número." · "Cadê o D-NN?" · "Me manda só o delta." · "Rodou na minha máquina ou no sandbox?" · "Viu uma amostra real antes de escrever esse parser?" · "Isso muda alguma decisão ou número?"
 
-### Fase 0 — Bootstrap de contexto
-- **Faça:** preencha o `CONTEXT.md` (objetivo em 3 linhas, restrições inegociáveis, **restrições da stack**, critério de aceite). Escolha o perfil (`perfis/`) e cole os ajustes dele no `CONTEXT.md`.
-- **Prompt:** `00-bootstrap-contexto.md` (ajuda a IA a entrevistar você e fechar o escopo mínimo).
-- **Contexto que o agente recebe:** sua descrição crua do projeto.
-- **Portão:** o `CONTEXT.md` cabe em 1 página e o **critério de aceite está escrito**. Sem isso, não avance.
-
-### Fase 1 — Planejamento (e congelamento)
-- **Faça:** transforme o contexto num plano: arquitetura, módulos, contratos entre módulos, riscos.
-- **Prompt:** `01-planejador.md`.
-- **Contexto:** `CONTEXT.md` (só ele).
-- **Saída:** um `PLANO.md` curto + as primeiras linhas de `DECISIONS.md`.
-- **Portão:** o plano está **congelado** (você aprovou). Mudou de ideia depois? Vira um D-NN novo, não um replanejamento do zero.
-
-### Fase 2 — Dados / Schema *(se aplicável)*
-- **Faça:** modele dados/schema **já com as restrições da stack** declaradas (a lição do SPO: "sqlite não tem enum nativo", "dinheiro em Int").
-- **Prompt:** `02-implementador.md` no papel "schema".
-- **Contexto:** `CONTEXT.md` + o trecho de dados do `PLANO.md`.
-- **Portão:** schema valida na stack real (migration roda) antes de qualquer tela/endpoint.
-
-### Fase 3 — Implementação (módulo a módulo, por delta)
-- **Faça:** construa **um módulo por vez**. A IA devolve o módulo + o teste dele.
-- **Prompt:** `02-implementador.md`.
-- **Contexto:** `CONTEXT.md` + **só o módulo atual** + os contratos que ele toca. Nunca o projeto inteiro.
-- **Portão:** passa no critério de aceite do módulo (teste/typecheck). Só então o próximo.
-
-### Fase 4 — QA adversarial
-- **Faça:** uma sessão separada cujo único objetivo é **quebrar** o que você construiu (não melhorar). Cada achado vira QA-NN.
-- **Prompt:** `03-qa-adversarial.md`.
-- **Contexto:** o código + `CONTEXT.md` (as restrições são o contrato a verificar).
-- **Portão:** achados críticos/altos corrigidos e **citados no commit** (`fix: QA-071 …`).
-
-### Fase 5 — Evolução / auditoria *(só depois do baseline congelado)*
-- **Faça:** procurar melhorias **com ceticismo** — cada ideia precisa de evidência medida e de passar no portão.
-- **Prompt:** `04-auditor-evolucao.md`.
-- **Contexto:** `CONTEXT.md` + `DECISIONS.md` (a lista do que já falhou evita re-explorar becos sem saída).
-- **Portão:** só adota o que passa no critério objetivo; o resto vira D-NN "rejeitado" (memória para não repetir).
-
-### Fase 6 — Revisão de entrega / empacotamento
-- **Faça:** antes de entregar/arquivar, rode o `CHECKLIST.md` e empacote **sem dependências**.
-- **Prompt:** `05-revisao-entrega.md`.
-- **Portão:** zip contém só fonte + docs (sem `.venv`/`node_modules`/`.git`/backups), sem segredo, sem `*.bak`; e você **abriu o zip e conferiu** que os arquivos certos estão lá (a lição do `.lnk` quebrado).
-
----
-
-## Ciclo curto do dia a dia
-Na prática, 90% das sessões são este loop:
-
-> abrir sessão → colar o **prompt do papel** + o **`CONTEXT.md`** + **só o arquivo do momento** → pedir **delta** → passar no **portão** → registrar **D-NN/QA-NN** → atualizar `CONTEXT.md` **por substituição** e jogar o datado no `CHANGELOG.md`.
-
-Se você fizer só isto, já elimina os dois maiores custos que a análise achou: contexto inchado e regeneração.
+## Como o kit evolui
+Fim de milestone → prompt `06` → lições no `APRENDIZADOS.md` do projeto → lição repetida em 2+ projetos vira regra aqui (com entrada no `CHANGELOG.md` do kit). O kit é um repositório git: versione as mudanças.
