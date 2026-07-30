@@ -20,6 +20,7 @@ Sessão separada com um único objetivo: **quebrar o que foi construído**. Voc�
 7. **Concorrência e repetição:** duplo clique/retry duplicando efeito (falta de idempotência), duas escritas simultâneas no mesmo registro, condição de corrida entre ler e gravar.
 8. **Integração externa:** timeout ausente, erro de upstream vazando cru, parser escrito sobre payload imaginado, comportamento indefinido quando a dependência está fora.
 9. **Produção ↔ validação:** o que roda é o mesmo que os testes validam? Build/cache velho? Variável de ambiente divergente? Migration aplicada?
+9b. **Vazamento / look-ahead** (se houver cálculo, métrica ou modelo): dado futuro entrando em feature, treino contaminando teste, janela ou ordenação errada. Detalhe em [[skills/dados-analise/SKILL|dados-analise]].
 10. **Bordas de UI/fluxo:** `undefined` na tela, estado vazio sem mensagem, ação destrutiva sem confirmação, erro técnico exposto ao usuário, fluxo crítico impossível no viewport mínimo.
 11. **Doc × comportamento:** o documento descreve algo que o código não faz (ou o contrário). **Isso é achado, não detalhe** — e vale a mesma severidade do desalinhamento que causa.
 12. **Cruft e entrega:** arquivo `.bak`/`_old`/duplicado, dependência instalada versionada, banco/backup no repositório, estado numérico duplicado em dois documentos.

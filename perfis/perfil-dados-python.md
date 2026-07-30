@@ -39,7 +39,7 @@ Python 3.11+ · NumPy/pandas · SQLite · pytest · Flask local (opcional) · ar
 ```
 projeto/
 ├── CONTEXT.md DECISIONS.md CHANGELOG.md BACKLOG.md CHECKLIST.md APRENDIZADOS.md README.md
-├── prompts/ · contexto/ · dev/ (evidências e relatórios de QA)
+├── skills/ · contexto/ · dev/ (evidências e relatórios de QA)
 ├── pacote/ (um módulo por arquivo) · tests/ (um test_*.py por módulo)
 ├── dados/ (*.example + curados pequenos) · scripts/ (coletas que o dono roda)
 └── requirements.txt

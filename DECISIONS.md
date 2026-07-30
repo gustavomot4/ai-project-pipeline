@@ -22,7 +22,7 @@ status: rascunho
 | Q-01 | <ex.: quais formas de pagamento entram no escopo?> | <marco/condição> |
 
 ## Achados de QA (QA-NN — citados no commit: `fix: QA-NN …`)
-> Preenchido pelas sessões de [[skills/guardrails-review/SKILL|guardrails-review]] e `prompts/03`. Relatório completo de cada passagem em `dev/qa-AAAA-MM-DD.md`; aqui fica só a linha rastreável.
+> Preenchido pelas sessões de [[skills/guardrails-review/SKILL|guardrails-review]]. Relatório completo de cada passagem em `dev/qa-AAAA-MM-DD.md`; aqui fica só a linha rastreável.
 
 | # | Data | Sev. | Onde | O que quebrava | Correção |
 |---|---|---|---|---|---|

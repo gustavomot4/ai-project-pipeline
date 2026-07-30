@@ -107,7 +107,7 @@ def main() -> int:
     print(f"  1. cd {destino} && git init")
     print("  2. Abra a pasta como vault do Obsidian (ver GUIA-OBSIDIAN.md)")
     print("  3. Instale as skills de skills/ na sua ferramenta de IA")
-    print("  4. Sessão com prompts/00-bootstrap-contexto.md → preenche o CONTEXT.md")
+    print("  4. Sessão com skills/bootstrap-contexto/SKILL.md → preenche o CONTEXT.md")
     print("  5. python scripts/checar.py")
     return 0
 

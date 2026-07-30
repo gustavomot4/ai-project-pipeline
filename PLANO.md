@@ -4,7 +4,7 @@ status: rascunho
 ---
 # PLANO.md — <NOME DO PROJETO>
 
-> Gerado na Fase 1 com [[prompts/01-planejador]] a partir do [[CONTEXT]]. Aprovado = **congelado** (registre como D-NN em [[DECISIONS]]). Mudança posterior é D-NN novo — nunca replanejar do zero.
+> Gerado na Fase 1 com [[skills/planejador/SKILL|planejador]] a partir do [[CONTEXT]]. Aprovado = **congelado** (registre como D-NN em [[DECISIONS]]). Mudança posterior é D-NN novo — nunca replanejar do zero.
 > Critério de qualidade: outro agente implementa um módulo lendo **só o contrato dele + [[CONTEXT]]**.
 > Estado (o que já está pronto) NÃO mora aqui — mora no [[CONTEXT]].
 

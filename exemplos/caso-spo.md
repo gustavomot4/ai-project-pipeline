@@ -4,8 +4,9 @@ status: historico
 ---
 # Caso de referência — app de estoque e vendas para uma loja
 
-> **O que é isto:** o destilado de um projeto real construído com este pipeline, do zero até rodar em produção na máquina do cliente. Não é o projeto (não há código nem documento copiado aqui) — é **o padrão de qualidade a atingir** e a lista de armadilhas já pagas.
-> **Use como:** referência de formato ao preencher [[CONTEXT]], [[DECISIONS]] e [[PLANO]], e como aferição do que "pronto" significa.
+> **O que é isto:** o destilado de um projeto real construído com este pipeline. Não é o projeto (não há código nem documento copiado aqui).
+> **⚠️ Status epistêmico — leia antes de citar qualquer número daqui.** Isto é **relato, não medição.** Nenhum dos números abaixo tem relatório, commit ou artefato anexado a este vault; eles vêm da memória de quem conduziu o projeto. Diferente de [[docs/ANALISE-USO-SCB|docs/ANALISE-USO-SCB]], que conta caracteres em arquivos que existem e marca as próprias suspeitas.
+> **Use como:** lista de armadilhas plausíveis e referência de *formato* ao preencher [[CONTEXT]], [[DECISIONS]] e [[PLANO]]. **Não use como** aferição de qualidade nem como argumento para decidir nada — número sem evidência não passa no portão do próprio kit (regra 5).
 
 ## O projeto em 5 linhas
 App de gestão de estoque e vendas para uma loja de roupas com 1–2 funcionárias. Roda **local** na máquina da loja, sem nuvem e sem internet obrigatória. Operado por pessoa **não técnica**. Emite um comprovante não fiscal impresso em impressora térmica após cada venda. Fora do escopo, explicitamente: nota fiscal, nuvem, app mobile, cadastro de clientes e de fornecedores.

@@ -7,7 +7,7 @@ status: rascunho
 > **Orçamento: ≤ 4.000 caracteres** (valide com `python scripts/checar.py`). Atualize **por substituição** — reescreva a seção, nunca anexe no fim.
 > Histórico datado → [[CHANGELOG]] · decisão + evidência → [[DECISIONS]] · detalhe de domínio → `contexto/`.
 > Este é o único arquivo que TODA sessão carrega: cada caractere aqui é pago em cada sessão.
-> Preencha na Fase 0 com [[prompts/00-bootstrap-contexto]]. Formato de referência: [[exemplos/caso-spo]].
+> Preencha na Fase 0 com [[skills/bootstrap-contexto/SKILL|bootstrap-contexto]]. Formato de referência: [[exemplos/caso-spo]].
 
 ## Objetivo (3 linhas)
 <O que o app faz e para quem. Uma frase de valor. Um não-objetivo explícito.>
@@ -47,7 +47,11 @@ status: rascunho
 | [[BACKLOG]] | início de sessão de trabalho |
 | [[CHANGELOG]], `dev/` | **nunca** (só se o dono pedir) |
 
-## Protocolo do agente (toda sessão)
-1. Leia este arquivo + a skill do papel + só o arquivo do momento. **Não varra o repositório.**
-2. Trabalhe por **delta**: devolva só trechos alterados/arquivos novos.
-3. Fechamento: D-NN/QA-NN registrados → "Estado atual" reescrito por substituição → datado em [[CHANGELOG]] → mensagem de commit (`tipo(escopo): D-NN/QA-NN …`) → lição nova? 1 linha em [[APRENDIZADOS]].
+## Protocolo do agente (toda sessão, qualquer skill)
+1. Leia este arquivo + **uma** skill do papel + só o arquivo do momento. **Não varra o repositório.**
+2. Trabalhe por **delta**: só trechos alterados; arquivo novo pode vir inteiro.
+3. Escopo = o módulo desta sessão. Precisa mexer em outro? **Pare e avise.**
+4. Antes de depurar "bug": é código ou é **falta de dado**? Cheque o dado primeiro.
+5. Bug pré-existente encontrado? Registre QA-NN; não conserte de carona.
+6. Termine dizendo o que o **dono** roda na máquina real (teste oficial, migration, restart — processo vivo tem cache).
+7. Fechamento: D-NN/QA-NN registrados → "Estado atual" reescrito por substituição → datado em [[CHANGELOG]] → commit (`tipo(escopo): D-NN/QA-NN …`) → lição nova? 1 linha em [[APRENDIZADOS]].

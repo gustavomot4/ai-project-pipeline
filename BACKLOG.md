@@ -15,6 +15,8 @@ status: rascunho
 - [ ] T-01 — <tarefa> · **Portão:** <checagem objetiva> · **Skill:** <ex.: [[skills/testes/SKILL|testes]]>
 
 ## Em andamento (máx 1 — espelha "Em andamento" do [[CONTEXT]])
+<!-- O número em "máx N" é o limite que scripts/checar.py cobra. Solo = 1.
+     Time de N pessoas: troque para "máx N" aqui; o script passa a aceitar N. -->
 - [ ] T-00 — <a tarefa do momento>
 
 ## Feito (mover para cá; detalhe no [[CHANGELOG]])

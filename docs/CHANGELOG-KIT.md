@@ -8,6 +8,20 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/novo-projeto.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v4] — 2026-07-30
+Refatoração dirigida por auditoria adversarial do próprio kit. Cada item abaixo fecha um defeito **medido**, não uma impressão.
+
+- **Corrigido — dois mecanismos para o mesmo trabalho.** `prompts/` foi dissolvida em `skills/`. Medição que motivou: `prompts/03-qa-adversarial` × `skills/guardrails-review` tinham 27% de sobreposição de vocabulário, e o ROTEIRO mandava carregar **os dois** na mesma sessão. `00`, `01`, `04`, `05` e `06` viraram skills (`bootstrap-contexto`, `planejador`, `auditor-evolucao`, `revisao-entrega`, `retrospectiva`); `02` foi absorvido pelo "Protocolo do agente" do [[CONTEXT]] (pago uma vez, vale para toda skill); `03` era subconjunto de `guardrails-review`.
+- **Corrigido — rigor era prosa.** A auditoria contou **8 de 163** itens de checklist verificados por máquina (5%). `scripts/checar.py` passou a reprovar também: **segredo versionado na árvore e no histórico do git**, `.gitignore` sem cobertura mínima, **nota órfã**, **ID citado que não existe** no DECISIONS, **ID duplicado**, e **"Em andamento" divergente** entre BACKLOG e CONTEXT.
+- **Adicionado — `scripts/instalar-hook.py`.** Portão que só roda quando alguém lembra não é portão. O pre-commit torna a higiene o padrão; pular vira ato deliberado (`--no-verify`).
+- **Corrigido — a lacuna de segurança mais barata do kit.** A skill `guardrails-review` exigia `git grep` por segredo como item de portão, e `checar.py` tinha **zero** ocorrência de qualquer varredura. Agora varre 8 famílias de padrão, ignora `.example`/placeholder, e olha o histórico — segredo removido da árvore continua comprometido.
+- **Corrigido — o kit violava a própria regra 6.** README × ROTEIRO tinham 30% de sobreposição, README × INICIO 28%. Agora cada documento tem um trabalho só: [[INICIO]] mapeia, [[ROTEIRO]] conduz, [[README]] explica os porquês. "Papel do dono" e "frases de segurança" ficaram num lugar só.
+- **Corrigido — 5 notas órfãs.** `perfis/` inteira, `contexto/LEIA-ME` e `dev/LEIA-ME` não eram linkadas por ninguém: num vault, nota que ninguém aponta é nota que ninguém lê. Ligadas, e o script agora reprova órfã nova.
+- **Corrigido — WIP=1 reprovava time legítimo.** O limite passou a ser o **declarado** no cabeçalho do [[BACKLOG]] (`Em andamento (máx N)`); o script cobra esse número. Solo continua 1; time de 3 declara 3.
+- **Adicionado — "Onde este kit para" no [[README]].** Tabela honesta: serve para app pequeno/médio de um dono; não serve para 30+ módulos, 100+ decisões, multi-repo ou CI. O kit dizia "aplicação" e era, na prática, "aplicação pequena a média, solo".
+- **Corrigido — narrativa citada como medição.** Os números de [[exemplos/caso-spo]] ("14 passagens", "84 achados") apareciam 10 vezes pelo kit sem um artefato anexado. O arquivo ganhou aviso de status epistêmico e o [[ROTEIRO]] parou de usá-los como argumento. A distinção com [[docs/ANALISE-USO-SCB|ANALISE-USO-SCB]] — que é medição, com as próprias ressalvas — está explícita no README.
+- **Adicionado — frente de vazamento/look-ahead** em `guardrails-review` (era a única frente do prompt 03 que a skill não cobria).
+
 ## [kit v3] — 2026-07-30
 Passagem de agentes especializados + Obsidian. O kit deixou de ser só um conjunto de documentos e passou a ser um **vault operável com agentes instaláveis**.
 

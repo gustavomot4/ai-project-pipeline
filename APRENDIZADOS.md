@@ -4,7 +4,7 @@ status: atual
 ---
 # APRENDIZADOS.md — lições para os próximos agentes (arquivo vivo)
 
-> Alimentado ao fechar milestones ([[prompts/06-retrospectiva]]). 1 linha por lição, generalizável, honesta — inclua os SEUS erros. Lição repetida em 2+ projetos → promover a regra do kit ([[README]]).
+> Alimentado ao fechar milestones ([[skills/retrospectiva/SKILL|retrospectiva]]). 1 linha por lição, generalizável, honesta — inclua os SEUS erros. Lição repetida em 2+ projetos → promover a regra do kit ([[README]]).
 
 ## Herdadas (não repague estas)
 - **Observe antes de construir:** nunca escreva parser/integração sem uma amostra REAL do payload/estrutura. Chutar a estrutura de uma fonte custou 6 ciclos de QA num projeto.

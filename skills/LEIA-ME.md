@@ -11,7 +11,17 @@ Cada pasta aqui é uma **skill instalável** (`SKILL.md` com `name` e `descripti
 
 Em qualquer um dos casos, a sessão recebe **a skill + o [[CONTEXT]] + só o arquivo do momento**. Nunca o repositório inteiro.
 
-## Os 12 agentes
+## Os 17 agentes
+
+### Fases (antes eram `prompts/`; viraram skills para não pagar duas vezes pela mesma instrução)
+| Skill | Quando usar | O que ela protege |
+|---|---|---|
+| [[skills/bootstrap-contexto/SKILL\|bootstrap-contexto]] | Fase 0 — descrever o projeto | orçamento do CONTEXT, restrições da stack no dia 1, lacuna declarada |
+| [[skills/planejador/SKILL\|planejador]] | Fase 1 — gerar o PLANO | contrato por módulo autossuficiente, milestones encadeadas, plano congelável |
+| [[skills/auditor-evolucao/SKILL\|auditor-evolucao]] | depois do baseline estável | lista-morta, portão antes do experimento, prior de 20–30% |
+| [[skills/revisao-entrega/SKILL\|revisao-entrega]] | Fase 6 — empacotar | segredo na árvore **e no histórico**, cruft, peso, estado duplicado |
+| [[skills/retrospectiva/SKILL\|retrospectiva]] | fechar milestone | lição generalizável, erro do agente incluído |
+
 
 ### Arquitetura (decidem a forma antes de existir código)
 | Skill | Quando usar | O que ela protege |

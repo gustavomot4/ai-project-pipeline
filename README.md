@@ -4,23 +4,30 @@ status: atual
 ---
 # Pipeline de projetos de aplicação com IA
 
-Kit genérico e reutilizável para tirar uma **aplicação** do zero com agentes de IA e **sustentá-la do início ao fim** — qualquer stack, qualquer domínio — mantendo **rigor** (portões objetivos, decisões rastreáveis, revisão adversarial) e gastando o **mínimo de tokens** (contexto com orçamento numérico, leitura sob demanda, evolução por delta).
+Kit reutilizável para tirar uma **aplicação** do zero com agentes de IA e **sustentá-la até a entrega**, mantendo rigor (portões objetivos, decisões rastreáveis, revisão adversarial) e gastando pouco contexto (orçamento numérico, leitura sob demanda, evolução por delta).
 
-Comece por [[INICIO]] (mapa) e siga o [[ROTEIRO]] (o caminho executável). Este README é o único lugar com "por quês" — os arquivos que os agentes carregam são só instrução. As evidências medidas que originaram cada regra estão em [[docs/ANALISE-USO-SCB|docs/ANALISE-USO-SCB]]; a história do kit, em [[docs/CHANGELOG-KIT|docs/CHANGELOG-KIT]].
+Mapa do vault: [[INICIO]]. Caminho executável: [[ROTEIRO]]. **Este README é o único lugar com "por quês" e com os limites** — os arquivos que os agentes carregam são só instrução.
 
-## O que este kit tem que um pipeline genérico não tem
-1. **12 agentes como skills instaláveis** ([[skills/LEIA-ME|skills/]]): domínio, BFF, integração síncrona, UI/UX, MFE, autenticação, monólito, microserviços, IaC, testes, guardrails e dados/análise. Cada um com regras numeradas, portão em checklist e as **armadilhas já pagas** por projetos reais.
-2. **Portões de existência** nas skills estruturais: MFE e microserviços começam perguntando *isto deve existir?* — e reprovar é o resultado esperado na maioria dos casos. É o que impede a IA de construir arquitetura que ninguém precisa.
-3. **Um [[ROTEIRO]] em ordem**, ligando fase → agente → portão, para que o resultado não dependa de você lembrar a sequência.
-4. **Um caso de referência destilado** ([[exemplos/caso-spo]]) com números reais de entrega, para aferir o que "pronto" significa.
-5. **Higiene automatizada**: `scripts/checar.py` reprova o que as regras proíbem (contexto estourado, estado duplicado, link quebrado, skill inválida) em vez de confiar na sua memória.
+## Onde este kit para (leia antes de adotar)
+Nenhuma ferramenta serve para tudo, e o kit fica mais útil quando você sabe onde ele deixa de servir.
+
+| Contexto | Serve? | O que trava |
+|---|---|---|
+| App pequeno/médio, **um dono** | **Sim, é o alvo** | nada; use o modo curto se for pequeno |
+| Time de 2–4 pessoas | Parcialmente | `WIP` é declarado no cabeçalho do [[BACKLOG]] (`Em andamento (máx N)`) e o script cobra esse número — suba-o. Mas não há atribuição por pessoa nem merge de decisões concorrentes |
+| App grande (30+ módulos) | **Não** | o [[CONTEXT]] de 4.000 chars não representa 30 módulos em "Pronto:". Solução parcial: `contexto/modulos.md` com a lista e o CONTEXT guardando só a contagem |
+| Projeto longo (100+ decisões) | Com atrito | o teto de 12.000 chars do [[DECISIONS]] dá ~66 linhas; o arquivamento em `dev/decisions-arquivo.md` é **manual** e ninguém lembra |
+| Multi-repo / monorepo grande | Não | o kit assume um repositório e um `CONTEXT` |
+| CI/CD, revisão por pares | Não cobre | o único automatismo é o pre-commit de `scripts/checar.py` |
+
+**A limitação honesta mais importante:** dos ~160 itens de checklist do kit, o script julga cerca de vinte. O resto depende de você rodar a seção certa do [[CHECKLIST]]. Isto é um kit de disciplina com algumas travas automáticas — não um sistema que impede erro.
 
 ## Como começar
-1. **Projeto novo:** `python scripts/novo-projeto.py ../meu-app` — copia o kit já limpo (sem `docs/`, `exemplos/`, `.git`) e com os templates zerados. Ou abra esta pasta como vault do Obsidian e trabalhe aqui ([[GUIA-OBSIDIAN]]).
-2. Instale as skills de [[skills/LEIA-ME|skills/]] na sua ferramenta de IA.
-3. Siga o [[ROTEIRO]]. Ele começa com uma sessão de [[prompts/00-bootstrap-contexto]] que entrevista você (≤5 perguntas) e devolve o [[CONTEXT]] preenchido.
-4. Escolha o perfil da stack em `perfis/` (não tem o seu? use `perfil-generico`, que extrai as restrições por método) e cole os blocos no [[CONTEXT]].
-5. Daí em diante, só o ciclo de sessão. O kit segura o resto: decisões, QA, evolução, entrega, operação.
+1. **Projeto novo:** `python scripts/novo-projeto.py ../meu-app --nome "Meu App"` — copia o kit limpo (sem `docs/`, `exemplos/`, `.git`) e nomeia os templates.
+2. `python scripts/instalar-hook.py` — todo commit passa a rodar `scripts/checar.py`. Sem isso, os portões automáticos viram opcionais.
+3. Instale as skills de [[skills/LEIA-ME|skills/]] na sua ferramenta de IA (ou deixe os `SKILL.md` à mão para colar).
+4. Siga o [[ROTEIRO]]. Ele começa com [[skills/bootstrap-contexto/SKILL|bootstrap-contexto]], que entrevista você (≤5 perguntas) e devolve o [[CONTEXT]] preenchido.
+5. Escolha o perfil da stack em [[perfis/perfil-generico|perfis/]] e cole os blocos no [[CONTEXT]].
 
 ## O que vem na caixa
 ```
@@ -28,58 +35,54 @@ INICIO.md ROTEIRO.md GUIA-OBSIDIAN.md README.md
 CONTEXT.md      ← contexto-fonte, ≤4.000 chars, com Mapa de leitura e Protocolo do agente
 PLANO.md        ← módulos, contratos, milestones com portão (congela após aprovação)
 DECISIONS.md    ← D-NN (2 frases + link) · Q-NN (dono) · QA-NN · regra de arquivamento
-BACKLOG.md      ← fonte única de tarefas, com lane "Ações do dono"
+BACKLOG.md      ← fonte única de tarefas, com lane "Ações do dono" e WIP declarado
 CHANGELOG.md    ← histórico datado do PROJETO (fora do contexto)
 CHECKLIST.md    ← portões por tipo de entrega, camada por camada
 APRENDIZADOS.md ← lições vivas, já com as herdadas
-skills/         ← os 12 agentes (SKILL.md instalável)
-prompts/00–06   ← papéis por fase (curtos, imperativos)
+skills/         ← os 17 agentes (SKILL.md instalável) — inclusive os de fase
 perfis/         ← web-nextjs · dados-python · genérico (método p/ qualquer stack)
 templates/      ← modelos de D-NN, QA-NN e fecho de sessão (plugin Templates)
 contexto/       ← docs de domínio por tema (nasce vazio, leitura sob demanda)
 dev/            ← evidências e relatórios de QA — nunca carregados
-exemplos/       ← caso de referência destilado          ┐ só do kit:
-docs/           ← análise de uso + changelog do kit     ┘ não vão para o projeto
-scripts/        ← checar.py (higiene) · novo-projeto.py (bootstrap)
+exemplos/       ← caso de referência          ┐ só do kit:
+docs/           ← análise de uso + changelog  ┘ não vão para o projeto
+scripts/        ← checar.py · instalar-hook.py · novo-projeto.py
 ```
 Projeto que roda continuamente ganha ainda um `RUNBOOK.md` na entrega (exigido pela Fase 6).
+
+**Um mecanismo só.** Não existe `prompts/` separado de `skills/`: os papéis de fase viraram skills. Antes você carregava o prompt *e* a skill na mesma sessão e pagava duas vezes pela mesma instrução (27% de sobreposição medida entre o prompt de QA e a skill de guardrails).
 
 ## As 7 regras (valem em todas as fases)
 1. **Contexto com orçamento em número.** [[CONTEXT]] ≤ 4.000 caracteres, medível por script, atualizado por substituição. *Por quê: "≤ 1 página" sem número virou, num projeto real, um parágrafo-parede de ~640 tokens relido em toda sessão.*
 2. **Histórico fora do contexto.** Datado → [[CHANGELOG]], que nenhuma sessão carrega.
 3. **Delta, nunca regenerar.** Só o trecho alterado — em docs e em código. Regenerar foi o maior custo dos projetos anteriores.
-4. **Decisão rastreável.** Assunto fechado → D-NN (2 frases; evidência longa em `dev/`). Bug → QA-NN no commit. Decisão pendente do dono → Q-NN. *Por quê do teto: sem ele, o DECISIONS de um projeto real chegou a ~7.700 tokens e a fase de evolução, que o carrega inteiro, pagava tudo.*
+4. **Decisão rastreável.** Assunto fechado → D-NN (2 frases; evidência longa em `dev/`). Bug → QA-NN no commit. Pendência do dono → Q-NN. O script cobra: ID citado tem de existir, ID não se repete.
 5. **Nada entra sem portão.** Critério de aceite objetivo no dia 1; "parece bom" não passa. Rejeição registrada vale tanto quanto adoção.
-6. **Estado mora num lugar só.** Versões/métricas/contagens vigentes só no [[CONTEXT]]; todo outro doc aponta. *Por quê: num projeto real o estado vivia em 4 arquivos e divergiu — um card do backlog pedia rebuild com números de duas versões atrás.*
+6. **Estado mora num lugar só.** Versões/métricas/contagens vigentes só no [[CONTEXT]]; todo outro doc aponta. O script compara "Em andamento" entre [[BACKLOG]] e [[CONTEXT]] e reprova divergência. *Por quê: num projeto real o estado vivia em 4 arquivos e divergiu.*
 7. **Observe antes de construir.** Parser/integração só com amostra real da estrutura na mão. *Por quê: chutar a estrutura de uma fonte custou 6 ciclos de QA.*
 
-## As fases e seus portões
-| Fase | Prompt | Skill típica | Portão |
-|---|---|---|---|
-| 0 Contexto | `00` | — | CONTEXT ≤ 4k chars + você concorda com cada linha |
-| 1 Forma e plano | `01` | arquitetura-* | forma em D-NN com gatilho · plano aprovado = congelado |
-| 2 Dados/domínio | `02` | backend-dominio · dados-analise | migration roda em banco vazio · invariantes testados |
-| 3 Borda/UI/acesso | `02` | bff · uiux · autenticacao · sync | portão da skill + rota sensível testada sem sessão |
-| 4 Testes e revisão | `03` | testes → guardrails-review | suíte verde na sua máquina · relatório de QA registrado · crítico/alto zerados |
-| 5 Infra | `02` | iac-docker-terraform | sobe limpo · dados persistem · rollback testado |
-| 6 Entrega | `05` | — | zip conferido · sem estado duplicado · runbook se opera |
-| Retro | `06` | — | APRENDIZADOS atualizado |
-
-**Modo curto (projeto pequeno):** 0 → 2 → 4 → 6. Pula-se fase; não se pula regra.
+As fases, os portões e qual skill usar em cada uma estão no [[ROTEIRO]] — não se repetem aqui.
 
 ## O ciclo de toda sessão (90% do dia a dia)
-> skill do papel + [[CONTEXT]] + só o arquivo do momento → pedir **delta** → passar no **portão** → registrar D-NN/QA-NN → [[CONTEXT]] por substituição, datado no [[CHANGELOG]] → commit citando IDs.
+> **uma** skill + [[CONTEXT]] + só o arquivo do momento → pedir **delta** → passar no **portão** → registrar D-NN/QA-NN → [[CONTEXT]] por substituição, datado no [[CHANGELOG]] → commit citando IDs.
 
 No Obsidian o fecho é um clique: `Templates → fecho-de-sessao` ([[templates/LEIA-ME|templates/]]).
 
 ## O papel do dono (o que a IA não faz por você)
-1. **Guardião do portão** — aceite = rodar a seção certa do [[CHECKLIST]]; falhou → devolve pedindo delta.
+1. **Guardião do portão** — aceite = rodar a seção certa do [[CHECKLIST]]; falhou → devolve pedindo delta, nunca "refaz tudo".
 2. **Decisor** — toda Q-NN é sua; agente não muda regra de negócio nem rumo.
 3. **Operador da máquina real** — testes oficiais, migrations, deploy, push. O sandbox do agente é indicativo, não portão.
 4. **Fonte dos dados manuais** — o que você não preencher fica lacuna declarada, nunca inventada.
-5. **Higiene** — `python scripts/checar.py` de vez em quando; conferir que o estado está num lugar só.
 
 **Frases de segurança:** "Isso passou no portão? Mostra o número." · "Cadê o D-NN?" · "Me manda só o delta." · "Rodou na minha máquina ou no sandbox?" · "Viu uma amostra real antes de escrever esse parser?" · "Isso muda alguma decisão ou número?"
 
+## Sobre as evidências deste kit
+Duas fontes, com pesos diferentes — e vale saber qual é qual:
+
+- **[[docs/ANALISE-USO-SCB|docs/ANALISE-USO-SCB]]** é medição: tamanhos de arquivo contados, custos em tokens calculados, com as ressalvas contra o próprio projeto explicitadas. É daí que vêm as regras 1, 4, 6 e 7.
+- **[[exemplos/caso-spo|exemplos/caso-spo]]** é **narrativa não verificada**: os números ("14 passagens", "84 achados") vêm de relato, sem relatório nem commit anexado. Use como lista de armadilhas plausíveis, não como aferição.
+
+O kit inteiro foi auditado contra si mesmo em 2026-07-30; o que a auditoria reprovou virou correção em [[docs/CHANGELOG-KIT|docs/CHANGELOG-KIT]] (v4).
+
 ## Como o kit evolui
-Fim de milestone → [[prompts/06-retrospectiva]] → lições no [[APRENDIZADOS]] do projeto → lição repetida em 2+ projetos vira regra aqui, com entrada em [[docs/CHANGELOG-KIT|docs/CHANGELOG-KIT]]. Perfil novo nasce salvando um `perfil-generico` preenchido; skill nova nasce copiando o formato de [[skills/LEIA-ME|skills/]]. O kit é um repositório git: versione as mudanças.
+Fim de milestone → [[skills/retrospectiva/SKILL|retrospectiva]] → lições no [[APRENDIZADOS]] do projeto → lição repetida em 2+ projetos vira regra aqui, com entrada em [[docs/CHANGELOG-KIT|docs/CHANGELOG-KIT]]. Perfil novo nasce salvando um `perfil-generico` preenchido; skill nova nasce copiando o formato de [[skills/LEIA-ME|skills/]]. O kit é um repositório git: versione as mudanças.
