@@ -1,0 +1,44 @@
+{
+  "items": [
+    {
+      "type": "file",
+      "path": "INICIO.md",
+      "title": "🚀 Início"
+    },
+    {
+      "type": "file",
+      "path": "ROTEIRO.md",
+      "title": "Roteiro (dia 1 → entrega)"
+    },
+    {
+      "type": "file",
+      "path": "CONTEXT.md",
+      "title": "Contexto-fonte"
+    },
+    {
+      "type": "file",
+      "path": "DECISIONS.md",
+      "title": "Decisões"
+    },
+    {
+      "type": "file",
+      "path": "BACKLOG.md",
+      "title": "Backlog"
+    },
+    {
+      "type": "file",
+      "path": "CHECKLIST.md",
+      "title": "Checklist de portões"
+    },
+    {
+      "type": "file",
+      "path": "skills/LEIA-ME.md",
+      "title": "Skills (agentes)"
+    },
+    {
+      "type": "file",
+      "path": "templates/LEIA-ME.md",
+      "title": "Templates (D-NN, QA-NN, fecho)"
+    }
+  ]
+}

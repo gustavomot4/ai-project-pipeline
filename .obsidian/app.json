@@ -1,0 +1,9 @@
+{
+  "attachmentFolderPath": "dev/anexos",
+  "newFileLocation": "current",
+  "alwaysUpdateLinks": true,
+  "useMarkdownLinks": false,
+  "readableLineLength": true,
+  "livePreview": true,
+  "defaultViewMode": "preview"
+}

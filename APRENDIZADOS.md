@@ -1,18 +1,27 @@
+---
+tags: [aprendizados]
+status: atual
+---
 # APRENDIZADOS.md — lições para os próximos agentes (arquivo vivo)
 
-> Alimentado ao fechar milestones (prompt `06-retrospectiva.md`). 1 linha por lição, generalizável, honesta — inclua os SEUS erros. Lição repetida em 2+ projetos → promover a regra do kit.
+> Alimentado ao fechar milestones ([[prompts/06-retrospectiva]]). 1 linha por lição, generalizável, honesta — inclua os SEUS erros. Lição repetida em 2+ projetos → promover a regra do kit ([[README]]).
 
-## Herdadas (SCM → SCB → kit v2)
-- **Observe antes de construir:** nunca escreva parser/integração sem uma amostra REAL do payload/estrutura — chutar a estrutura de uma fonte custou 6 ciclos de QA; duvidar de uma API sem fazer 1 chamada quase custou uma feature.
+## Herdadas (não repague estas)
+- **Observe antes de construir:** nunca escreva parser/integração sem uma amostra REAL do payload/estrutura. Chutar a estrutura de uma fonte custou 6 ciclos de QA num projeto.
 - **"Está quebrado" vs "falta dado":** cheque o estado do dado antes de caçar bug no código.
-- **Salve incremental:** loop de coleta grava com `try/finally` e é resumível; erro ou rate-limit no meio nunca descarta o já feito.
-- **Barato ≠ valioso:** feature fácil que não muda decisão/número é cruft — pergunte "isso muda algo?" antes de construir.
-- **Ganho não transfere de contexto:** o que passou no portão num dataset/liga/projeto re-passa no novo; o dado mudou.
-- **Valide contra um valor conhecido** antes de confiar num cálculo novo.
-- **Processo vivo tem cache:** servidor/build antigo mascara sua mudança — reinicie antes de julgar (e avise o dono de reiniciar).
+- **Declare a restrição da stack ANTES de modelar:** descobrir tarde o que o banco/framework não suporta custou 6 versões de schema em 7 dias. O perfil da stack entra no CONTEXT no dia 1.
+- **Dinheiro é inteiro (centavos) e taxa é basis point desde a primeira migration:** trocar depois reescreve toda a camada de cálculo. `0.1 + 0.2 ≠ 0.3`.
+- **Segredo é gerado por instalação, nunca versionado:** segredo de sessão fixo e boot com placeholder foram os dois achados mais graves de um projeto real. O boot deve recusar iniciar sem segredo próprio.
+- **Fricção de segurança tem de casar com o uso real:** proteção que atrapalha o fluxo principal é removida pelo dono depois — proteja só o que ele quer proteger, e pergunte antes.
+- **Máquina de usuário final consome artefato pronto, não compila:** build na máquina do cliente é lento e frágil; publique imagem e faça pull pinado com rollback.
+- **Migration em produção é expand/contract:** aditiva primeiro, remoção só uma release depois — mais ainda se o deploy for automático.
+- **Automação que roda sozinha precisa de RUNBOOK e rollback testado na máquina real** antes de ser ligada; senão é risco, não conveniência.
+- **Doc que descreve comportamento tem de bater com o código:** doc desalinhada do comportamento é bug de doc, e conta como achado de QA.
+- **Barato ≠ valioso:** feature fácil que não muda decisão nem número é cruft — pergunte "isso muda algo?" antes de construir.
+- **Processo vivo tem cache:** servidor/build antigo mascara sua mudança — reinicie antes de julgar (e avise o dono).
 - **Sandbox ≠ máquina real:** o portão final roda na máquina do dono; termine dizendo o que ele precisa rodar.
-- **Rejeitar é o portão funcionando:** ~7 rejeições por 2 adoções é saúde, não fracasso; registre a rejeição com o número que matou.
-- **Honestidade compõe:** reportar fraqueza (métrica atrás do benchmark, ganho marginal) gera mais confiança do que esconder — e não precisa ser desfeito depois.
+- **Rejeitar é o portão funcionando:** registre a rejeição com o número/motivo que matou.
+- **Honestidade compõe:** reportar fraqueza gera mais confiança do que esconder — e não precisa ser desfeito depois.
 
 ## Deste projeto
 - <data> — <lição em 1 linha>

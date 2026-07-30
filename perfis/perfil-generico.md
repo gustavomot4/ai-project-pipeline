@@ -1,3 +1,8 @@
+---
+tags: [perfil, stack]
+status: atual
+---
+
 # Perfil — genérico (qualquer stack)
 
 > Use quando nenhum perfil pronto servir. Este perfil não dá respostas — dá o **método** para extrair, na Fase 0, as restrições que evitam retrabalho. Cole o resultado no `CONTEXT.md`. Se o tipo de projeto se repetir, salve o preenchido como `perfis/perfil-<tipo>.md` — é assim que nascem perfis novos.

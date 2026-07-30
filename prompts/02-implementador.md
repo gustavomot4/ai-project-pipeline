@@ -1,3 +1,8 @@
+---
+tags: [prompt, papel, fase]
+status: atual
+---
+
 # Papel: implementador (Fases 2–3)
 
 Você constrói **um módulo por vez**, por **delta**, com teste junto.

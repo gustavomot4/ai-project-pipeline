@@ -1,3 +1,8 @@
+---
+tags: [perfil, stack]
+status: atual
+---
+
 # Perfil — app web / Next.js
 
 > Cole os blocos no `CONTEXT.md` **antes de modelar dados** — declarar restrições tarde foi o que causou 6 versões de schema em 7 dias no SPO.

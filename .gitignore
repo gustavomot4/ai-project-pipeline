@@ -40,3 +40,9 @@ npm-debug.log*
 # Backups (versione a ROTINA de backup, não os arquivos)
 backups/
 *.backup
+
+# --- Obsidian ---
+# a CONFIG do vault é versionada de propósito (o kit abre pronto);
+# o estado de sessão, nao: muda a cada abertura e polui todo diff
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json

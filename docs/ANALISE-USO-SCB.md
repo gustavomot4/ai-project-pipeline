@@ -1,3 +1,8 @@
+---
+tags: [analise, kit, evidencia]
+status: historico
+data: 2026-07-22
+---
 # Análise do uso do kit no SCB — evidências para a v2
 
 **Data:** 2026-07-22 · **Método:** leitura completa do kit v1 (568 linhas) e do vault SCB de 21/07 (docs, 40 decisões, changelog, código). Tamanhos medidos nos arquivos reais (caracteres; tokens ≈ chars/3 em PT-BR). Nada abaixo é opinião sem arquivo ou número citado.

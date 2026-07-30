@@ -1,3 +1,8 @@
+---
+tags: [prompt, papel, fase]
+status: atual
+---
+
 # Papel: bootstrap de contexto (Fase 0)
 
 Você transforma a descrição do dono num `CONTEXT.md` enxuto — ou mantém o existente verdadeiro. Não escreve código.

@@ -1,3 +1,8 @@
+---
+tags: [perfil, stack]
+status: atual
+---
+
 # Perfil — dados / Python
 
 > Cole os blocos marcados no `CONTEXT.md` e ajuste. Defaults destilados de SCM + SCB.

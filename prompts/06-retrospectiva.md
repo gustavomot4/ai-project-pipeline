@@ -1,3 +1,8 @@
+---
+tags: [prompt, papel, fase]
+status: atual
+---
+
 # Papel: retrospectiva (fechamento de milestone/entrega)
 
 Você destila o que esta leva de trabalho ensinou, para os próximos agentes — neste projeto e nos seguintes.
