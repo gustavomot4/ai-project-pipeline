@@ -176,11 +176,15 @@ for p in visiveis("*"):
         varrer(p.read_text(encoding="utf-8"), p.relative_to(raiz).as_posix(), achados_seg)
     except (UnicodeDecodeError, OSError):
         continue
+# O histórico é caro de varrer e este script roda em todo commit: por padrão olha
+# os 30 commits recentes. A varredura completa é da Fase 6 (skills/revisao-entrega),
+# ou aqui com --historico-completo.
+PROFUNDIDADE = "0" if "--historico-completo" in sys.argv else "30"
 if (raiz / ".git").is_dir():
     try:
         hist = subprocess.run(
-            ["git", "-C", str(raiz), "log", "-p", "--no-color", "-500", "--", "."],
-            capture_output=True, text=True, timeout=60, errors="replace",
+            ["git", "-C", str(raiz), "log", "-p", "--no-color", f"-{PROFUNDIDADE}", "--", "."],
+            capture_output=True, text=True, timeout=25, errors="replace",
         ).stdout
         adicionadas = [l[1:] for l in hist.splitlines() if l.startswith("+") and not l.startswith("+++")]
         achados_hist = []
