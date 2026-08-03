@@ -20,7 +20,9 @@ Nenhuma ferramenta serve para tudo, e o kit fica mais útil quando você sabe on
 | Multi-repo / monorepo grande | Não | o kit assume um repositório e um `CONTEXT` |
 | CI/CD, revisão por pares | Não cobre | o único automatismo é o pre-commit de `scripts/checar.py` |
 
-**A limitação honesta mais importante:** dos ~160 itens de checklist do kit, o script julga cerca de vinte. O resto depende de você rodar a seção certa do [[CHECKLIST]]. Isto é um kit de disciplina com algumas travas automáticas — não um sistema que impede erro.
+**A limitação honesta mais importante:** o kit tem **188** itens de checklist (69 no [[CHECKLIST]] + 104 nos `skills/`); `scripts/checar.py` julga **16** deles — cerca de 9%. O resto depende de você rodar a seção certa do [[CHECKLIST]]. Isto é um kit de disciplina com algumas travas automáticas — não um sistema que impede erro.
+
+**A segunda:** a varredura de segredo é uma rede de arrasto, não uma garantia. Ela cobre 11 famílias de padrão e foi medida contra 8 formatos reais de vazamento (8/8, 0 falsos-positivos em 12 iscas) — mas um segredo em formato que ela não conhece passa. Ver [[docs/AUDITORIA-EXTERNA-2026-07-30|a auditoria]], que mediu a versão anterior detectando **0 de 8**.
 
 ## Como começar
 1. **Projeto novo:** `python scripts/novo-projeto.py ../meu-app --nome "Meu App"` — copia o kit limpo (sem `docs/`, `exemplos/`, `.git`) e nomeia os templates.
@@ -32,7 +34,8 @@ Nenhuma ferramenta serve para tudo, e o kit fica mais útil quando você sabe on
 ## O que vem na caixa
 ```
 INICIO.md ROTEIRO.md GUIA-OBSIDIAN.md README.md
-CONTEXT.md      ← contexto-fonte, ≤4.000 chars, com Mapa de leitura e Protocolo do agente
+CLAUDE.md       ← contrato de leitura do agente (carregado sozinho pela ferramenta)
+CONTEXT.md      ← contexto-fonte do projeto, ≤4.000 chars
 PLANO.md        ← módulos, contratos, milestones com portão (congela após aprovação)
 DECISIONS.md    ← D-NN (2 frases + link) · Q-NN (dono) · QA-NN · regra de arquivamento
 BACKLOG.md      ← fonte única de tarefas, com lane "Ações do dono" e WIP declarado

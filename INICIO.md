@@ -16,6 +16,7 @@ status: atual
 | Arquivo | Para quê |
 |---|---|
 | [[ROTEIRO]] | o caminho do dia 1 à entrega, fase por fase |
+| [[CLAUDE]] | contrato de leitura do agente — a ferramenta carrega sozinha |
 | [[CONTEXT]] | contexto-fonte (≤4.000 chars) — o único que TODA sessão carrega |
 | [[PLANO]] | módulos, contratos e milestones (congelado após aprovação) |
 | [[DECISIONS]] | D-NN decisões · Q-NN pendências suas · QA-NN achados |
@@ -45,4 +46,6 @@ Cada um é uma skill instalável, com regras e portão próprios. **Uma skill po
 | [[exemplos/caso-spo\|exemplos/]] | caso de referência (narrativa, não medição — ver a ressalva lá) |
 
 ## Higiene
-`python scripts/checar.py` — reprova orçamento estourado, estado duplicado, WIP acima do declarado, skill inválida, link quebrado, nota órfã, segredo versionado e ID inexistente. Com o hook instalado, roda em todo commit.
+`python scripts/checar.py` — reprova orçamento estourado, estado duplicado, WIP acima do declarado, skill inválida, link quebrado, segredo versionado e ID inexistente. Com o hook instalado, roda em todo commit.
+
+Antes de entregar, rode `python scripts/checar.py --historico-completo`: no dia a dia a varredura de segredo olha só os 30 commits recentes, e o script diz qual alcance usou.
