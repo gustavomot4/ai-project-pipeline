@@ -5,25 +5,25 @@ status: atual
 # Contrato de leitura do agente
 
 Este arquivo é carregado sozinho pela ferramenta em toda sessão. Ele existe para que o
-`CONTEXT.md` não precise gastar o próprio orçamento explicando como ser lido.
+`a_context/a_context_source.md` não precise gastar o próprio orçamento explicando como ser lido.
 
 ## O que carregar, nesta ordem
 
-1. **`CONTEXT.md`** — sempre, inteiro. É a fonte única de estado do projeto.
-2. **Uma** skill de `skills/`, a do papel desta sessão. Duas skills = duas responsabilidades
+1. **`a_context/a_context_source.md`** — sempre, inteiro. É a fonte única de estado do projeto.
+2. **Uma** skill de `b_process/skills/`, a do papel desta sessão. Duas skills = duas responsabilidades
    disputando o contexto.
 3. **Só o arquivo do momento** — o módulo que esta sessão toca, mais nada.
 
-**Não varra o repositório.** Não leia `CHANGELOG.md` nem `dev/` por conta própria: são grandes,
+**Não varra o repositório.** Não leia `d_history/a_changelog.md` nem `e_qa/` por conta própria: são grandes,
 são históricos, e nenhuma sessão precisa deles. Se faltar informação, peça — não procure.
 
 | Arquivo | Ler quando |
 |---|---|
-| `PLANO.md` | implementar módulo novo — só o contrato dele |
-| `DECISIONS.md` | sessão de evolução (inteiro); nas demais, só o D-NN citado |
-| `contexto/<tema>.md` | a tarefa tocar o tema |
-| `BACKLOG.md` | início de sessão de trabalho |
-| `CHANGELOG.md`, `dev/` | **nunca**, salvo pedido explícito do dono |
+| `a_context/b_plan.md` | implementar módulo novo — só o contrato dele |
+| `a_context/c_decisions.md` | sessão de evolução (inteiro); nas demais, só o D-NN citado |
+| `a_context/<tema>.md` | a tarefa tocar o tema |
+| `b_process/c_backlog.md` | início de sessão de trabalho |
+| `d_history/a_changelog.md`, `e_qa/` | **nunca**, salvo pedido explícito do dono |
 
 ## Como trabalhar
 
@@ -39,21 +39,22 @@ são históricos, e nenhuma sessão precisa deles. Se faltar informação, peça
 ## Fechamento de sessão
 
 ```
-D-NN / QA-NN / Q-NN registrados em DECISIONS.md
-   → "Estado atual" do CONTEXT.md reescrito POR SUBSTITUIÇÃO (nunca anexado no fim)
-   → linha datada no CHANGELOG.md
-   → commit citando os IDs:  tipo(escopo): D-NN/QA-NN …
-   → lição nova? 1 linha em APRENDIZADOS.md
+D-NN / QA-NN / Q-NN registrados em a_context/c_decisions.md
+   → "Estado atual" de a_context/a_context_source.md reescrito POR SUBSTITUIÇÃO
+     (nunca anexado no fim)
+   → linha datada em d_history/a_changelog.md
+   → commit citando os IDs:  TIPO: o que mudou (D-NN/QA-NN)
+   → lição nova? 1 linha em b_process/d_agent_learnings.md
 ```
 
-Antes de commitar: `python scripts/checar.py`. Antes de entregar (Fase 6):
-`python scripts/checar.py --historico-completo`.
+Antes de commitar: `python scripts/check.py`. Antes de entregar (Fase 6):
+`python scripts/check.py --historico-completo`.
 
 ## Limites deste kit (não os contorne em silêncio)
 
-O `CONTEXT.md` tem orçamento de **4.000 caracteres**, cobrado por script. Não coube? O excedente
-vai para `contexto/<tema>.md` — **nunca** para prosa comprimida, e nunca estourando o teto.
-Estado numérico (versão, métricas, contagens) mora **só** no `CONTEXT.md`; todo outro documento
+O `a_context/a_context_source.md` tem orçamento de **4.000 caracteres**, cobrado por script. Não coube? O excedente
+vai para `a_context/<tema>.md` — **nunca** para prosa comprimida, e nunca estourando o teto.
+Estado numérico (versão, métricas, contagens) mora **só** no `a_context/a_context_source.md`; todo outro documento
 aponta para lá.
 
 Se uma regra aqui atrapalhar a tarefa, diga isso ao dono em vez de contorná-la.

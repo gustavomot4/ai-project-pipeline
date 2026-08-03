@@ -1,0 +1,125 @@
+---
+tags: [changelog, kit]
+status: atual
+---
+# CHANGELOG do KIT — histórico do próprio pipeline
+
+> **Este arquivo é do kit, não do seu projeto.** O histórico do projeto que você constrói mora no [[a_changelog|CHANGELOG]] da raiz, que nasce zerado.
+> `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
+> Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
+
+## [kit v7] — 2026-08-03
+**Adoção do padrão de repositório da equipe.** O kit deixou de ter estrutura própria e passou a
+ser exatamente o que o padrão chama de pasta de documentação — com todos os nomes de arquivo e
+pasta **em inglês**, conteúdo em português.
+
+- **Estrutura:** raiz plana → `a_context/` (contexto-fonte, plano, decisões) · `b_process/`
+  (roteiro, checklist, backlog, aprendizados, padrão, skills, profiles, templates) ·
+  `c_technical_docs/` · `d_history/` · `e_qa/` · `scripts/`. `INICIO.md` → `INDEX.md`.
+  Prefixo `a_`/`b_`/`c_` = **ordem de leitura** da pasta.
+- **Nomes em inglês, conteúdo em português.** Inglês é a língua dos *nomes*, que aparecem em
+  caminho, URL, terminal e log, onde acento e espaço custam caro. As 23 skills também:
+  `arquitetura-monolito` → `architecture-monolith`, `testes` → `testing`, e o `name:` do
+  frontmatter acompanha (é o identificador que a ferramenta consome).
+- **Duas exceções declaradas no padrão.** As skills não levam prefixo de ordem — o prefixo
+  significa "ordem de leitura" e as skills não se leem em ordem, cada sessão carrega **uma**,
+  escolhida pelo gatilho da `description`. E usam `hifen-minusculo`, não `snake_case`, porque
+  o nome da pasta **é** o identificador da ferramenta.
+- **Relatórios de QA levam timestamp `AAMMDD_HHMM`.** Só as saídas de IA datadas: documento
+  vivo (contexto, backlog, changelog) é atualizado por substituição, e datar no nome criaria
+  a duplicação que a regra 2 do padrão proíbe.
+- **`new_project.py` reescrito — monta o esqueleto inteiro.** Antes copiava o kit; agora cria
+  `77777777_<TAG>_Project_DOCs/` + pasta de código com README técnico + `README.md` da raiz na
+  estrutura da seção 7 + `CLAUDE.md` + `.gitignore` + `.gitattributes`. Os sete primeiros itens
+  do "checklist para abrir projeto novo" viraram executáveis.
+- **`check.py` passou a trabalhar em dois escopos** — e isso era um bug esperando acontecer.
+  Com a documentação virando subpasta, `.gitignore`, `.gitattributes` e `CLAUDE.md` passam a
+  morar na raiz do repositório, **fora** do vault. O teste do scaffold pegou: o script reprovava
+  `.gitignore ausente` e `wikilink sem destino: CLAUDE` num projeto recém-criado e correto.
+  Pior, silenciosamente: `git ls-files` rodado de dentro da subpasta **não varreria o código do
+  projeto por segredo** — um terço do repositório fora da rede. Agora `raiz` (vault) cobre
+  orçamento, links, órfãs, IDs e skills; `topo` (repo) cobre `.gitignore`, cruft e a varredura
+  de segredo na árvore e no histórico.
+- **`install_hook.py` grava o caminho relativo do `check.py`** no hook, calculado na instalação:
+  num projeto isso vira `77777777_<TAG>_Project_DOCs/scripts/check.py`. E `check.py` acha o
+  vault sozinho, procurando `a_context/` na raiz e depois em `*_Project_DOCs/`.
+- **Adicionado `b_process/e_repository_standard.md`** — o padrão, que vai junto para todo
+  projeto novo. É o documento que torna a convenção replicável em vez de folclore.
+
+## [kit v6] — 2026-08-03
+**17 → 23 agentes.** A revisão dos 17 existentes não achou gordura: a sobreposição já era de 0,2% de mediana e cada regra tinha custo real por trás. O defeito estava na **cobertura**: o kit sabia construir e não sabia sustentar. Um projeto passa muito mais tempo sendo mantido do que sendo criado, e para essa fase o kit v5 não tinha agente nenhum.
+
+**Adicionados — sistema vivo (o buraco maior):**
+- **`depuracao-diagnostico`** — "quebrou", "está errado". Era o pedido mais frequente do dia a dia e o único sem agente: a doutrina existia espalhada em três skills ("é código ou é falta de dado?", "processo vivo tem cache") sem ninguém para executá-la. Portão: **reprodução determinística antes de qualquer edição**, causa provada por liga/desliga, teste de regressão citando `QA-NN`. STEP 0 obriga as três perguntas que resolvem metade dos casos sem abrir o código.
+- **`performance`** — "está lento". Portão: alvo definido pelo dono (`Q-NN` se faltar), baseline com 3 medições, gargalo apontado por **profiler**, uma mudança por vez, volume realista. Recusa explícita de otimizar sem alvo — é o tipo de trabalho que nunca termina e sempre piora a legibilidade.
+- **`observabilidade`** — fechava uma incoerência do kit: o default é monólito e a única observabilidade desenhada era a do caso distribuído (`microservice-sync`). Portão: as 3 perguntas respondíveis sem abrir o código, correlação mesmo em monólito, **nada sensível em log**, alerta com dono e ação no `RUNBOOK`.
+
+**Adicionados — cobertura que faltava:**
+- **`adocao-projeto-existente`** — **levanta um limite declarado no README** ("kit para tirar aplicação do zero"). Mapeia a partir do código, nunca da documentação, e produz `CONTEXT`/`PLANO` retroativos com `D-NN [retroativa]`. Portão contra-intuitivo e essencial: **nenhum arquivo de código alterado na sessão** — mapear e consertar junto produz o mapa do que se gostaria que existisse.
+- **`dependencias-supply-chain`** — a auditoria de 30/07 olhou o código próprio e não olhou o que vem instalado. Portão: lockfile versionado, uma atualização por vez, CVE tratada/mitigada com prova/aceita com `D-NN`, licença conferida, script de pós-instalação conhecido.
+- **`privacidade-dados-pessoais`** — o kit tinha autenticação (quem entra) e nada sobre o dado em si. Portão: inventário com finalidade por campo, retenção **implementada** e não só declarada, exclusão e exportação do titular testadas ponta a ponta, nada sensível em log nem em backup. Base legal e prazos são `Q-NN` do dono — a skill declara explicitamente que não dá parecer jurídico.
+
+**Corrigidas — inconsistências nas 17 existentes:**
+- `bootstrap-contexto` mandava preencher um "Mapa de leitura" que a v5 tinha movido para o `CLAUDE.md` — instrução órfã apontando para seção inexistente.
+- `revisao-entrega` e `guardrails-review` mandavam varrer segredo com `git log -p | grep`, ignorando o `--historico-completo` corrigido na v5. Ambas passaram a exigir a flag, e `revisao-entrega` ganhou o item sobre amostra de segredo **inutilizada, não isentada** (lição do push barrado pelo GitHub).
+- `dados-analise` era a única das 17 sem seção "Armadilhas pagas". Ganhou as seis dela, com custo observado.
+- Referências cruzadas onde o encaminhamento estava faltando: `guardrails-review` → `depuracao-diagnostico` (quem revisa não conserta), `backend-dominio` → `privacidade-dados-pessoais` (finalidade se decide no schema), `iac` → `observabilidade`.
+
+**Custo assumido, medido:** 17 → 23 descriptions = 7.260 → **10.121** chars (≈ 2.420 → **3.373** tokens fixos por sessão, +39%). Decisão consciente: agente que não dispara custa pouco; agente ausente custa uma sessão inteira improvisando doutrina que já existia escrita. Candidatas a fusão, se um dia o custo apertar: `arquitetura-microservicos` + `microservice-sync`, e `frontend-mfe` dentro de `frontend-uiux` — as quatro raramente disparam num projeto de um dono só, que é o alvo declarado do kit.
+
+## [kit v5] — 2026-07-30
+Correções dirigidas pela **auditoria externa adversarial** registrada em [[b_external_audit_report_260730_0900|AUDITORIA-EXTERNA-2026-07-30]] (placar 58/100 no commit `51c272a`). A v4 declarou ter fechado a lacuna de segurança; a auditoria mediu que **não fechou**. Cada item abaixo tem teste executado antes e depois.
+
+- **Corrigido (crítico) — `--historico-completo` varria ZERO commits.** `PROFUNDIDADE = "0"` montava `git log -p -0`, que em git significa nenhum commit, não todos. Sintoma que denunciava: a varredura "completa" rodava em 0,33 s contra 1,49 s da parcial. A flag de que a Fase 6 depende era uma no-op que imprimia `OK`. Agora o limite é omitido (varre tudo), com timeout de 120 s.
+- **Corrigido (crítico) — o scanner de segredo detectava 0 de 8 segredos reais.** Duas causas: (a) o filtro anti-exemplo descartava a **linha inteira**, então um comentário `# ver <ticket-4412>` ou `# TODO xxx` desligava a checagem — agora ele avalia **só o trecho casado**; (b) os padrões exigiam aspas, e a linha de `.env` (`API_KEY=sk_live_…`), o formato mais comum de vazamento, passava — agora valor sem aspas também casa (com exigência de dígito, para não casar com prosa). Novas famílias: senha em connection string, JWT, Stripe `sk_live`/`rk_live`, GitLab PAT. **Medido: 8/8 detectados, 0/12 falsos-positivos.** Isenção explícita por linha com a marca `checar:ignore` — para o que é **comprovadamente inerte**, não para amostra que só parece falsa: essa se inutiliza trocando o corpo do token por `XXXX`. O push protection do GitHub barrou o primeiro push deste laudo justamente por iscas isentadas mas intactas, e estava certo (lição em [[d_agent_learnings|APRENDIZADOS]]).
+- **Corrigido (crítico de uso) — "nota órfã" era FALHA e varria o repositório inteiro.** Qualquer `content/blog/*.md`, doc de pacote ou `NOTAS.md` de módulo do próprio app bloqueava **todo** commit por motivo cosmético. O efeito real não é atrito: é o dono adotar `git commit --no-verify` por hábito e desligar junto o portão de segredo, o orçamento e a fonte única. Virou **AVISO**, e só dentro do vault.
+- **Corrigido — o script ignorava o `.gitignore`.** `IGNORAR` era uma lista fixa de 9 nomes. Um CSV de 17 MB em `open-data/` (que o próprio `.gitignore` do kit exclui!) custava **12,3 s em cada commit**; um provider Terraform de 200 MB, 402 MB de RSS. Agora o universo da varredura é `git ls-files --cached --others --exclude-standard`, e arquivo acima de 1 MB é pulado **com aviso** — nunca em silêncio. **Medido: 12,3 s → 1,5 s.**
+- **Corrigido — falha aberta com mensagem verde.** O `except … : pass` no `git log` engolia timeout e erro, e a linha final continuava listando "segredos" entre os itens aprovados. É o anti-padrão que a própria `guardrails-review` classifica como achado (frente 6). Agora vira aviso explícito, e a mensagem de sucesso **declara o alcance**: "árvore versionada + últimos 30 commits".
+- **Corrigido — falso-positivo de ID.** Citar um `QA-07` herdado em [[d_agent_learnings|APRENDIZADOS]] reprovava o commit, contra a orientação do próprio arquivo. `e_qa/` e `APRENDIZADOS` entraram na isenção que `docs/` já tinha.
+- **Corrigido — o hook bloqueava TODO commit no Windows.** Achado em uso real, não em teste: `command -v python3` encontra o *App Execution Alias* que o Windows instala em `WindowsApps` — um `python3.exe` que está no PATH, não executa nada e imprime "Python não foi encontrado; executar sem argumentos para instalar do Microsoft Store". O hook tomava o stub por interpretador e reprovava commits limpos. É a mesma doença dos outros achados, com o sinal trocado: falha **fechada** pelo motivo errado empurra para `--no-verify` tão rápido quanto falha aberta. Agora o hook testa se o candidato **roda** (`python3` → `python` → `py`, o Launcher do Windows), não se ele existe; sem nenhum Python funcional, avisa alto e deixa passar — ambiente quebrado não é commit sujo, e confundir os dois foi o defeito.
+- **Adicionado — `.gitattributes`.** `* text=auto eol=lf`: o repositório guarda LF e o Windows fica com CRLF na cópia local. Elimina o aviso em todo `git add` e impede que um shell script versionado com CRLF quebre no Git Bash.
+- **Adicionado — `CLAUDE.md`.** Não havia contrato de leitura: um agente aberto na pasta não carregava o [[a_context_source|CONTEXT]] sozinho, e o "Protocolo do agente" morava dentro do arquivo que o agente só lia se alguém o entregasse à mão.
+- **Corrigido — 20% do orçamento do CONTEXT era instrução ao agente.** O "Protocolo do agente" (780 chars) saiu do [[a_context_source|CONTEXT]] para o `CLAUDE.md`. O template vazio ocupava **3.541 dos 4.000 chars**; agora sobra margem real para contexto de projeto.
+- **Corrigido — números desatualizados.** "~160 itens" / "8 de 163" viraram a contagem medida: **188** itens de checklist no kit, **16** com trava automática (~9%).
+
+> **O que a auditoria aprovou, para registro:** sobreposição entre as 17 skills medida em **0,2% de mediana** por 6-gramas, zero pares acima de 10% — a promessa da v4 se sustenta. `novo-projeto.py` e `instalar-hook.py` passaram sem ressalva. A tabela "onde este kit para" e o rótulo de "narrativa não verificada" no [[b_reference_case_spo|caso de referência]] foram apontados como o ponto mais forte do kit.
+
+## [kit v4] — 2026-07-30
+Refatoração dirigida por auditoria adversarial do próprio kit. Cada item abaixo fecha um defeito **medido**, não uma impressão.
+
+- **Corrigido — dois mecanismos para o mesmo trabalho.** `prompts/` foi dissolvida em `b_process/skills/`. Medição que motivou: `prompts/03-qa-adversarial` × `skills/guardrails-review` tinham 27% de sobreposição de vocabulário, e o ROTEIRO mandava carregar **os dois** na mesma sessão. `00`, `01`, `04`, `05` e `06` viraram skills (`bootstrap-contexto`, `planejador`, `auditor-evolucao`, `revisao-entrega`, `retrospectiva`); `02` foi absorvido pelo "Protocolo do agente" do [[a_context_source|CONTEXT]] (pago uma vez, vale para toda skill); `03` era subconjunto de `guardrails-review`.
+- **Corrigido — rigor era prosa.** A auditoria contou **8 de 163** itens de checklist verificados por máquina (5%). `scripts/check.py` passou a reprovar também: **segredo versionado na árvore e no histórico do git**, `.gitignore` sem cobertura mínima, **nota órfã**, **ID citado que não existe** no DECISIONS, **ID duplicado**, e **"Em andamento" divergente** entre BACKLOG e CONTEXT.
+- **Adicionado — `scripts/install_hook.py`.** Portão que só roda quando alguém lembra não é portão. O pre-commit torna a higiene o padrão; pular vira ato deliberado (`--no-verify`).
+- **Corrigido — a lacuna de segurança mais barata do kit.** A skill `guardrails-review` exigia `git grep` por segredo como item de portão, e `check.py` tinha **zero** ocorrência de qualquer varredura. Agora varre 8 famílias de padrão, ignora `.example`/placeholder, e olha o histórico — segredo removido da árvore continua comprometido.
+- **Corrigido — o kit violava a própria regra 6.** README × ROTEIRO tinham 30% de sobreposição, README × INICIO 28%. Agora cada documento tem um trabalho só: [[INDEX]] mapeia, [[a_roadmap|ROTEIRO]] conduz, [[README]] explica os porquês. "Papel do dono" e "frases de segurança" ficaram num lugar só.
+- **Corrigido — 5 notas órfãs.** `b_process/profiles/` inteira, `contexto/LEIA-ME` e `dev/LEIA-ME` não eram linkadas por ninguém: num vault, nota que ninguém aponta é nota que ninguém lê. Ligadas, e o script agora reprova órfã nova.
+- **Corrigido — WIP=1 reprovava time legítimo.** O limite passou a ser o **declarado** no cabeçalho do [[c_backlog|BACKLOG]] (`Em andamento (máx N)`); o script cobra esse número. Solo continua 1; time de 3 declara 3.
+- **Adicionado — "Onde este kit para" no [[README]].** Tabela honesta: serve para app pequeno/médio de um dono; não serve para 30+ módulos, 100+ decisões, multi-repo ou CI. O kit dizia "aplicação" e era, na prática, "aplicação pequena a média, solo".
+- **Corrigido — narrativa citada como medição.** Os números de [[b_reference_case_spo|caso de referência]] ("14 passagens", "84 achados") apareciam 10 vezes pelo kit sem um artefato anexado. O arquivo ganhou aviso de status epistêmico e o [[a_roadmap|ROTEIRO]] parou de usá-los como argumento. A distinção com [[a_scb_usage_analysis_260722_0000|ANALISE-USO-SCB]] — que é medição, com as próprias ressalvas — está explícita no README.
+- **Adicionado — frente de vazamento/look-ahead** em `guardrails-review` (era a única frente do prompt 03 que a skill não cobria).
+
+## [kit v3] — 2026-07-30
+Passagem de agentes especializados + Obsidian. O kit deixou de ser só um conjunto de documentos e passou a ser um **vault operável com agentes instaláveis**.
+
+- **Adicionado — `b_process/skills/`: 12 agentes instaláveis** (`SKILL.md` com frontmatter `name`/`description`, padrão Claude Code / Cowork): arquitetura-monolito, arquitetura-microservicos, backend-dominio, backend-bff, microservice-sync, frontend-uiux, frontend-mfe, autenticacao, iac-docker-terraform, testes, guardrails-review e dados-analise. Cada uma com regras numeradas, portão em checklist e armadilhas já pagas por projetos reais.
+- **Adicionado — portões de existência.** As skills estruturais (microserviços, MFE) começam por um STEP 0 que pergunta *isto deve existir?* e **reprovam por padrão**. É o mecanismo que impede a IA de construir arquitetura que ninguém precisa.
+- **Adicionado — [[a_roadmap|ROTEIRO]]:** o caminho executável do dia 1 à entrega, ligando fase → skill → portão. O README descrevia as fases numa tabela; faltava a ordem operável.
+- **Adicionado — [[b_plan|PLANO]]:** o template que o README v2 já mandava gerar na Fase 1 mas que não existia no kit (lacuna real).
+- **Adicionado — [[INDEX]] e [[a_obsidian_guide|Guia do Obsidian]]:** mapa de navegação e manual do vault.
+- **Adicionado — [[b_reference_case_spo|caso de referência]]:** caso de referência destilado de um app real (10 dias, 14 passagens de revisão, 84 achados) — aferição do que "pronto" significa e lista de armadilhas já pagas.
+- **Adicionado — `b_process/templates/`:** modelos para D-NN, QA-NN e **fecho de sessão** (o ritual que estava descrito em prosa em 4 arquivos e agora é um clique via plugin Templates).
+- **Adicionado — `scripts/new_project.py`:** copia o kit para um projeto novo excluindo o que é só do kit (`docs/`, `exemplos/`, `.git`) e zerando os templates. O passo 1 do README era manual e propenso a levar lixo junto.
+- **Adicionado — Obsidian:** `.obsidian/` versionado (abre em [[INDEX]], favoritos, grafo com cores por tema, Templates apontando para `b_process/templates/`), frontmatter `tags`/`status` em toda nota e wikilinks no lugar de caminhos.
+- **Expandido — [[b_checklist|CHECKLIST]]:** de genérico para **portões em camadas** (arquitetura, domínio, borda, frontend, auth, infra, entrega), espelhando o portão de cada skill.
+- **Expandido — [[d_agent_learnings|APRENDIZADOS]]:** lições de aplicação (dinheiro inteiro, segredo por instalação, expand/contract, artefato pronto em vez de build no cliente).
+- **Expandido — `scripts/check.py`:** valida skills (frontmatter `name`/`description`), **wikilinks quebrados**, frontmatter ausente e placeholders não preenchidos, além do que já validava.
+- **Corrigido — changelog com dois donos.** O `d_history/a_changelog.md` da raiz acumulava o histórico do kit *e* servia de template para o projeto; ao copiar o kit, o projeto novo nascia com a história de outra coisa. Agora: kit aqui, projeto lá.
+
+## [kit v2.1] — 2026-07-22
+- Generalização: `perfil-generico.md` (método p/ qualquer stack), prompt `04` sem viés estatístico, `RUNBOOK.md` exigido na entrega de projeto que opera, modo curto p/ projetos pequenos, arquivamento do DECISIONS em projeto longo (+ checagem no script), roteiro "primeiro dia" no README.
+
+## [kit v2.0] — 2026-07-22
+- Refatoração pós-SCB: orçamentos numéricos de contexto, estado em fonte única, prompts imperativos (~metade do custo), regra "observe antes de construir", `b_process/d_agent_learnings.md` + prompt de retrospectiva, `scripts/check.py`. Evidências medidas: [[a_scb_usage_analysis_260722_0000|ANALISE-USO-SCB]].
+
+## [kit v1] — baseline
+- Kit original, pré-refatoração (568 linhas). O que funcionou e o que falhou está medido em [[a_scb_usage_analysis_260722_0000|ANALISE-USO-SCB]].
