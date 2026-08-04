@@ -5,6 +5,7 @@ status: atual
 # 🚀 Pipeline de apps com IA — mapa do vault
 
 > Esta nota é **só um mapa**: cada linha aponta e sai da frente. O caminho executável está no [[a_roadmap|ROTEIRO]]; os porquês e os limites, no [[README]].
+> **Primeira vez aqui?** Comece pelo [[f_glossary_and_primer|Primer]] — para que o pipeline serve e o que cada termo quer dizer (delta, portão, D-NN, contexto-fonte…).
 > Primeira vez no Obsidian? [[a_obsidian_guide|Guia do Obsidian]].
 
 ## Começar
@@ -17,6 +18,7 @@ status: atual
 ## Os arquivos do dia a dia
 | Arquivo | Para quê |
 |---|---|
+| [[f_glossary_and_primer\|PRIMER]] | **comece aqui:** para que serve, o ciclo e o glossário dos termos |
 | [[a_roadmap|ROTEIRO]] | o caminho do dia 1 à entrega, fase por fase |
 | [[CLAUDE]] | contrato de leitura do agente — a ferramenta carrega sozinha |
 | [[a_context_source|CONTEXT]] | contexto-fonte (≤4.000 chars) — o único que TODA sessão carrega |
