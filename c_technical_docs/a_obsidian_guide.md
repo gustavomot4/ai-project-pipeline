@@ -60,9 +60,14 @@ Não vêm instalados, para o vault abrir sem downloads. Nada do pipeline depende
 Duas linhas, uma vez cada:
 
 ```
-python scripts/install_hook.py    # uma vez: o portão passa a rodar sozinho em todo commit
-python scripts/check.py           # quando quiser conferir à mão
+python scripts/task.py hook       # uma vez: o portão passa a rodar sozinho em todo commit
+python scripts/task.py check      # quando quiser conferir à mão
+python scripts/task.py            # sem argumento = check
+python scripts/task.py --help     # todas as tarefas
 ```
+
+`task.py` é o **único** lugar onde os comandos do kit moram. Não é `Makefile` porque
+`make` não existe num Windows por padrão, e o kit não tem dependência externa nenhuma.
 
 **Esta página não lista o que reprova e o que só avisa** — a lista mora no cabeçalho do `scripts/check.py`, que é a fonte da verdade. Lista repetida em documentação derrapa em silêncio quando o script muda, e divergência doc × código é achado de QA pela regra do próprio kit. Rode o script e leia a saída: cada falha diz o que cortar e para onde.
 

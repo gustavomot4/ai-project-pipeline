@@ -1,0 +1,53 @@
+name: portao
+
+# Por que este arquivo existe: até aqui o portão do kit nunca tinha rodado fora do
+# sandbox de quem estava editando. Uma auditoria concluiu "passa depois da correção,
+# quebra antes" sem nunca ter rodado a segunda metade, e o bug de encoding (QA-01) só
+# aparece em Windows — onde ninguém rodava. Sandbox não é portão; isto é.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  portao:
+    # Windows NÃO é opcional aqui: o QA-01 (cp1252 em caminho com acento) simplesmente
+    # não reproduz no Linux, porque com LC_CTYPE=C o Python liga o UTF-8 Mode sozinho
+    # (PEP 540). Rodar só no Linux daria verde num kit quebrado.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # A varredura de segredo lê o HISTÓRICO. O padrão do checkout é fetch-depth: 1,
+          # que traria 1 commit e faria o portão anunciar cobertura que não teve.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Identidade do git (worktree e commits dos testes)
+        run: |
+          git config --global user.email "ci@kit.local"
+          git config --global user.name "CI"
+
+      - name: Testes de regressão
+        # Quando este passo cair, o commit reintroduziu um bug que já custou uma sessão.
+        run: python scripts/test_check.py
+        env:
+          # No Windows, saída redirecionada usa o codepage do sistema, não UTF-8, e as
+          # mensagens do kit têm acento. Sem isto o portão morreria imprimindo, não checando.
+          PYTHONIOENCODING: utf-8
+
+      - name: Portão de higiene no próprio kit
+        run: python scripts/task.py check-all
+        env:
+          PYTHONIOENCODING: utf-8

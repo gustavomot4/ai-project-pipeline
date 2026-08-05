@@ -21,6 +21,14 @@ from pathlib import Path
 # volta None e o erro que aparece é um AttributeError longe da causa.
 UTF8 = {"encoding": "utf-8", "errors": "replace"}
 
+# Rede de segurança da SAÍDA (o gêmeo do QA-01). Saída redirecionada num Windows pt-BR
+# usa cp1252, não UTF-8: um caractere fora dele — uma seta, um "≤" — mata o script na
+# hora de IMPRIMIR, depois de todo o trabalho feito. `errors="replace"` degrada em vez
+# de matar, e não muda nada no console, que já é UTF-8.
+for _fluxo in (sys.stdout, sys.stderr):
+    if hasattr(_fluxo, "reconfigure"):
+        _fluxo.reconfigure(errors="replace")
+
 MARCA = "# pipeline-projetos-IA: portão de higiene"
 # O padrão põe a documentação em `77777777_<TAG>_Project_DOCs/`, então `scripts/check.py`
 # raramente está na raiz do repositório. O caminho é calculado na instalação e gravado

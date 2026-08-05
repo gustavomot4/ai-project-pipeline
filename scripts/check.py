@@ -19,7 +19,8 @@ FALHAS (código 1)
 
 AVISOS (não reprovam; com --avisos-reprovam, reprovam)
   frontmatter ausente · placeholders · templates em rascunho · nota órfã ·
-  arquivo grande não varrido · varredura de histórico que não rodou
+  arquivo grande não varrido · varredura de histórico que não rodou ·
+  portão automático (pre-commit) não instalado
 
 Marque uma linha com `checar:ignore` para isentá-la da varredura de segredo
 (use só quando o valor for comprovadamente falso — a marca fica visível no diff).
@@ -37,6 +38,14 @@ from pathlib import Path
 # um AttributeError a duas funções da causa. Resultado medido: o portão nunca rodou
 # na máquina do dono, e todo "OK" veio do sandbox Linux do agente.
 UTF8 = {"encoding": "utf-8", "errors": "replace"}
+
+# Rede de segurança da SAÍDA (o gêmeo do QA-01). Saída redirecionada num Windows pt-BR
+# usa cp1252, não UTF-8: um caractere fora dele — uma seta, um "≤" — mata o script na
+# hora de IMPRIMIR, depois de todo o trabalho feito. `errors="replace"` degrada em vez
+# de matar, e não muda nada no console, que já é UTF-8.
+for _fluxo in (sys.stdout, sys.stderr):
+    if hasattr(_fluxo, "reconfigure"):
+        _fluxo.reconfigure(errors="replace")
 
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 ESTRITO = "--avisos-reprovam" in sys.argv
@@ -59,25 +68,43 @@ def achar_vault(inicio: Path) -> Path:
     return inicio
 
 
-def achar_topo(inicio: Path) -> Path:
-    """Raiz do repositório. O padrão põe `.gitignore`, `.gitattributes` e `CLAUDE.md` FORA
-    da pasta de documentação — e a varredura de segredo tem de cobrir o código também,
-    não só o vault. Sem esta distinção o script varreria um terço do repositório."""
+def info_git(inicio: Path):
+    """Devolve (topo do repositório, pasta de hooks) — e `None` nos hooks quando NÃO há
+    repositório git acessível. Uma chamada responde as duas perguntas.
+
+    `(topo / ".git").is_dir()` NÃO serve como teste de "estou num repositório", e essa
+    era a falha: em worktree e em submódulo o `.git` é ARQUIVO, então a varredura de
+    HISTÓRICO era pulada em silêncio e a saída anunciava "últimos 30 commits" mesmo
+    assim. Medido: com segredo plantado no histórico e removido da árvore, repositório
+    normal REPROVA (correto) e worktree imprime OK com exit 0. Mesma armadilha quando o
+    git não está no PATH. `rev-parse` cobre os quatro casos.
+
+    O padrão põe `.gitignore`, `.gitattributes` e `CLAUDE.md` FORA da pasta de
+    documentação, e a varredura de segredo tem de cobrir o código também — por isso o
+    topo do repositório, e não só o vault.
+    """
     try:
-        saida = subprocess.run(
-            ["git", "-C", str(inicio), "rev-parse", "--show-toplevel"],
+        linhas = subprocess.run(
+            ["git", "-C", str(inicio), "rev-parse", "--show-toplevel", "--git-path", "hooks"],
             capture_output=True, text=True, check=True, timeout=15, **UTF8,
-        ).stdout.strip()
-        return Path(saida).resolve()
+        ).stdout.splitlines()
     except (subprocess.SubprocessError, OSError):
-        return inicio
+        return inicio, None
+    if len(linhas) < 2 or not linhas[0].strip():
+        return inicio, None
+    topo_do_repo = Path(linhas[0].strip()).resolve()
+    # `--git-path` vem relativo à pasta passada em `-C` (não ao topo), e vem ABSOLUTO
+    # em worktree. Respeita `core.hooksPath` de graça — cravar `.git/hooks` não respeita.
+    hooks = Path(linhas[1].strip())
+    return topo_do_repo, (hooks if hooks.is_absolute() else (inicio / hooks).resolve())
 
 
 # DOIS escopos, de propósito:
 #   raiz = o vault  -> orçamento, links, órfãs, IDs, WIP, skills
 #   topo = o repo   -> .gitignore, cruft, varredura de segredo (árvore + histórico)
 raiz = achar_vault(raiz)
-topo = achar_topo(raiz)
+topo, DIR_HOOKS = info_git(raiz)
+TEM_GIT = DIR_HOOKS is not None
 
 # --- Layout do padrão do repositório (b_process/e_repository_standard.md) ---------
 # Um lugar só define onde cada coisa mora. Mudou o padrão? Mude aqui, e só aqui.
@@ -112,7 +139,7 @@ def alvos_de_varredura():
     """Universo da varredura de segredo. Com git, é o que o git enxerga — isso respeita
     o .gitignore de graça (sem isso, um CSV de 17 MB em open-data/, já ignorado, era lido
     a cada commit). Sem git, cai para o rglob com a lista fixa de exclusão."""
-    if (topo / ".git").is_dir():
+    if TEM_GIT:
         try:
             saida = subprocess.run(
                 ["git", "-C", str(topo), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
@@ -319,7 +346,11 @@ if grandes:
 # ou aqui com --historico-completo.
 COMPLETO = "--historico-completo" in sys.argv
 LIMITE_HIST = [] if COMPLETO else ["-30"]  # lista vazia = todos; "-0" significava ZERO commits
-if (topo / ".git").is_dir():
+# `alcance` sai DAQUI, do que realmente rodou — nunca da flag. A linha final anunciava
+# "últimos 30 commits" mesmo quando nenhum commit tinha sido lido: mensagem verde que
+# não corresponde ao que rodou é a classe de erro que este bloco existe para fechar.
+alcance_hist = None
+if TEM_GIT:
     try:
         hist = subprocess.run(
             ["git", "-C", str(topo), "log", "-p", "--no-color", *LIMITE_HIST, "--", "."],
@@ -330,11 +361,34 @@ if (topo / ".git").is_dir():
         varrer("\n".join(adicionadas), "histórico do git", achados_hist)
         if achados_hist:
             achados_seg.append(f"histórico do git ({len(achados_hist)} linha[s]) — segredo removido da árvore continua comprometido")
+        alcance_hist = "histórico completo" if COMPLETO else "últimos 30 commits"
     except subprocess.TimeoutExpired:
         # falha aberta com mensagem verde foi achado da auditoria: agora ela aparece
         avisos.append("Varredura do HISTÓRICO estourou o tempo — o histórico NÃO foi verificado nesta rodada.")
     except (subprocess.SubprocessError, OSError) as erro:
         avisos.append(f"Varredura do HISTÓRICO não rodou ({type(erro).__name__}) — o histórico NÃO foi verificado.")
+else:
+    avisos.append(
+        "Sem repositório git acessível (git fora do PATH, ou pasta ainda sem `git init`) — "
+        "a varredura de HISTÓRICO não rodou e a de árvore não respeitou o .gitignore."
+    )
+
+# Portão que só roda quando alguém lembra não é portão — é a regra do próprio kit, e
+# até aqui ela não valia para a instalação do próprio portão. O caminho vem do git
+# (`--git-path hooks`), então worktree e `core.hooksPath` não geram aviso falso.
+# Testa se o hook RODA o check.py, não a marca literal: assim a checagem não sai de
+# sincronia com o texto de `install_hook.py`.
+if DIR_HOOKS is not None:
+    gancho = DIR_HOOKS / "pre-commit"
+    try:
+        armado = gancho.is_file() and "check.py" in gancho.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        armado = False
+    if not armado:
+        avisos.append(
+            "Portão automático NÃO instalado — este check só roda quando você lembra, e "
+            "commit sem saída nenhuma parece commit aprovado. Instale: python scripts/install_hook.py"
+        )
 if achados_seg:
     falhas.append("Possível segredo versionado: " + "; ".join(dict.fromkeys(achados_seg))[:400])
 
@@ -414,9 +468,9 @@ if falhas:
     print(f"\n{len(falhas)} problema(s). Nada avança até fechar — é para isso que o portão existe.")
     sys.exit(1)
 
-alcance = "histórico completo" if COMPLETO else "últimos 30 commits"
+alcance = alcance_hist or "SEM histórico (não foi verificado — veja o aviso acima)"
 print(
     "OK: orçamento, fonte única, WIP, skills, links, gitignore, IDs e sincronia de estado.\n"
     f"    Segredos: árvore versionada + {alcance}."
-    + ("" if COMPLETO else " Antes de entregar, rode com --historico-completo.")
+    + ("" if COMPLETO and alcance_hist else " Antes de entregar, rode com --historico-completo.")
 )

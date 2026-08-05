@@ -8,6 +8,65 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v8] — 2026-08-05
+**O portão passou a rodar fora do sandbox de quem edita.** Um relato de campo de outro agente
+(Fase 0 completa num Windows pt-BR sob OneDrive) apontou cinco achados; a validação contra o
+código confirmou quatro, corrigiu a severidade de dois e reprovou um dos patches propostos.
+Detalhe do que se sustentou e do que não, em `docs/`.
+
+- **QA-01 · encoding fixado nas 5 chamadas ao git** (`check.py`, `install_hook.py`). `text=True`
+  sozinho decodifica com o encoding do SISTEMA — cp1252 num Windows pt-BR — e um caminho com
+  acento derrubava a thread leitora. `UnicodeDecodeError` é `ValueError`, então os
+  `except (SubprocessError, OSError)` passavam ao largo e o dono via um `AttributeError` a duas
+  funções da causa. Efeito medido: o portão **nunca tinha rodado na máquina do dono**.
+- **QA-02 · `.git` deixou de ser o teste de "estou num repositório".** Em worktree e submódulo
+  ele é ARQUIVO, e `(topo / ".git").is_dir()` pulava a varredura de HISTÓRICO em silêncio.
+  Medido: com segredo plantado no histórico e removido da árvore, repositório normal reprovava
+  (correto) e **worktree imprimia OK com exit 0**. Agora `git rev-parse --show-toplevel
+  --git-path hooks` responde numa chamada, e cobre também o git fora do PATH.
+- **QA-03 · a linha final passou a sair do que rodou, não da flag.** Anunciava "últimos 30
+  commits" mesmo sem ter lido nenhum. O alcance agora vem do bloco que executou.
+- **QA-04 · `check.py` cobra a instalação do próprio portão.** "Portão que só roda quando alguém
+  lembra não é portão" era regra do kit que não valia para o kit. O caminho vem de
+  `--git-path hooks`, então worktree e `core.hooksPath` **não** geram aviso falso — o patch
+  originalmente proposto cravava `.git/hooks` e gerava.
+- **QA-05 · o gêmeo do QA-01, do lado da ESCRITA — achado rodando na máquina do dono.**
+  `new_project.py` imprimia uma seta `→` (U+2192), que não existe em cp1252. Com a saída
+  REDIRECIONADA num Windows pt-BR o script morria de `UnicodeEncodeError` **depois** de já ter
+  criado o projeto inteiro. Consertado no texto (`->`) e com rede de segurança
+  (`sys.stdout.reconfigure(errors="replace")`) nos quatro scripts: degradar é melhor que morrer.
+  Guardado por dois testes — um acha o caractere na fonte via `ast`, outro força
+  `PYTHONIOENCODING=cp1252` e exige que nada estoure.
+- **`scripts/test_check.py` — testes de regressão, só stdlib.** Dez casos, um por bug que já
+  aconteceu. Verificados nas duas direções: passam no código bom e **falham** quando o bug é
+  reintroduzido. Três defeitos do próprio arquivo, todos achados rodando fora do sandbox:
+  a isca de segredo estava literal e fazia o check reprovar por outra causa (teste passando pelo
+  motivo errado); a asserção era pelo código de saída e virou pelo MOTIVO; e ele decodificava a
+  saída do filho como UTF-8 enquanto o Windows a emitia em cp1252 — **a mesma classe do QA-01,
+  cometida dentro do arquivo que existe para guardá-la.** Resolvido com `PYTHONIOENCODING=utf-8`
+  no ambiente do filho, igual ao CI. `shutil.rmtree` também ganhou tratamento: o git marca
+  objetos como somente-leitura e no Windows a faxina morria com `PermissionError`.
+- **CI em Linux e Windows.** Windows não é opcional: o QA-01 não reproduz no Linux, porque com
+  `LC_CTYPE=C` o Python liga o UTF-8 Mode sozinho (PEP 540). Foi esse falso "passou" que fez a
+  auditoria original medir errado. `fetch-depth: 0`, senão o portão varreria 1 commit.
+- **`scripts/task.py` — ponto de entrada único.** Os comandos moravam em prosa espalhada por
+  três documentos e já tinham divergido do código em três pontos. Não é `Makefile`: `make` não
+  existe num Windows por padrão, e o kit **não tem dependência externa nenhuma** — decisão
+  mantida contra a alternativa de adotar `pre-commit` + `detect-secrets`, que resolveria o QA-04
+  de graça mas exigiria `pip install` e rede na primeira execução.
+- **`docs/` passou a existir de verdade.** O `e_qa/README.md` mandava a auditoria do kit para
+  uma pasta inexistente. Os dois relatórios saíram de `e_qa/`; `docs` entrou em
+  `PASTAS_HISTORICAS` (senão o portão reprova nos IDs dos projetos-cobaia) e em
+  `EXCLUIR_PASTAS`. O `SO_DO_KIT` virou **derivado** das exclusões: relatório novo do kit é só
+  gravar em `docs/`, sem editar duas listas à mão.
+- **Guia do Obsidian: seção "Higiene" cortada.** Listava 7 das 12 falhas, omitia a varredura de
+  segredo e descrevia um limite de WIP que o código não usa mais. Divergência doc × código é
+  achado de QA pela regra do próprio kit — agora aponta para o script, que é a fonte da verdade.
+- **`context-bootstrap`, regra 8:** ao fechar um Q-NN, perguntar "o que esta resposta acabou de
+  tornar decidível?". Era comportamento emergente numa sessão real (gerou três lacunas de
+  política que ninguém tinha visto); virou instrução.
+- **LICENSE (MIT).** Sem licença, ninguém além do dono podia usar o kit.
+
 ## [kit v7] — 2026-08-03
 **Adoção do padrão de repositório da equipe.** O kit deixou de ter estrutura própria e passou a
 ser exatamente o que o padrão chama de pasta de documentação — com todos os nomes de arquivo e

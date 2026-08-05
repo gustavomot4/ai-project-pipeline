@@ -27,6 +27,14 @@ import unicodedata
 from datetime import date
 from pathlib import Path
 
+# Rede de segurança da SAÍDA (o gêmeo do QA-01). Saída redirecionada num Windows pt-BR
+# usa cp1252, não UTF-8: um caractere fora dele — uma seta, um "≤" — mata o script na
+# hora de IMPRIMIR, depois de todo o trabalho feito. `errors="replace"` degrada em vez
+# de matar, e não muda nada no console, que já é UTF-8.
+for _fluxo in (sys.stdout, sys.stderr):
+    if hasattr(_fluxo, "reconfigure"):
+        _fluxo.reconfigure(errors="replace")
+
 # Só do kit: nunca vão para um projeto (histórico e evidências DESTE repositório).
 # `docs/` é a pasta da auditoria do PRÓPRIO kit (ver e_qa/README.md) — excluída por
 # PASTA de propósito: relatório novo do kit fica de fora sozinho, sem ninguém precisar
@@ -260,7 +268,11 @@ def main() -> int:
     print(f"  2. python {pasta_docs}/scripts/install_hook.py")
     print(f"  3. Abra a pasta como vault do Obsidian ({pasta_docs}/c_technical_docs/a_obsidian_guide.md)")
     print(f"  4. Instale as skills de {pasta_docs}/b_process/skills/ na sua ferramenta de IA")
-    print("  5. Sessão com a skill `context-bootstrap` → preenche o contexto-fonte")
+    # `->` em ASCII, não a seta U+2192: ela não existe em cp1252, e com a saída
+    # REDIRECIDA num Windows pt-BR este print matava o script — depois de já ter criado
+    # o projeto inteiro. É o gêmeo do QA-01 do outro lado: aquele era decodificar a
+    # saída do git, este é codificar a nossa.
+    print("  5. Sessão com a skill `context-bootstrap` -> preenche o contexto-fonte")
     print(f"  6. python {pasta_docs}/scripts/check.py")
     return 0
 
