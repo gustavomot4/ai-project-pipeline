@@ -197,7 +197,12 @@ em_andamento = []
 if texto_bl:
     bloco = re.search(r"## Em andamento([^\n]*)\n(.*?)(?=\n## |\Z)", texto_bl, re.S)
     if bloco:
-        limite = int(m.group(1)) if (m := re.search(r"máx\s*(\d+)", bloco.group(1))) else 1
+        # "máx 3", "max 3", "limite 3", "≤ 3" — a mesma intenção escrita de quatro jeitos.
+        # Só `máx` era aceito, e as outras caíam no default 1 em SILÊNCIO: o dono declarava
+        # 3, o script cobrava 1 e ainda dizia "limite declarado é 1". Mensagem que afirma
+        # ter lido o que não leu é o defeito que este arquivo inteiro persegue.
+        m = re.search(r"(?:m[áa]x(?:imo)?|limite|≤|<=)\s*[:=]?\s*(\d+)", bloco.group(1), re.I)
+        limite = int(m.group(1)) if m else 1
         em_andamento = re.findall(r"^- \[ \] *(\S+)", bloco.group(2), re.M)
         if len(em_andamento) > limite:
             falhas.append(
@@ -432,9 +437,15 @@ if texto_dec:
 #     isto seria julgamento semântico, e script não julga semântica.
 texto_plano = corpo.get(raiz / PLANO, "")
 if texto_plano and texto_bl:
+    # Tolerante ao separador e à posição dos dois-pontos de propósito: `### M1 — nome`,
+    # `### M1: nome` e `**Módulo:** M1` / `**Módulo**: M1` são a mesma intenção, e um
+    # regex estrito faria a checagem parar de checar em SILÊNCIO na primeira edição
+    # cosmética do template. Checagem que emudece é pior que checagem que não existe,
+    # porque o verde continua saindo. (Medido: as duas variações abaixo zeravam os
+    # achados antes desta correção.)
     modulos = {m.group(1): m.group(2).strip()
-               for m in re.finditer(r"^###\s+(M\d+)\s*[—–-]\s*(.+)$", texto_plano, re.M)}
-    citados = set(re.findall(r"\*\*M[óo]dulo:\*\*\s*(M\d+)\b", texto_bl))
+               for m in re.finditer(r"^#{2,4}\s+(M\d+)\s*[—–:.-]\s*(.+)$", texto_plano, re.M)}
+    citados = set(re.findall(r"\*\*M[óo]dulo:?\*\*:?\s*(M\d+)\b", texto_bl))
     fantasmas = citados - set(modulos)
     if fantasmas:
         falhas.append(

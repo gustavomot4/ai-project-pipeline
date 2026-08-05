@@ -8,6 +8,43 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v11] — 2026-08-05
+**Comparação com o `zhu1090093659/spec_driven_develop` — o repositório mais próximo deste kit
+em restrições (Markdown puro, zero dependência, skills, agnóstico de plataforma).** A ideia
+adotada não é um mecanismo deles: é uma vulnerabilidade que o teste deles revelou aqui.
+
+- **QA-07 · checagem que para de checar em silêncio quando o template muda.** O template
+  `progress.md` deles carrega um bloco **FORMAT FREEZE** avisando que o exportador lê por
+  regex e que um travessão no lugar de dois hifens quebra o parser. Testei: quebra mesmo — o
+  nome da tarefa vira `"Unknown"` sem erro nenhum. Fui procurar o equivalente aqui e achei,
+  **em código escrito nesta mesma sessão**: `**Módulo**: M42` (dois-pontos fora do negrito)
+  zerava a detecção de módulo fantasma, e `### M7: nome` (dois-pontos no lugar do travessão)
+  sumia com o módulo inteiro. Nos dois casos, exit 0 e mensagem verde. É o QA-03 do lado da
+  ENTRADA: lá a saída afirmava ter varrido o que não varreu; aqui a checagem deixa de checar
+  e o verde continua saindo.
+- **Correção em duas frentes.** (1) Os parsers ficaram tolerantes ao que é a mesma intenção
+  escrita de outro jeito: separador de módulo `— – : . -`, `**Módulo:**` e `**Módulo**:`, e o
+  limite de WIP aceita `máx`/`max`/`limite`/`≤`. Este último tinha um defeito próprio: só
+  `máx` era lido, e `— limite 3` caía no default 1 — o script cobrava 1 e **ainda dizia**
+  "limite declarado é 1". (2) **Canário de templates** (`TestCanarioDosTemplates`): cada teste
+  injeta uma violação real nos templates **como são entregues** e exige que o portão a pegue.
+  Se alguém reformatar um cabeçalho e o parser deixar de casar, a violação passa e o teste
+  falha — o aviso que faltava. Testa o resultado, não o padrão: teste que confere a escrita do
+  regex quebra junto com a implementação e não protege nada.
+- **Melhor que a solução deles, e vale dizer por quê.** O FORMAT FREEZE é prosa dentro do
+  template; prosa deriva e ninguém é obrigado a lê-la — foi a lição do `d_agent_learnings.md`
+  que este kit já pagou duas vezes. Canário é máquina.
+- **Honestidade sobre o alcance:** o canário guarda o par template↔parser dos casos cobertos
+  (WIP, módulo, ID fantasma). Renomear um cabeçalho para algo irreconhecível é pego; uma
+  mudança que o regex ainda casa por acaso, não. Ele estreita a janela, não a fecha.
+- **Não adotado:** o controle adaptativo por `drift_score` (telemetria por tarefa, limiares de
+  20/40/60% disparando anotar/replanejar/reescopar). É a ideia mais original que vi em qualquer
+  um dos quatro repositórios, e é séria — mas exige estimativa de esforço por tarefa e coleta
+  pós-tarefa disciplinada para produzir número confiável. Num kit de um mantenedor, o custo de
+  alimentar o laço excede o valor do sinal, e número mal alimentado é pior que número nenhum:
+  vira autoridade sem lastro. Fica registrado como candidato para quando houver várias pessoas
+  executando o mesmo plano.
+
 ## [kit v10] — 2026-08-05
 **Comparação com o `bmad-code-org/BMAD-METHOD` v6.10.0 — feita sobre o pacote instalado
 (`npm pack`), não sobre o README.** 318 arquivos, 46 skills, 397 KB só de `SKILL.md`.

@@ -18,6 +18,7 @@ a auditoria original medir errado.
 """
 import ast
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -425,6 +426,79 @@ class TestCoberturaModuloTarefa(unittest.TestCase):
         with area_temporaria() as tmp:
             repo = montar_kit(Path(tmp) / "repo")
             self.assertNotIn("Módulo do PLANO sem tarefa", rodar_check(repo).stdout)
+
+
+class TestCanarioDosTemplates(unittest.TestCase):
+    """Canário: o `check.py` lê os templates por REGEX, então uma edição cosmética num
+    template faz a checagem parar de checar — em silêncio, com o verde continuando a sair.
+    É a mesma classe do QA-03 (mensagem que não corresponde ao que rodou), só que na
+    entrada em vez da saída.
+
+    Cada teste aqui injeta uma violação REAL nos templates COMO ELES SÃO ENTREGUES e exige
+    que o portão a pegue. Se alguém reformatar um cabeçalho e o parser deixar de casar, a
+    violação passa e o teste falha — que é exatamente o aviso que faltava.
+
+    Testa o RESULTADO, não o padrão: um teste que só confere se o regex está escrito de
+    certa forma quebra junto com a implementação e não protege nada."""
+
+    def anexar(self, repo: Path, rel: str, texto: str):
+        p = repo / rel
+        p.write_text(p.read_text(encoding="utf-8") + texto, encoding="utf-8")
+
+    def test_limite_de_wip_ainda_e_cobrado_no_template_entregue(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            # 3 itens sob o cabeçalho "Em andamento" que o template declara com máx 1
+            self.anexar(repo, "b_process/c_backlog.md", "")
+            p = repo / "b_process/c_backlog.md"
+            p.write_text(p.read_text(encoding="utf-8").replace(
+                "- [ ] T-00 — <a tarefa do momento>",
+                "- [ ] T-10 — a\n- [ ] T-11 — b\n- [ ] T-12 — c"), encoding="utf-8")
+            r = rodar_check(repo)
+            self.assertIn("limite declarado", r.stdout,
+                          "o parser de WIP não reconhece mais o cabeçalho do template entregue")
+
+    def test_modulo_e_reconhecido_com_travessao_e_com_dois_pontos(self):
+        for separador in ("—", ":", "-"):
+            with self.subTest(separador=separador), area_temporaria() as tmp:
+                repo = montar_kit(Path(tmp) / "repo")
+                self.anexar(repo, "a_context/b_plan.md", f"\n### M7 {separador} cobranca\n- **Recebe:** x\n")
+                self.assertIn("M7", rodar_check(repo).stdout,
+                              f"módulo com separador {separador!r} deixou de ser reconhecido")
+
+    def test_marcacao_de_modulo_reconhecida_nas_duas_grafias(self):
+        for grafia in ("**Módulo:** M7", "**Módulo**: M7", "**Modulo:** M7"):
+            with self.subTest(grafia=grafia), area_temporaria() as tmp:
+                repo = montar_kit(Path(tmp) / "repo")
+                self.anexar(repo, "a_context/b_plan.md", "\n### M7 — cobranca\n- **Recebe:** x\n")
+                self.anexar(repo, "b_process/c_backlog.md", f"\n- [ ] T-50 — x · {grafia} · **Portão:** y\n")
+                self.assertNotIn("Módulo do PLANO sem tarefa", rodar_check(repo).stdout,
+                                 f"a grafia {grafia!r} não foi reconhecida como cobertura")
+
+    def test_limite_declarado_e_lido_nas_variacoes_de_escrita(self):
+        """`máx 3` e `limite 3` são a mesma declaração. Antes, só a primeira era lida e a
+        segunda caía no default 1 — o script cobrava 1 e AINDA dizia "limite declarado é 1".
+        Afirmar ter lido o que não leu é o defeito que este arquivo persegue."""
+        for cabecalho in ("## Em andamento (máx 3)", "## Em andamento — limite 3",
+                          "## Em andamento (max 3)", "## Em andamento ≤ 3"):
+            with self.subTest(cabecalho=cabecalho), area_temporaria() as tmp:
+                repo = montar_kit(Path(tmp) / "repo")
+                p = repo / "b_process/c_backlog.md"
+                t = re.sub(r"^## Em andamento.*$", cabecalho, p.read_text(encoding="utf-8"), count=1, flags=re.M)
+                p.write_text(t.replace("- [ ] T-00 — <a tarefa do momento>",
+                                       "- [ ] T-10 — a\n- [ ] T-11 — b"), encoding="utf-8")
+                # 2 itens sob limite 3: não pode reprovar
+                self.assertNotIn("limite declarado", rodar_check(repo).stdout,
+                                 f"{cabecalho!r} não foi lido; o limite caiu no default")
+
+    def test_id_fantasma_ainda_e_pego_no_template_entregue(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.anexar(repo, "INDEX.md", "\n\nVer D-77 para o detalhe.\n")
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("D-77", r.stdout,
+                          "o parser da tabela de DECISIONS não casa mais com o template entregue")
 
 
 if __name__ == "__main__":
