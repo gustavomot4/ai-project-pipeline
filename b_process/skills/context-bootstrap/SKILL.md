@@ -18,6 +18,7 @@ A descrição crua do projeto (projeto novo) ou o `a_context/a_context_source.md
 5. Preencha a seção **Temas de domínio**: todo arquivo de `a_context/` que você criar entra lá com a condição que justifica lê-lo. Tema fora dessa lista nunca é lido. (O mapa de leitura geral e o protocolo do agente moram no `CLAUDE.md`, fora do orçamento — não os duplique aqui.)
 6. Em manutenção: saída = **delta** (só a seção a substituir), nunca o arquivo inteiro.
 7. Não invente requisito para parecer completo. Lacuna desconhecida fica declarada como lacuna, e vira Q-NN se depender do dono.
+8. **Ao fechar um Q-NN, pergunte: "o que esta resposta acabou de tornar decidível?"** Resposta do dono cria política nova sem avisar. Numa sessão real, uma única resposta sobre plano mensal gerou três lacunas de reembolso que ninguém tinha visto — registre-as como Q-NN novos antes de seguir, em vez de assumir o default óbvio.
 
 ## Portão (o que aprova a Fase 0)
 - [ ] `python scripts/check.py` passa — orçamento respeitado, sem placeholder esquecido.

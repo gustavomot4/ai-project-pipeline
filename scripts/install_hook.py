@@ -14,6 +14,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+# O git emite caminhos em UTF-8. `text=True` SOZINHO decodifica com o encoding do
+# SISTEMA — cp1252 num Windows pt-BR — e um caminho com acento ("Área de Trabalho",
+# nome real da pasta sob OneDrive KFM em português) derruba a thread leitora com
+# UnicodeDecodeError. Como ele é ValueError, os `except` abaixo não pegam: `stdout`
+# volta None e o erro que aparece é um AttributeError longe da causa.
+UTF8 = {"encoding": "utf-8", "errors": "replace"}
+
 MARCA = "# pipeline-projetos-IA: portão de higiene"
 # O padrão põe a documentação em `77777777_<TAG>_Project_DOCs/`, então `scripts/check.py`
 # raramente está na raiz do repositório. O caminho é calculado na instalação e gravado
@@ -59,7 +66,7 @@ def dir_hooks(raiz: Path) -> Path | None:
     try:
         saida = subprocess.run(
             ["git", "-C", str(raiz), "rev-parse", "--git-path", "hooks"],
-            capture_output=True, text=True, check=True,
+            capture_output=True, text=True, check=True, **UTF8,
         ).stdout.strip()
     except (subprocess.SubprocessError, OSError, FileNotFoundError):
         return None
@@ -71,7 +78,7 @@ def topo_do_repo(inicio: Path) -> Path | None:
     try:
         saida = subprocess.run(
             ["git", "-C", str(inicio), "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, check=True,
+            capture_output=True, text=True, check=True, **UTF8,
         ).stdout.strip()
     except (subprocess.SubprocessError, OSError, FileNotFoundError):
         return None

@@ -29,6 +29,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+# O git emite caminhos em UTF-8. `text=True` SOZINHO decodifica com o encoding do
+# SISTEMA — cp1252 num Windows pt-BR — e um caminho com acento ("Área de Trabalho",
+# nome real da pasta sob OneDrive KFM em português) derruba a thread leitora com
+# UnicodeDecodeError. Pior: UnicodeDecodeError é ValueError, então os `except
+# (SubprocessError, OSError)` abaixo passam ao largo; `stdout` volta None e o dono vê
+# um AttributeError a duas funções da causa. Resultado medido: o portão nunca rodou
+# na máquina do dono, e todo "OK" veio do sandbox Linux do agente.
+UTF8 = {"encoding": "utf-8", "errors": "replace"}
+
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 ESTRITO = "--avisos-reprovam" in sys.argv
 raiz = Path(args[0] if args else ".").resolve()
@@ -57,7 +66,7 @@ def achar_topo(inicio: Path) -> Path:
     try:
         saida = subprocess.run(
             ["git", "-C", str(inicio), "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, check=True, timeout=15,
+            capture_output=True, text=True, check=True, timeout=15, **UTF8,
         ).stdout.strip()
         return Path(saida).resolve()
     except (subprocess.SubprocessError, OSError):
@@ -105,7 +114,7 @@ def alvos_de_varredura():
         try:
             saida = subprocess.run(
                 ["git", "-C", str(topo), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-                capture_output=True, text=True, timeout=20, check=True,
+                capture_output=True, text=True, timeout=20, check=True, **UTF8,
             ).stdout
             return [topo / n for n in saida.split("\0") if n]
         except (subprocess.SubprocessError, OSError):
@@ -312,7 +321,7 @@ if (topo / ".git").is_dir():
     try:
         hist = subprocess.run(
             ["git", "-C", str(topo), "log", "-p", "--no-color", *LIMITE_HIST, "--", "."],
-            capture_output=True, text=True, timeout=120 if COMPLETO else 25, errors="replace",
+            capture_output=True, text=True, timeout=120 if COMPLETO else 25, **UTF8,
         ).stdout
         adicionadas = [l[1:] for l in hist.splitlines() if l.startswith("+") and not l.startswith("+++")]
         achados_hist = []
