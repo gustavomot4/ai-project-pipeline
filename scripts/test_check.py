@@ -255,5 +255,76 @@ class TestProjetoNovo(unittest.TestCase):
                              "projeto novo nasceu com link quebrado")
 
 
+class TestAtualizacao(unittest.TestCase):
+    """`--upgrade` atualiza o PROCESSO e não pode encostar na VERDADE do projeto.
+    O limite não é por pasta: `b_process/c_backlog.md` mora em "processo" e é estado.
+    Errar esse limite apaga trabalho do dono — por isso este é o teste mais importante
+    do arquivo."""
+
+    def preparar(self, tmp):
+        kit = montar_kit(Path(tmp) / "kit")
+        projeto = Path(tmp) / "projeto"
+        r = rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        docs = next(projeto.glob("*_Project_DOCs"))
+        # trabalho do dono, um por categoria de verdade
+        (docs / "a_context/c_decisions.md").write_text(
+            (docs / "a_context/c_decisions.md").read_text(encoding="utf-8")
+            + "\n| D-99 | 2026-08-05 | ADOTADO | decisao do dono | medido |\n", encoding="utf-8")
+        for arquivo, marca in (("b_process/c_backlog.md", "\n- [ ] T-99 tarefa do dono\n"),
+                               ("b_process/d_agent_learnings.md", "\n- licao do dono\n"),
+                               ("d_history/a_changelog.md", "\n## [0.1.0] deploy do dono\n")):
+            p = docs / arquivo
+            p.write_text(p.read_text(encoding="utf-8") + marca, encoding="utf-8")
+        git(projeto, "init", "-q")
+        git(projeto, "add", "-A")
+        git(projeto, *GIT_ID, "commit", "-qm", "trabalho do dono")
+        return kit, projeto, docs
+
+    def test_atualiza_processo_e_preserva_verdade(self):
+        with area_temporaria() as tmp:
+            kit, projeto, docs = self.preparar(tmp)
+            # o kit evolui: skill nova + arquivo de processo alterado
+            nova = kit / "b_process/skills/skill-nova/SKILL.md"
+            nova.parent.mkdir(parents=True, exist_ok=True)
+            nova.write_text("---\nname: skill-nova\ndescription: nova\n---\n# nova\n", encoding="utf-8")
+            roteiro = kit / "b_process/a_roadmap.md"
+            roteiro.write_text(roteiro.read_text(encoding="utf-8") + "\n<!-- marca v9 -->\n", encoding="utf-8")
+
+            r = rodar_script("new_project.py", str(projeto), "--upgrade", cwd=kit)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+            # processo chegou
+            self.assertTrue((docs / "b_process/skills/skill-nova/SKILL.md").exists())
+            self.assertIn("marca v9", (docs / "b_process/a_roadmap.md").read_text(encoding="utf-8"))
+            # verdade intacta
+            for arquivo, marca in (("a_context/c_decisions.md", "D-99"),
+                                   ("b_process/c_backlog.md", "T-99 tarefa do dono"),
+                                   ("b_process/d_agent_learnings.md", "licao do dono"),
+                                   ("d_history/a_changelog.md", "deploy do dono")):
+                self.assertIn(marca, (docs / arquivo).read_text(encoding="utf-8"),
+                              f"a atualização apagou trabalho do dono em {arquivo}")
+            # e o projeto continua passando no próprio portão
+            saida = rodar_check(projeto, script=docs / "scripts" / "check.py")
+            self.assertEqual(saida.returncode, 0, saida.stdout)
+
+    def test_dry_run_nao_escreve_e_arvore_suja_recusa(self):
+        with area_temporaria() as tmp:
+            kit, projeto, docs = self.preparar(tmp)
+            nova = kit / "b_process/skills/skill-nova/SKILL.md"
+            nova.parent.mkdir(parents=True, exist_ok=True)
+            nova.write_text("---\nname: skill-nova\ndescription: nova\n---\n# nova\n", encoding="utf-8")
+
+            r = rodar_script("new_project.py", str(projeto), "--upgrade", "--dry-run", cwd=kit)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertFalse((docs / "b_process/skills/skill-nova/SKILL.md").exists(),
+                             "--dry-run escreveu; ele existe justamente para não escrever")
+
+            (projeto / "sujo.txt").write_text("x", encoding="utf-8")
+            r2 = rodar_script("new_project.py", str(projeto), "--upgrade", cwd=kit)
+            self.assertEqual(r2.returncode, 1, "aceitou atualizar sobre árvore suja")
+            self.assertIn("não commitadas", r2.stdout)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -31,6 +31,11 @@ Sessão separada com um único objetivo: **quebrar o que foi construído**. Voc�
 - Restrição de projeto cumprida não é defeito (o `a_context/a_context_source.md` manda; não invente requisito).
 - **Não conserte.** Conserto é outra sessão, com autorização do dono — normalmente [[b_process/skills/debugging-diagnosis/SKILL|depuracao-diagnostico]], que exige reprodução antes de tocar no código.
 - Severidade é do **efeito**, não do esforço: dado errado que o usuário acredita > tela feia.
+- **Restrição inegociável é a constituição do projeto.** Violação de qualquer linha das
+  "Restrições inegociáveis" do `a_context/a_context_source.md` é **CRÍTICO automático**, sem
+  discussão de esforço — e a saída é ajustar o código, nunca reinterpretar a restrição até ela
+  caber no que já foi feito. Se a própria restrição precisa mudar, isso é D-NN novo numa sessão
+  separada, não um ajuste de conveniência no meio de uma revisão.
 
 ## Severidade
 | Nível | Critério |

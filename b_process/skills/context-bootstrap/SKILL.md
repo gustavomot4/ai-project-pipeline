@@ -12,6 +12,10 @@ A descrição crua do projeto (projeto novo) ou o `a_context/a_context_source.md
 
 ## Regras
 1. Máximo **5 perguntas**, uma por vez — só as que mudam arquitetura ou escopo. O resto: assuma um default razoável e **declare-o** como suposição.
+1b. **Como escolher quais 5.** Antes de perguntar, marque cada área abaixo como *clara · parcial · ausente*, e gaste as 5 perguntas nas de maior **impacto × incerteza** — não nas 5 primeiras que ocorrerem. Ofereça a resposta que você recomendaria, com o porquê em uma frase: dono corrige recomendação errada mais rápido do que responde pergunta aberta.
+   > escopo e não-objetivo · papéis de usuário · entidades, identidade e ciclo de vida · volume e escala · jornada principal · estados de erro/vazio · desempenho, disponibilidade e segurança · conformidade legal · integrações externas e o que fazer quando caem · casos de borda e concorrência · restrições técnicas inegociáveis · vocabulário canônico · critério de aceite testável.
+
+   Área *parcial* que não muda arquitetura, schema, teste nem validação **não vira pergunta** — vira suposição declarada. Ao fim, diga quais áreas ficaram em aberto e por quê; área ausente e silenciada é a que volta como retrabalho de schema.
 2. Force os 4 pontos que mais evitam retrabalho: objetivo em 3 linhas (com um não-objetivo explícito) · restrições inegociáveis · **stack + o que ela NÃO suporta** (consulte `b_process/profiles/`) · critério de aceite objetivo.
 3. **Representações obrigatórias no dia 1:** dinheiro inteiro/centavos, datas UTC ISO, IDs opacos, unidades, encoding. Declarar isso depois custou 6 versões de schema num projeto real.
 4. Orçamento do `a_context/a_context_source.md`: **≤ 4.000 caracteres**. Não coube? O excedente vai para `a_context/<tema>.md` ou `a_context/b_plan.md` — nunca esprema prosa para caber.

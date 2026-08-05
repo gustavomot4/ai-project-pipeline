@@ -22,6 +22,7 @@ análise de OUTRO projeto — o que viola "uma verdade por assunto" logo no prim
 import argparse
 import re
 import shutil
+import subprocess
 import sys
 import unicodedata
 from datetime import date
@@ -234,14 +235,153 @@ def esqueleto(destino: Path, pasta_docs: str, nome: str, codigo: str) -> None:
     )
 
 
+# ---------------------------------------------------------------------------------
+# ATUALIZAÇÃO DE PROJETO EXISTENTE
+#
+# O buraco que isto fecha: até aqui `new_project.py` era cópia de mão única. Um projeto
+# criado com a v7 nunca recebia nada da v8 — todo conserto de portão, toda skill nova e
+# todo teste ficavam encalhados no repositório do kit. Kit que evolui e não alcança os
+# projetos que gerou é kit que evolui sozinho.
+#
+# A divisão abaixo é a única coisa que torna isto seguro, e ela é EXPLÍCITA de propósito:
+# heurística por pasta não serve, porque `b_process/c_backlog.md` mora numa pasta de
+# processo e é ESTADO DO PROJETO. Errar esse limite apaga trabalho do dono.
+# ---------------------------------------------------------------------------------
+# Processo: o kit é dono, pode reescrever.
+DO_KIT = (
+    "CLAUDE.md", "INDEX.md",
+    "b_process/a_roadmap.md", "b_process/b_checklist.md",
+    "b_process/e_repository_standard.md", "b_process/f_glossary_and_primer.md",
+    "b_process/skills/", "b_process/profiles/", "b_process/templates/",
+    "c_technical_docs/a_obsidian_guide.md",
+    "scripts/",
+)
+# Verdade do projeto: NUNCA tocar. Cada item aqui já foi (ou seria) perda de trabalho.
+#   a_context/          -> contexto, plano, decisões: é o projeto
+#   b_process/c_backlog -> mora em "processo", mas é estado
+#   d_agent_learnings   -> o kit semeia, o projeto acrescenta as próprias lições
+#   d_history/, e_qa/   -> histórico e evidência do projeto
+#   README, .gitignore  -> gerados/editados por projeto
+NUNCA = ("a_context/", "b_process/c_backlog.md", "b_process/d_agent_learnings.md",
+         "d_history/", "e_qa/", "README.md", ".gitignore")
+
+MARCA_VERSAO = ".kit-version"
+
+
+def versao_do_kit() -> str:
+    """Derivada do changelog, não mantida à mão — lista mantida a dedo sai de sincronia."""
+    changelog = raiz / "d_history/b_kit_changelog.md"
+    if changelog.exists():
+        m = re.search(r"^##\s*\[([^\]]+)\]", changelog.read_text(encoding="utf-8"), re.M)
+        if m:
+            return m.group(1).strip()
+    return "desconhecida"
+
+
+def achar_docs(projeto: Path) -> Path | None:
+    candidatos = sorted(p for p in projeto.glob("*_Project_DOCs") if (p / "a_context").is_dir())
+    if len(candidatos) == 1:
+        return candidatos[0]
+    return None
+
+
+def arvore_suja(projeto: Path) -> bool:
+    """Exigir árvore limpa não é frescura: é o que torna a atualização REVISÁVEL
+    (`git diff`) e REVERSÍVEL (`git checkout`). Sem isso o dono não distingue o que o
+    script mudou do que ele mesmo estava editando."""
+    try:
+        saida = subprocess.run(["git", "-C", str(projeto), "status", "--porcelain"],
+                               capture_output=True, text=True, check=True, timeout=20,
+                               encoding="utf-8", errors="replace").stdout
+    except (subprocess.SubprocessError, OSError):
+        return False  # sem git não há o que sujar; a decisão é do dono
+    return bool(saida.strip())
+
+
+def atualizar(projeto: Path, simular: bool, forcar: bool) -> int:
+    docs = achar_docs(projeto)
+    if docs is None:
+        print(f"ERRO: não achei uma pasta *_Project_DOCs em {projeto}.")
+        return 1
+    if arvore_suja(projeto) and not (simular or forcar):
+        print("ERRO: a árvore do projeto tem mudanças não commitadas.")
+        print("      Commite antes — é o que permite revisar a atualização com `git diff`")
+        print("      e desfazê-la com `git checkout`. Ou use --dry-run, ou --forcar.")
+        return 1
+
+    novos, mudados, iguais = [], [], 0
+    for origem in sorted(raiz.rglob("*")):
+        if origem.is_dir():
+            continue
+        rel = origem.relative_to(raiz).as_posix()
+        if any(parte in EXCLUIR_PASTAS for parte in Path(rel).parts):
+            continue
+        if rel in EXCLUIR_ARQUIVOS or origem.name.endswith(EXCLUIR_SUFIXOS):
+            continue
+        if any(rel == n or rel.startswith(n) for n in NUNCA):
+            continue
+        if not any(rel == d or rel.startswith(d) for d in DO_KIT):
+            continue
+        alvo = (projeto if rel in NA_RAIZ else docs) / rel
+        conteudo = deslinkar(origem.read_text(encoding="utf-8")) if origem.suffix == ".md" else None
+        if not alvo.exists():
+            novos.append((rel, alvo, conteudo, origem))
+        elif conteudo is not None and alvo.read_text(encoding="utf-8") == conteudo:
+            iguais += 1
+        elif conteudo is None and alvo.read_bytes() == origem.read_bytes():
+            iguais += 1
+        else:
+            mudados.append((rel, alvo, conteudo, origem))
+
+    versao = versao_do_kit()
+    print(f"Atualização para {versao} em {docs.name}/")
+    anterior = (docs / MARCA_VERSAO)
+    print(f"   versão atual do projeto: {anterior.read_text(encoding='utf-8').strip() if anterior.exists() else 'não registrada'}")
+    print(f"   {len(novos)} arquivo(s) novo(s) · {len(mudados)} atualizado(s) · {iguais} sem mudança")
+    for rotulo, lista in (("NOVO", novos), ("ATUALIZA", mudados)):
+        for rel, *_ in lista:
+            print(f"   {rotulo:9} {rel}")
+
+    if simular:
+        print("\n(--dry-run: nada foi escrito.)")
+        return 0
+    if not novos and not mudados:
+        print("\nNada a fazer: o processo já está nesta versão.")
+        return 0
+
+    for _rel, alvo, conteudo, origem in novos + mudados:
+        alvo.parent.mkdir(parents=True, exist_ok=True)
+        if conteudo is None:
+            shutil.copy2(origem, alvo)
+        else:
+            alvo.write_text(conteudo, encoding="utf-8")
+    (docs / MARCA_VERSAO).write_text(versao + "\n", encoding="utf-8")
+
+    print(f"\nOK: processo atualizado para {versao}.")
+    print("   NADA foi tocado em a_context/, d_history/, e_qa/, no backlog nem nos aprendizados.")
+    print(f"   Revise com: git -C {projeto} diff")
+    print(f"   Depois rode: python {docs.name}/scripts/check.py")
+    print("   Arquivo removido do kit NÃO é apagado do projeto — confira o diff se algo ficou órfão.")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Cria um projeto novo no padrão do repositório.")
     ap.add_argument("destino", help="pasta do projeto novo (será criada)")
-    ap.add_argument("--name", "--nome", dest="nome", required=True, help="nome do projeto")
+    ap.add_argument("--name", "--nome", dest="nome", help="nome do projeto (obrigatório ao criar)")
     ap.add_argument("--tag", help="sigla da pasta de docs (default: derivada do nome)")
     ap.add_argument("--code", "--codigo", dest="codigo", default="src", help="pasta do código (default: src)")
     ap.add_argument("--forcar", "--force", action="store_true", help="permite destino já existente e não vazio")
+    ap.add_argument("--upgrade", "--atualizar", dest="upgrade", action="store_true",
+                    help="atualiza o PROCESSO de um projeto existente, sem tocar na verdade dele")
+    ap.add_argument("--dry-run", "--simular", dest="simular", action="store_true",
+                    help="com --upgrade: só mostra o que mudaria")
     args = ap.parse_args()
+
+    if args.upgrade:
+        return atualizar(Path(args.destino).resolve(), simular=args.simular, forcar=args.forcar)
+    if not args.nome:
+        ap.error("--nome é obrigatório ao criar (use --upgrade para atualizar um projeto existente)")
 
     destino = Path(args.destino).resolve()
     if destino == raiz:
@@ -257,6 +397,9 @@ def main() -> int:
     n = copiar(destino, pasta_docs)
     nomear(destino, pasta_docs, args.nome)
     esqueleto(destino, pasta_docs, args.nome, args.codigo)
+    # Sem marca de versão não existe pergunta respondível "em que kit este projeto está?",
+    # e sem essa pergunta a atualização vira adivinhação.
+    (destino / pasta_docs / MARCA_VERSAO).write_text(versao_do_kit() + "\n", encoding="utf-8")
 
     print(f"OK: {args.nome} criado em {destino}")
     print(f"   {n} arquivos de documentação em {pasta_docs}/")

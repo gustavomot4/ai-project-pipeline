@@ -8,6 +8,42 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v9] — 2026-08-05
+**O kit passou a alcançar os projetos que gerou.** Comparação com o `github/spec-kit` (mesma
+categoria: método, não scaffold) apontou quatro coisas que faltavam. Três foram adotadas; a
+quarta — instalador e marketplace de extensões — foi descartada por custo desproporcional a
+um kit de um mantenedor.
+
+- **`new_project.py --upgrade` — o buraco estrutural.** Até aqui a cópia era de mão única:
+  projeto criado na v7 nunca recebia nada da v8, e todo conserto ficava encalhado no repositório
+  do kit. Agora o **processo** (`b_process/skills|profiles|templates`, roteiro, checklist,
+  padrão, glossário, `scripts/`, `CLAUDE.md`, `INDEX.md`, guia do Obsidian) é atualizável, e a
+  **verdade do projeto** é intocável. O limite é uma lista explícita, não heurística de pasta —
+  porque `b_process/c_backlog.md` mora numa pasta de processo e **é estado**, e
+  `d_agent_learnings.md` recebe lições do projeto. Errar esse limite apaga trabalho do dono.
+  Salvaguardas: `--dry-run`, recusa de árvore git suja (a atualização tem de ser revisável por
+  `git diff` e reversível por `git checkout`), escrita só quando o conteúdo difere, e **nada é
+  apagado** — arquivo removido do kit é reportado, não deletado. Marca `.kit-version` derivada
+  do título deste changelog, escrita na criação e na atualização.
+- **Skill nova: `artifact-consistency` (Fase 1b).** É o que o `check.py` não consegue fazer e
+  nunca vai: ele julga **forma** de modo determinístico; módulo do PLANO sem tarefa no BACKLOG,
+  adjetivo sem número em critério de aceite, plano adotando o que o DECISIONS **rejeitou** e
+  termo com dois nomes são **significado**. Sete passagens, severidade pelo efeito, saída com
+  tabela de cobertura. Sessão separada por doutrina do próprio kit — quem escreveu o plano é a
+  última pessoa que deveria julgar se ele cobre o contexto.
+- **Restrição inegociável virou constituição.** O campo já existia no CONTEXT e nada nunca
+  conferia contra ele. Agora violação é **CRÍTICO automático** em `guardrails-review` e em
+  `artifact-consistency`, e a saída é ajustar o código ou o plano — nunca reinterpretar a
+  restrição até ela caber. Mudar a restrição é D-NN novo, em sessão separada.
+- **`context-bootstrap`, regra 1b: como escolher quais 5 perguntas.** O teto de 5 já existia; o
+  critério, não. Treze áreas marcadas *clara/parcial/ausente*, gasto por impacto × incerteza,
+  com recomendação oferecida junto — dono corrige recomendação errada mais rápido do que
+  responde pergunta aberta. Área parcial que não muda arquitetura, schema, teste ou validação
+  vira suposição declarada, não pergunta.
+- **Não adotado, e por quê:** o bloco de *extension hooks* do spec-kit repete o mesmo texto duas
+  vezes em cada arquivo de comando (~40% do `clarify.md`), pago em tokens a cada invocação. É a
+  doença de "prosa duplicada derrapa" que o `task.py` acabou de curar aqui.
+
 ## [kit v8] — 2026-08-05
 **O portão passou a rodar fora do sandbox de quem edita.** Um relato de campo de outro agente
 (Fase 0 completa num Windows pt-BR sob OneDrive) apontou cinco achados; a validação contra o

@@ -21,6 +21,7 @@ Em qualquer um dos casos, a sessão recebe **a skill + o [[a_context_source|CONT
 | [[b_process/skills/context-bootstrap/SKILL\|bootstrap-contexto]] | Fase 0 — descrever o projeto **novo** | orçamento do CONTEXT, restrições da stack no dia 1, lacuna declarada |
 | [[b_process/skills/existing-project-adoption/SKILL\|adocao-projeto-existente]] | Fase 0 — o projeto **já existe** | mapa feito do código (não da doc), baseline real, decisões retroativas, zero edição |
 | [[b_process/skills/planner/SKILL\|planejador]] | Fase 1 — gerar o PLANO | contrato por módulo autossuficiente, milestones encadeadas, plano congelável |
+| [[b_process/skills/artifact-consistency/SKILL\|consistencia-artefatos]] | Fase 1b — antes do primeiro código | módulo sem tarefa, restrição inegociável sem portão, critério sem número, plano contra decisão rejeitada |
 | [[b_process/skills/evolution-auditor/SKILL\|auditor-evolucao]] | depois do baseline estável | lista-morta, portão antes do experimento, prior de 20–30% |
 | [[b_process/skills/delivery-review/SKILL\|revisao-entrega]] | Fase 6 — empacotar | segredo na árvore **e no histórico**, cruft, peso, estado duplicado |
 | [[b_process/skills/retrospective/SKILL\|retrospectiva]] | fechar milestone | lição generalizável, erro do agente incluído |

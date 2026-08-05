@@ -44,6 +44,11 @@ Não coube em 4.000 caracteres? O excedente vai para `a_context/<tema>.md`, não
 **1b. Gerar o plano.** Skill: [[b_process/skills/planner/SKILL|planejador]]; entrega: [[a_context_source|CONTEXT]]. Você recebe o [[b_plan|PLANO]] com módulos, contratos, portão por módulo e milestones.
 **Portão:** para cada módulo, você consegue responder "outro agente implementaria isso lendo só o contrato?". Se não, devolva pedindo delta. Aprovado = **congelado** como D-NN.
 
+**1c. Conferir se os artefatos contam a mesma história.** Skill: [[b_process/skills/artifact-consistency/SKILL|consistencia-artefatos]], em **sessão separada** — quem escreveu o plano é a última pessoa que deveria julgar se ele cobre o contexto. Somente leitura: ela lê CONTEXT + PLANO + BACKLOG + DECISIONS e procura módulo sem tarefa, tarefa sem módulo, restrição inegociável sem portão, critério de aceite sem número, plano adotando o que o DECISIONS rejeitou e termo com dois nomes.
+**Portão:** zero achados CRÍTICOS · todo módulo com ao menos uma tarefa · toda restrição inegociável com um portão que a verifica.
+
+> Esta sessão custa 15 minutos e existe porque o `check.py` **não consegue** fazer o trabalho dela: ele julga forma (orçamento, link, ID, segredo) de modo determinístico; módulo esquecido e adjetivo sem número são significado, e nenhum script julga significado.
+
 ---
 
 ## Fase 2 — Dados e domínio (1 sessão por módulo)

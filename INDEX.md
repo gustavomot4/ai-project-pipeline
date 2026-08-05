@@ -34,7 +34,7 @@ status: atual
 ## Os 23 agentes ([[b_process/skills/README|skills/]])
 Cada um é uma skill instalável, com regras e portão próprios. **Uma skill por sessão.**
 
-**Fases:** [[b_process/skills/context-bootstrap/SKILL|bootstrap-contexto]] (projeto novo) · [[b_process/skills/existing-project-adoption/SKILL|adocao-projeto-existente]] (projeto que já roda) · [[b_process/skills/planner/SKILL|planejador]] · [[b_process/skills/evolution-auditor/SKILL|auditor-evolucao]] · [[b_process/skills/delivery-review/SKILL|revisao-entrega]] · [[b_process/skills/retrospective/SKILL|retrospectiva]]
+**Fases:** [[b_process/skills/context-bootstrap/SKILL|bootstrap-contexto]] (projeto novo) · [[b_process/skills/existing-project-adoption/SKILL|adocao-projeto-existente]] (projeto que já roda) · [[b_process/skills/planner/SKILL|planejador]] · [[b_process/skills/artifact-consistency/SKILL|consistencia-artefatos]] · [[b_process/skills/evolution-auditor/SKILL|auditor-evolucao]] · [[b_process/skills/delivery-review/SKILL|revisao-entrega]] · [[b_process/skills/retrospective/SKILL|retrospectiva]]
 **Arquitetura:** [[b_process/skills/architecture-monolith/SKILL|monolito]] (default) · [[b_process/skills/architecture-microservices/SKILL|microserviços]]
 **Backend:** [[b_process/skills/backend-domain/SKILL|domínio]] · [[b_process/skills/backend-bff/SKILL|BFF]] · [[b_process/skills/microservice-sync/SKILL|integração síncrona]]
 **Frontend:** [[b_process/skills/frontend-uiux/SKILL|UI/UX]] · [[b_process/skills/frontend-mfe/SKILL|MFE]]
