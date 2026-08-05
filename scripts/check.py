@@ -91,7 +91,9 @@ SKILLS = "b_process/skills"                     # os agentes instaláveis
 # (content/, docs de pacote, README de módulo) não é nota e não bloqueia commit.
 PASTAS_VAULT = {"a_context", "b_process", "c_technical_docs", "d_history", "e_qa"}
 # Histórico e evidência: citam IDs de OUTROS projetos, ficam fora da checagem de existência.
-PASTAS_HISTORICAS = {"d_history", "e_qa"}
+# `docs/` entra aqui porque é onde mora a auditoria do PRÓPRIO kit (ver e_qa/README.md):
+# ela cita D-NN e QA-NN dos projetos-cobaia, que nunca existirão no DECISIONS deste repo.
+PASTAS_HISTORICAS = {"d_history", "e_qa", "docs"}
 # ----------------------------------------------------------------------------------
 
 IGNORAR = {".git", ".venv", "venv", "node_modules", ".obsidian", "__pycache__", ".next", "dist", "build"}

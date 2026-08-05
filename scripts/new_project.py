@@ -28,23 +28,29 @@ from datetime import date
 from pathlib import Path
 
 # Só do kit: nunca vão para um projeto (histórico e evidências DESTE repositório).
-EXCLUIR_PASTAS = {".git", "__pycache__", ".pytest_cache", ".venv", "venv", "node_modules"}
+# `docs/` é a pasta da auditoria do PRÓPRIO kit (ver e_qa/README.md) — excluída por
+# PASTA de propósito: relatório novo do kit fica de fora sozinho, sem ninguém precisar
+# lembrar de acrescentar o nome do arquivo aqui.
+EXCLUIR_PASTAS = {".git", "__pycache__", ".pytest_cache", ".venv", "venv", "node_modules", "docs"}
 EXCLUIR_ARQUIVOS = {
     ".obsidian/workspace.json",
     "scripts/new_project.py",
     "d_history/b_kit_changelog.md",
     "c_technical_docs/b_reference_case_spo.md",
-    "e_qa/a_scb_usage_analysis_260722_0000.md",
-    "e_qa/b_external_audit_report_260730_0900.md",
 }
 EXCLUIR_SUFIXOS = (".bak", ".tmp", ".orig", ".pyc")
-# Wikilinks para o que ficou no kit têm de virar texto: senão o projeto novo nasce
-# com link quebrado e reprovando no primeiro `check.py`.
-SO_DO_KIT = ("b_kit_changelog", "b_reference_case_spo", "a_scb_usage_analysis", "b_external_audit_report")
 # Vão para a RAIZ do projeto; todo o resto do kit vira a pasta de documentação.
 NA_RAIZ = {"CLAUDE.md", ".gitignore", ".gitattributes"}
 
 raiz = Path(__file__).resolve().parent.parent
+
+# Wikilinks para o que ficou no kit têm de virar texto: senão o projeto novo nasce
+# com link quebrado e reprovando no primeiro `check.py`. DERIVADO das exclusões acima,
+# não listado à mão — lista mantida a dedo é a que sai de sincronia com a realidade.
+SO_DO_KIT = tuple(
+    {Path(a).stem for a in EXCLUIR_ARQUIVOS if a.endswith(".md")}
+    | {p.stem for p in (raiz / "docs").rglob("*.md")}
+)
 
 
 def sigla(nome: str) -> str:

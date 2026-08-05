@@ -57,9 +57,20 @@ Não vêm instalados, para o vault abrir sem downloads. Nada do pipeline depende
 `Settings → Community plugins → Browse`.
 
 ## Higiene
-`python scripts/check.py` na raiz do vault. Ele **reprova** (código 1) quando: o [[a_context_source|CONTEXT]] estoura 4.000 caracteres, o [[c_decisions|DECISIONS]] passa de 12.000, existe mais de um BACKLOG/CONTEXT/DECISIONS, há mais de 1 tarefa em andamento, uma skill está sem `name`/`description`, **um `[[link]]` não tem destino** ou sobrou cruft (`.bak`, `.tmp`, `.orig`). E **avisa** (sem reprovar) sobre placeholders e notas sem frontmatter.
+Duas linhas, uma vez cada:
 
-A pasta `.obsidian/` fica fora da validação e do zip de entrega. Ela **é versionada** de propósito — é o que faz o vault abrir pronto para quem clonar —, com exceção de `workspace.json`, que muda a cada abertura e está no `.gitignore`.
+```
+python scripts/install_hook.py    # uma vez: o portão passa a rodar sozinho em todo commit
+python scripts/check.py           # quando quiser conferir à mão
+```
+
+**Esta página não lista o que reprova e o que só avisa** — a lista mora no cabeçalho do `scripts/check.py`, que é a fonte da verdade. Lista repetida em documentação derrapa em silêncio quando o script muda, e divergência doc × código é achado de QA pela regra do próprio kit. Rode o script e leia a saída: cada falha diz o que cortar e para onde.
+
+Sem o `install_hook.py` o portão só roda quando você lembra — e commit sem saída nenhuma parece commit aprovado.
+
+A pasta `.obsidian/` fica fora da validação. Ela **é versionada** de propósito — é o que faz o vault abrir pronto para quem clonar —, com exceção de `workspace.json`, que muda a cada abertura e está no `.gitignore`.
 
 ## Levar o pipeline para um projeto novo
-`python scripts/new_project.py ../meu-app --nome "Meu App"`. Copia tudo menos o que é só do kit (`docs/`, `exemplos/`, `.git`, o estado de sessão do Obsidian), zera o [[a_changelog|CHANGELOG]] e preenche o nome no [[a_context_source|CONTEXT]] e no [[b_plan|PLANO]]. A pasta destino já abre como vault configurado.
+`python scripts/new_project.py ../meu-app --nome "Meu App"`. O conteúdo do kit vira a pasta de documentação do projeto (`77777777_<TAG>_Project_DOCs/`), com `CLAUDE.md`, `.gitignore` e `.gitattributes` na raiz e uma pasta `src/` para o código. Preenche o nome no [[a_context_source|CONTEXT]] e no [[b_plan|PLANO]] e zera o [[a_changelog|CHANGELOG]].
+
+**Ficam no kit**, porque são história deste repositório e não do seu projeto: o changelog do kit, o caso de referência e os relatórios de auditoria do próprio kit. Os wikilinks que apontavam para eles viram texto puro na cópia — senão o projeto novo nasceria com link quebrado e reprovando no primeiro `check.py`. A pasta destino já abre como vault configurado.

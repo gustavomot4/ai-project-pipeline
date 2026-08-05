@@ -27,7 +27,7 @@ O prefixo de ordem (`a_`, `b_`, `c_`) mantém a leitura cronológica na pasta; o
 **quando** aquela passagem aconteceu. Relatório não se reescreve depois do conserto — o que
 muda é uma nota no topo dizendo o que já foi resolvido. Ver [[e_repository_standard|padrão do repositório]].
 
-> Esta pasta é do **projeto**. Auditoria do próprio kit não mora aqui — vai para `docs/`, que não é copiado para projetos novos.
+> Esta pasta é do **projeto**. Auditoria do próprio kit não mora aqui — vai para `docs/`, na raiz do repositório do kit. Essa pasta não é copiada para projetos novos (`new_project.py` a exclui por pasta) e é isenta da checagem de IDs, porque relatório de kit cita `D-NN`/`QA-NN` dos projetos-cobaia, que não existem no DECISIONS daqui. Num projeto criado a partir do kit, `docs/` simplesmente não existe.
 
 ## Por que os relatórios ficam aqui, e não no contexto
 Porque a memória de QA é grande e só interessa quando alguém investiga um achado específico. O que sobe para o [[c_decisions|DECISIONS]] é **uma linha por achado** (`QA-NN`, severidade, onde, o que quebrava, correção). O detalhe — reprodução, saída de comando, o que não deu para verificar — fica no relatório daqui.
