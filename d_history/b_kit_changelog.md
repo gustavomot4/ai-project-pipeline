@@ -8,6 +8,36 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v10] — 2026-08-05
+**Comparação com o `bmad-code-org/BMAD-METHOD` v6.10.0 — feita sobre o pacote instalado
+(`npm pack`), não sobre o README.** 318 arquivos, 46 skills, 397 KB só de `SKILL.md`.
+Duas ideias adotadas, uma medição que virou argumento para NÃO copiar, e um defeito nosso
+descoberto no caminho.
+
+- **QA-06 · `--upgrade` sobrescrevia customização do dono, em silêncio.** Defeito introduzido
+  na v9, encontrado ao ver como o BMAD resolve customização (arquivo do kit marcado
+  "DO NOT EDIT" + override separado com regras de merge declaradas). Reproduzido: o dono
+  adapta uma skill ao time, o kit mexe na mesma skill, a atualização apaga a adaptação.
+  Corrigido com **manifesto de impressões** (`.kit-manifest`, sha256 do que o kit escreveu):
+  arquivo cujo hash não bate com o registrado é **PROTEGIDO** — reportado e não tocado, a menos
+  que o dono peça `--forcar`. Projeto anterior ao manifesto trata tudo como protegido: falha
+  fechada, porque perder trabalho em silêncio é pior que exigir uma flag.
+- **Cobertura módulo ↔ tarefa virou máquina (checagem 13).** A melhor ideia do BMAD é marcar
+  toda tarefa com o critério que ela atende (`(AC: #)`) — traçabilidade **no artefato**, não na
+  revisão. Aqui isso vira `### M1 —` no PLANO cruzado com `**Módulo:** M1` no BACKLOG, e o
+  `check.py` passa a responder sozinho a pergunta mais cara do projeto: existe módulo que
+  ninguém vai construir? Módulo sem tarefa = AVISO (entre congelar o plano e povoar o backlog
+  existe intervalo legítimo); tarefa apontando módulo inexistente = FALHA. A passagem 1 da skill
+  `artifact-consistency` deixou de ser inteiramente semântica — sobrou para ela o que script não
+  vê: marcação existente mas **errada**.
+- **`[Fonte: arquivo#seção]` no PLANO.** "Nunca invente dado" já era regra em prosa; o campo é o
+  que a torna auditável. Sem fonte, `[a confirmar]`.
+- **Medido, e por isso NÃO copiado: o volume.** 12% do corpus deles (124 KB de 1.051 KB em
+  `src/`) são linhas repetidas em 3+ arquivos; "MANDATORY EXECUTION RULES" aparece em 31
+  arquivos, reforço de papel em 10, e um único `SKILL.md` (retrospective) tem 65 KB — 22× o
+  `CLAUDE.md` inteiro deste kit. É a mesma doença do spec-kit, em escala maior. Adotar o
+  mecanismo sem adotar o volume foi decisão consciente.
+
 ## [kit v9] — 2026-08-05
 **O kit passou a alcançar os projetos que gerou.** Comparação com o `github/spec-kit` (mesma
 categoria: método, não scaffold) apontou quatro coisas que faltavam. Três foram adotadas; a

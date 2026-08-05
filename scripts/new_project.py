@@ -20,6 +20,7 @@ Por que existe: o passo "copie tudo exceto .git" era manual e levava junto o his
 análise de OUTRO projeto — o que viola "uma verdade por assunto" logo no primeiro dia.
 """
 import argparse
+import hashlib
 import re
 import shutil
 import subprocess
@@ -84,8 +85,10 @@ def deslinkar(texto: str) -> str:
 
 
 def copiar(destino: Path, pasta_docs: str) -> int:
-    """Kit -> projeto. O conteúdo do kit VIRA a pasta de docs; três arquivos vão para a raiz."""
-    n = 0
+    """Kit -> projeto. O conteúdo do kit VIRA a pasta de docs; três arquivos vão para a raiz.
+    Grava o manifesto de impressões: é ele que, na atualização, distingue "arquivo do kit
+    intocado" de "o dono customizou isto" — sem essa distinção, `--upgrade` apaga trabalho."""
+    n, manifesto = 0, {}
     for origem in sorted(raiz.rglob("*")):
         if origem.is_dir():
             continue  # pasta nasce com o primeiro arquivo; pasta vazia é cruft
@@ -96,11 +99,12 @@ def copiar(destino: Path, pasta_docs: str) -> int:
             continue
         alvo = destino / (rel if rel.as_posix() in NA_RAIZ else Path(pasta_docs) / rel)
         alvo.parent.mkdir(parents=True, exist_ok=True)
-        if origem.suffix == ".md":
-            alvo.write_text(deslinkar(origem.read_text(encoding="utf-8")), encoding="utf-8")
-        else:
-            shutil.copy2(origem, alvo)
+        dados = (deslinkar(origem.read_text(encoding="utf-8")).encode("utf-8")
+                 if origem.suffix == ".md" else origem.read_bytes())
+        alvo.write_bytes(dados)
+        manifesto[rel.as_posix()] = impressao(dados)
         n += 1
+    escrever_manifesto(destino / pasta_docs, manifesto)
     return n
 
 
@@ -266,6 +270,37 @@ NUNCA = ("a_context/", "b_process/c_backlog.md", "b_process/d_agent_learnings.md
          "d_history/", "e_qa/", "README.md", ".gitignore")
 
 MARCA_VERSAO = ".kit-version"
+MANIFESTO = ".kit-manifest"
+
+
+def impressao(dados: bytes) -> str:
+    return hashlib.sha256(dados).hexdigest()[:16]
+
+
+def ler_manifesto(docs: Path) -> dict:
+    """`caminho -> impressão do que o KIT escreveu ali`. É o que permite distinguir
+    "arquivo intocado" de "o dono customizou isto".
+
+    Sem manifesto (projeto criado antes desta versão) o resultado é `{}`, e a
+    atualização trata TUDO como possivelmente customizado — ou seja, não sobrescreve
+    nada sem `--forcar`. Falha fechada: perder customização do dono em silêncio é pior
+    que exigir uma flag."""
+    arq = docs / MANIFESTO
+    if not arq.exists():
+        return {}
+    saida = {}
+    for linha in arq.read_text(encoding="utf-8").splitlines():
+        partes = linha.split(None, 1)
+        if len(partes) == 2:
+            saida[partes[1].strip()] = partes[0].strip()
+    return saida
+
+
+def escrever_manifesto(docs: Path, dados: dict) -> None:
+    corpo = ["# Impressão do que o KIT escreveu. Não edite: é o que protege as suas",
+             "# customizações de serem sobrescritas por `new_project.py --upgrade`."]
+    corpo += [f"{h}  {c}" for c, h in sorted(dados.items())]
+    (docs / MANIFESTO).write_text("\n".join(corpo) + "\n", encoding="utf-8")
 
 
 def versao_do_kit() -> str:
@@ -309,7 +344,8 @@ def atualizar(projeto: Path, simular: bool, forcar: bool) -> int:
         print("      e desfazê-la com `git checkout`. Ou use --dry-run, ou --forcar.")
         return 1
 
-    novos, mudados, iguais = [], [], 0
+    manifesto = ler_manifesto(docs)
+    novos, mudados, protegidos, iguais = [], [], [], 0
     for origem in sorted(raiz.rglob("*")):
         if origem.is_dir():
             continue
@@ -323,42 +359,57 @@ def atualizar(projeto: Path, simular: bool, forcar: bool) -> int:
         if not any(rel == d or rel.startswith(d) for d in DO_KIT):
             continue
         alvo = (projeto if rel in NA_RAIZ else docs) / rel
-        conteudo = deslinkar(origem.read_text(encoding="utf-8")) if origem.suffix == ".md" else None
+        novo = (deslinkar(origem.read_text(encoding="utf-8")).encode("utf-8")
+                if origem.suffix == ".md" else origem.read_bytes())
+        item = (rel, alvo, novo)
         if not alvo.exists():
-            novos.append((rel, alvo, conteudo, origem))
-        elif conteudo is not None and alvo.read_text(encoding="utf-8") == conteudo:
+            novos.append(item)
+            continue
+        atual = alvo.read_bytes()
+        if atual == novo:
             iguais += 1
-        elif conteudo is None and alvo.read_bytes() == origem.read_bytes():
-            iguais += 1
+        elif manifesto.get(rel) != impressao(atual):
+            # O arquivo no projeto não é o que o kit escreveu: alguém o editou (ou o
+            # projeto é anterior ao manifesto). Sobrescrever aqui apaga trabalho.
+            protegidos.append(item)
         else:
-            mudados.append((rel, alvo, conteudo, origem))
+            mudados.append(item)
 
     versao = versao_do_kit()
+    anterior = docs / MARCA_VERSAO
     print(f"Atualização para {versao} em {docs.name}/")
-    anterior = (docs / MARCA_VERSAO)
     print(f"   versão atual do projeto: {anterior.read_text(encoding='utf-8').strip() if anterior.exists() else 'não registrada'}")
-    print(f"   {len(novos)} arquivo(s) novo(s) · {len(mudados)} atualizado(s) · {iguais} sem mudança")
-    for rotulo, lista in (("NOVO", novos), ("ATUALIZA", mudados)):
+    print(f"   {len(novos)} novo(s) · {len(mudados)} atualizável(is) · {len(protegidos)} protegido(s) · {iguais} sem mudança")
+    for rotulo, lista in (("NOVO", novos), ("ATUALIZA", mudados), ("PROTEGIDO", protegidos)):
         for rel, *_ in lista:
-            print(f"   {rotulo:9} {rel}")
+            print(f"   {rotulo:10} {rel}")
+
+    if protegidos and not forcar:
+        print("\n   PROTEGIDO = você editou este arquivo do kit, ou ele é anterior ao manifesto.")
+        print("   Ele NÃO será tocado. Para trazer a versão do kit por cima (perdendo a sua),")
+        print("   rode de novo com --forcar — e revise o diff antes de commitar.")
 
     if simular:
         print("\n(--dry-run: nada foi escrito.)")
         return 0
-    if not novos and not mudados:
+
+    a_escrever = novos + mudados + (protegidos if forcar else [])
+    if not a_escrever:
         print("\nNada a fazer: o processo já está nesta versão.")
         return 0
 
-    for _rel, alvo, conteudo, origem in novos + mudados:
+    for _rel, alvo, dados in a_escrever:
         alvo.parent.mkdir(parents=True, exist_ok=True)
-        if conteudo is None:
-            shutil.copy2(origem, alvo)
-        else:
-            alvo.write_text(conteudo, encoding="utf-8")
+        alvo.write_bytes(dados)
+    for rel, _alvo, dados in a_escrever:
+        manifesto[rel] = impressao(dados)
+    escrever_manifesto(docs, manifesto)
     (docs / MARCA_VERSAO).write_text(versao + "\n", encoding="utf-8")
 
     print(f"\nOK: processo atualizado para {versao}.")
     print("   NADA foi tocado em a_context/, d_history/, e_qa/, no backlog nem nos aprendizados.")
+    if protegidos and not forcar:
+        print(f"   {len(protegidos)} arquivo(s) preservado(s) por customização — releia a lista acima.")
     print(f"   Revise com: git -C {projeto} diff")
     print(f"   Depois rode: python {docs.name}/scripts/check.py")
     print("   Arquivo removido do kit NÃO é apagado do projeto — confira o diff se algo ficou órfão.")

@@ -16,11 +16,12 @@ FALHAS (código 1)
   4. WIP acima do declarado            10. IDs D-/Q-/QA- citados que não existem
   5. Cruft óbvio                       11. IDs duplicados no DECISIONS
   6. Skill sem name/description        12. "Em andamento" divergindo entre BACKLOG e CONTEXT
+                                       13. Tarefa apontando módulo que não existe no PLANO
 
 AVISOS (não reprovam; com --avisos-reprovam, reprovam)
   frontmatter ausente · placeholders · templates em rascunho · nota órfã ·
   arquivo grande não varrido · varredura de histórico que não rodou ·
-  portão automático (pre-commit) não instalado
+  portão automático (pre-commit) não instalado · módulo do PLANO sem tarefa
 
 Marque uma linha com `checar:ignore` para isentá-la da varredura de segredo
 (use só quando o valor for comprovadamente falso — a marca fica visível no diff).
@@ -423,6 +424,33 @@ if texto_dec:
         falhas.append(f"ID citado que não existe em {DECISOES}: {detalhe}")
 
 # 12. "Em andamento" tem de bater entre BACKLOG e CONTEXT (regra 6, fonte única).
+# 13. Cobertura módulo <-> tarefa. Metade FORMAL do que a skill artifact-consistency faz
+#     no olho: módulo do PLANO que não aparece em nenhuma tarefa do BACKLOG simplesmente
+#     não é construído, e ninguém percebe até faltar. A ideia vem do BMAD, que marca toda
+#     tarefa com o critério que ela atende — traçabilidade no artefato, não na revisão.
+#     Só funciona porque os IDs existem: sem `M1` no plano e `**Módulo:** M1` na tarefa,
+#     isto seria julgamento semântico, e script não julga semântica.
+texto_plano = corpo.get(raiz / PLANO, "")
+if texto_plano and texto_bl:
+    modulos = {m.group(1): m.group(2).strip()
+               for m in re.finditer(r"^###\s+(M\d+)\s*[—–-]\s*(.+)$", texto_plano, re.M)}
+    citados = set(re.findall(r"\*\*M[óo]dulo:\*\*\s*(M\d+)\b", texto_bl))
+    fantasmas = citados - set(modulos)
+    if fantasmas:
+        falhas.append(
+            f"{BACKLOG} aponta módulo inexistente em {PLANO}: " + ", ".join(sorted(fantasmas))
+            + " — tarefa apontando para o vazio é escopo sem dono."
+        )
+    # Módulo ainda com nome de template (`<nome>`) é plano não preenchido, não lacuna.
+    sem_tarefa = sorted(i for i, nome in modulos.items()
+                        if not nome.lstrip().startswith("<") and i not in citados)
+    if sem_tarefa:
+        avisos.append(
+            "Módulo do PLANO sem tarefa no BACKLOG: " + ", ".join(sem_tarefa)
+            + " — ou vira tarefa, ou é declarado fora do escopo no CONTEXT. "
+            "(Aviso, não falha: entre congelar o plano e povoar o backlog existe um intervalo legítimo.)"
+        )
+
 if em_andamento and texto_ctx:
     linha_ctx = re.search(r"\*\*Em andamento[^:]*:\*\*\s*(.+)", texto_ctx)
     if linha_ctx and "<" not in linha_ctx.group(1):

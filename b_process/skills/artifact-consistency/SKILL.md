@@ -33,6 +33,10 @@ Percorra todas; não pare na primeira.
 
 1. **Cobertura módulo → tarefa.** Módulo do PLANO sem nenhuma tarefa no BACKLOG. É o achado
    que mais custa: o módulo simplesmente não vai ser construído, e ninguém percebe até faltar.
+   *A metade formal disto já é máquina* — o `check.py` cruza `### M1 —` do PLANO com
+   `**Módulo:** M1` do BACKLOG e avisa. **Rode o script antes**, e gaste esta passagem no que
+   ele não vê: módulo com tarefa que não cobre o contrato inteiro, e tarefa marcada com o
+   módulo errado. Marcação existe é diferente de marcação correta.
 2. **Cobertura tarefa → módulo.** Tarefa que não pertence a módulo nenhum. Ou o plano está
    incompleto, ou a tarefa é escopo que entrou pela porta dos fundos.
 3. **Restrição inegociável sem portão.** Toda restrição do CONTEXT precisa de uma checagem

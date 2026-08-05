@@ -326,5 +326,106 @@ class TestAtualizacao(unittest.TestCase):
             self.assertIn("não commitadas", r2.stdout)
 
 
+class TestCustomizacaoPreservada(unittest.TestCase):
+    """A atualização NÃO pode sobrescrever arquivo do kit que o dono editou.
+
+    Este teste existe porque a primeira versão do `--upgrade` fazia exatamente isso, em
+    silêncio, e só foi descoberto ao comparar com outro kit que resolve customização com
+    arquivo de override. O manifesto de impressões é a resposta: sem ele não há como
+    distinguir "arquivo do kit intocado" de "o dono adaptou isto ao time dele"."""
+
+    def test_arquivo_customizado_nao_e_sobrescrito(self):
+        with area_temporaria() as tmp:
+            kit = montar_kit(Path(tmp) / "kit")
+            projeto = Path(tmp) / "projeto"
+            rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
+            docs = next(projeto.glob("*_Project_DOCs"))
+            self.assertTrue((docs / ".kit-manifest").exists(), "manifesto não foi gravado")
+
+            alvo = docs / "b_process/skills/planner/SKILL.md"
+            alvo.write_text(alvo.read_text(encoding="utf-8") + "\n## Regra local do time\n",
+                            encoding="utf-8")
+            intocado = docs / "b_process/a_roadmap.md"
+            git(projeto, "init", "-q")
+            git(projeto, "add", "-A")
+            git(projeto, *GIT_ID, "commit", "-qm", "customizacao")
+
+            # o kit mexe nos DOIS arquivos
+            for arquivo in ("b_process/skills/planner/SKILL.md", "b_process/a_roadmap.md"):
+                p = kit / arquivo
+                p.write_text(p.read_text(encoding="utf-8") + "\n<!-- v10 -->\n", encoding="utf-8")
+
+            r = rodar_script("new_project.py", str(projeto), "--upgrade", cwd=kit)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn("PROTEGIDO", r.stdout)
+
+            self.assertIn("Regra local do time", alvo.read_text(encoding="utf-8"),
+                          "a atualização apagou a customização do dono")
+            self.assertNotIn("v10", alvo.read_text(encoding="utf-8"),
+                             "sobrescreveu arquivo customizado sem --forcar")
+            self.assertIn("v10", intocado.read_text(encoding="utf-8"),
+                          "arquivo intocado deixou de ser atualizado")
+
+    def test_forcar_traz_a_versao_do_kit(self):
+        with area_temporaria() as tmp:
+            kit = montar_kit(Path(tmp) / "kit")
+            projeto = Path(tmp) / "projeto"
+            rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
+            docs = next(projeto.glob("*_Project_DOCs"))
+            alvo = docs / "b_process/skills/planner/SKILL.md"
+            alvo.write_text(alvo.read_text(encoding="utf-8") + "\nlocal\n", encoding="utf-8")
+            p = kit / "b_process/skills/planner/SKILL.md"
+            p.write_text(p.read_text(encoding="utf-8") + "\n<!-- v10 -->\n", encoding="utf-8")
+            git(projeto, "init", "-q")
+            git(projeto, "add", "-A")
+            git(projeto, *GIT_ID, "commit", "-qm", "x")
+
+            r = rodar_script("new_project.py", str(projeto), "--upgrade", "--forcar", cwd=kit)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn("v10", alvo.read_text(encoding="utf-8"))
+
+
+class TestCoberturaModuloTarefa(unittest.TestCase):
+    """`### M1 —` no PLANO cruzado com `**Módulo:** M1` no BACKLOG. A ideia é do BMAD
+    (toda tarefa marcada com o critério que atende); o valor aqui é que a marcação torna
+    determinística uma checagem que antes só existia no olho de quem revisava."""
+
+    def preparar(self, tmp, modulos: str, tarefas: str):
+        repo = montar_kit(Path(tmp) / "repo")
+        plano = repo / "a_context/b_plan.md"
+        plano.write_text(plano.read_text(encoding="utf-8") + "\n" + modulos, encoding="utf-8")
+        bl = repo / "b_process/c_backlog.md"
+        bl.write_text(bl.read_text(encoding="utf-8") + "\n" + tarefas, encoding="utf-8")
+        return repo
+
+    def test_modulo_sem_tarefa_avisa(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "### M7 — cobranca\n- **Recebe:** x\n", "")
+            saida = rodar_check(repo).stdout
+            self.assertIn("Módulo do PLANO sem tarefa", saida)
+            self.assertIn("M7", saida)
+
+    def test_modulo_com_tarefa_nao_avisa(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "### M7 — cobranca\n- **Recebe:** x\n",
+                                 "- [ ] T-07 — cobrar · **Módulo:** M7 · **Portão:** teste verde\n")
+            self.assertNotIn("Módulo do PLANO sem tarefa", rodar_check(repo).stdout)
+
+    def test_tarefa_apontando_modulo_inexistente_reprova(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "### M7 — cobranca\n- **Recebe:** x\n",
+                                 "- [ ] T-08 — algo · **Módulo:** M42 · **Portão:** x\n")
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("módulo inexistente", r.stdout)
+
+    def test_template_nao_preenchido_nao_dispara(self):
+        """`### M1 — <nome>` é plano em branco, não lacuna. Aviso falso ensina a ignorar
+        aviso — o vício que o kit condena."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.assertNotIn("Módulo do PLANO sem tarefa", rodar_check(repo).stdout)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -12,7 +12,13 @@ status: rascunho
 - [ ] A-01 — <ex.: rodar os testes oficiais / criar o repositório / configurar credencial / aprovar o plano>
 
 ## A fazer
-- [ ] T-01 — <tarefa> · **Portão:** <checagem objetiva> · **Skill:** <ex.: [[b_process/skills/testing/SKILL|testes]]>
+- [ ] T-01 — <tarefa> · **Módulo:** <M-NN do PLANO> · **Portão:** <checagem objetiva> · **Skill:** <ex.: [[b_process/skills/testing/SKILL|testes]]>
+
+> **`**Módulo:**` não é enfeite.** É o que permite ao `scripts/check.py` responder por conta
+> própria "existe módulo do PLANO que ninguém vai construir?" — a pergunta mais cara do
+> projeto, e a que ninguém faz sozinho. Tarefa sem módulo é escopo que entrou pela porta dos
+> fundos; módulo sem tarefa não é construído. Tarefa que não serve a módulo nenhum (chore,
+> ação de infra) pode omitir o campo — o script só cobra o caminho inverso.
 
 ## Em andamento (máx 1 — espelha "Em andamento" do [[a_context_source|CONTEXT]])
 <!-- O número em "máx N" é o limite que scripts/check.py cobra. Solo = 1.

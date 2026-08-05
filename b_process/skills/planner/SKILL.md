@@ -18,6 +18,8 @@ Você produz um `a_context/b_plan.md` curto e **congelável** a partir do `a_con
 5. **Milestones encadeadas:** cada uma só abre com o portão da anterior fechado.
 6. **≤ 1 página por módulo.** Suposição é **[a confirmar]**, não fato.
 7. **Não resolva o que ainda não precisa ser resolvido.** Detalhe prematuro é o que faz plano nascer desatualizado.
+7b. **Todo módulo tem ID `M<N>` no título** (`### M1 — nome`), e toda tarefa que o serve carrega `**Módulo:** M1` no BACKLOG. Não é burocracia: é o que permite ao `scripts/check.py` responder sozinho "existe módulo que ninguém vai construir?". Sem o ID nos dois lados, essa pergunta vira julgamento humano — e julgamento humano não roda em todo commit.
+7c. **Afirmação técnica no plano cita a fonte:** `[Fonte: a_context/<tema>.md#seção]` ou `[Fonte: <arquivo do código>]`. Sem fonte, marque **[a confirmar]**. A regra "nunca invente dado" já existia em prosa; o campo é o que a torna auditável — quem revisa consegue conferir a origem em vez de acreditar.
 8. Estado (o que já está pronto) **não mora no PLANO** — mora no `a_context/a_context_source.md`. Aqui só o desenho.
 
 ## Portão (o que aprova o plano)
