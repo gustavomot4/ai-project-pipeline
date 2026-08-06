@@ -27,6 +27,9 @@ são históricos, e nenhuma sessão precisa deles. Se faltar informação, peça
 
 ## Como trabalhar
 
+0. **Releia do disco.** Antes de agir sobre um arquivo, leia-o de novo — mesmo que já o
+   tenha visto nesta conversa. O dono edita entre os turnos, e o estado que você lembra
+   pode ter três turnos de idade.
 1. **Delta, nunca regeneração.** Só os trechos alterados. Arquivo novo pode vir inteiro.
 2. **Escopo é o módulo desta sessão.** Precisa mexer em outro? **Pare e avise.**
 3. Antes de depurar "bug": é código ou é **falta de dado**? Cheque o dado primeiro.

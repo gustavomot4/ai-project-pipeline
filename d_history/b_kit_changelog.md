@@ -8,6 +8,54 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13] — 2026-08-05
+**Validação de um relatório externo que comparou este kit a sete frameworks.** As medições
+dele conferem — `CLAUDE.md` 2.821, CONTEXT 2.768/69%, skills 5.489/2.464/7.570, `check.py`
+533 linhas: todas exatas. As recomendações, nem todas. Três adotadas, três reduzidas, três
+recusadas — e o achado mais valioso da rodada não estava no relatório.
+
+- **QA-08 · a frase mais honesta do kit tinha envelhecido.** O README declarava "188 itens de
+  checklist; o script julga 18 (12 reprovam, 6 avisam) — cerca de 10%". Real: **278 itens, 26
+  julgados (14 + 12), 9%**. O relatório externo citou exatamente essa frase como a força única
+  do kit ("nenhum concorrente declara a própria taxa de cobertura") — sem conferi-la. É a
+  divergência doc × código que o kit classifica como achado de QA, na afirmação que o kit mais
+  usa para se descrever. Corrigido **e cobrado por teste**: `TestHonestidadeDeclarada` conta os
+  itens nos arquivos e o cabeçalho do `check.py`, e reprova se o README divergir. O teste pegou
+  uma deriva na hora — um item de checklist que eu mesmo tinha acabado de acrescentar.
+- **Aviso antes da parede (checagens 15 e 16).** CONTEXT acima de 90% e DECISIONS acima de 80%
+  agora avisam, com candidatos a arquivamento listados. Quem estoura o teto está no meio de uma
+  sessão e corta o que está à mão, não o que devia sair. Fecha a fraqueza que o próprio README
+  declarava: *"o arquivamento é manual e ninguém lembra"* — o mesmo argumento do QA-04, que
+  valia contra o kit e não tinha sido aplicado a ele.
+- **Tema de `a_context/` fora do mapa de leitura agora avisa.** A regra "doc fora do mapa nunca
+  é lido" era do kit e nada a cobrava: o arquivo existia, custava manutenção e ninguém o abria.
+  A máquina **julga**; escrever o mapa continua sendo do dono — script não escreve na verdade
+  de ninguém.
+- **Critério de saída do laço 4a↔4b.** O roteiro dizia "repita até o placar zerar" sem condição
+  de parada. Agora: placar de crítico/alto que não cai em **3 passagens consecutivas** encerra o
+  laço e manda para `consistencia-artefatos` ou `planejador` — achado que reaparece três vezes
+  não é bug, é sintoma de plano errado.
+- **Releia do disco** (`CLAUDE.md`, regra 0). O dono edita entre os turnos; o estado que o
+  agente lembra pode ter três turnos de idade. Custo: 150 caracteres no único arquivo pago em
+  toda sessão — e vale.
+- **Filtro de admissão no APRENDIZADOS:** incomum · opinativo · tribal · consistente. Lição que
+  falha nos quatro é redescrição do óbvio ocupando arquivo que toda retrospectiva futura lê.
+
+**Recusado, com o motivo:**
+- **Placar de trajetória em arquivo (`trend.py`).** A ideia — sinal antes da parede — foi
+  adotada como aviso de orçamento. O **mecanismo** proposto não sobrevive: `check.py` roda
+  dentro do pre-commit, e arquivo escrito ali não entra no commit (ou o hook teria de dar
+  `git add`, o que é pior); e uma linha anexada por commit vira ruído de diff e conflito de
+  merge. A parte do placar de QA exigiria varrer `e_qa/`, que o `CLAUDE.md` proíbe ler.
+- **Calibragem de complexidade 1–10 por módulo.** O número seria atribuído pelo agente — que é
+  exatamente o defeito de sensor que o próprio relatório recusa no `drift_score` do SDD, sem
+  aplicar a si mesmo. E colide com a regra do kit: número sem evidência não passa no portão.
+- **Anotar supersessão na decisão antiga (D-03 recebe "supersedido por D-14").** Viola
+  append-only, que é invariante do kit. O mecanismo já existe na linha nova (`SUPERSEDE D-XX`).
+- **Envelhecimento de Q-NN em dias.** Exigiria coluna de data no DECISIONS. O kit amarra Q-NN a
+  uma **condição** ("decidir quando"), não a um prazo, de propósito: pendência de dono destrava
+  por marco, não por calendário.
+
 ## [kit v12] — 2026-08-05
 **Comparação com o `SuperClaude-Org/SuperClaude_Framework` v4.3.0 — foco nos agentes, feita
 sobre o pacote instalado (`pip download`), não sobre o README.** 20 agentes, esquema de corpo

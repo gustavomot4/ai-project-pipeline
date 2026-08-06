@@ -477,6 +477,53 @@ class TestEsquemaDasSkills(unittest.TestCase):
             self.assertIn("fronteira negativa", rodar_check(repo).stdout)
 
 
+class TestHonestidadeDeclarada(unittest.TestCase):
+    """A frase mais distintiva do kit é a que declara a própria cobertura: "N itens de
+    checklist, o script julga M". Um agente externo a citou como a força única do kit —
+    e ela estava **errada**: dizia 188/18 quando o real era 277/23. A auto-declaração de
+    honestidade tinha envelhecido em silêncio, que é a divergência doc × código que o
+    próprio kit classifica como achado de QA.
+
+    Este teste existe para que ela não envelheça de novo. Fonte da verdade: os arquivos."""
+
+    def contar(self):
+        checklist = len(re.findall(r"^- \[ \]", (KIT / "b_process/b_checklist.md")
+                                   .read_text(encoding="utf-8"), re.M))
+        skills = sum(len(re.findall(r"^- \[ \]", p.read_text(encoding="utf-8"), re.M))
+                     for p in (KIT / "b_process/skills").glob("*/SKILL.md"))
+        cab = (KIT / "scripts/check.py").read_text(encoding="utf-8").split('"""')[1]
+        # O bloco FALHAS numera em DUAS COLUNAS na mesma linha ("1. ...    7. ..."), então
+        # contar por início de linha devolve metade. Conta os IDs distintos do bloco.
+        bloco = cab.split("FALHAS", 1)[1].split("AVISOS", 1)[0]
+        # `\S` e não `[A-Z…]`: o item "9. .gitignore sem cobertura" começa com ponto, e
+        # a classe restrita o engolia — a contagem dava 13 num bloco de 14. Teste que
+        # conta errado é pior que teste ausente: ele autoriza o número errado.
+        falhas = len({int(n) for n in re.findall(r"\b(\d{1,2})\.\s+\S", bloco)})
+        # Avisos são lista em prosa separada por "·" — contáveis do mesmo jeito.
+        bloco_av = cab.split("AVISOS", 1)[1].split("\n\n", 1)[0]
+        avisos = len([x for x in bloco_av.split("·") if x.strip()])
+        return checklist, skills, falhas, avisos
+
+    def test_readme_declara_os_numeros_reais(self):
+        checklist, skills, falhas, avisos = self.contar()
+        readme = (KIT / "README.md").read_text(encoding="utf-8")
+        m = re.search(r"\*\*(\d+)\*\* itens de checklist \((\d+) no .*?\+ (\d+) nos", readme)
+        self.assertIsNotNone(m, "a frase de cobertura sumiu do README")
+        decl_total, decl_check, decl_skills = (int(g) for g in m.groups())
+        self.assertEqual((decl_check, decl_skills), (checklist, skills),
+                         f"README diz {decl_check}+{decl_skills}; real é {checklist}+{skills}")
+        self.assertEqual(decl_total, checklist + skills, "o total declarado não soma")
+
+        m2 = re.search(r"julga \*\*(\d+)\*\* deles \((\d+) reprovam o commit, (\d+) avisam\)", readme)
+        self.assertIsNotNone(m2, "a frase de cobertura do script sumiu do README")
+        decl_soma, decl_falhas, decl_avisos = (int(g) for g in m2.groups())
+        self.assertEqual(decl_avisos, avisos,
+                         f"README diz {decl_avisos} avisos; o cabeçalho lista {avisos}")
+        self.assertEqual(decl_soma, falhas + avisos, "o total julgado não soma")
+        self.assertEqual(decl_falhas, falhas,
+                         f"README diz {decl_falhas} falhas; o cabeçalho do check.py numera {falhas}")
+
+
 class TestCanarioDosTemplates(unittest.TestCase):
     """Canário: o `check.py` lê os templates por REGEX, então uma edição cosmética num
     template faz a checagem parar de checar — em silêncio, com o verde continuando a sair.

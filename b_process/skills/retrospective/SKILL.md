@@ -24,6 +24,18 @@ O trabalho recém-concluído + `b_process/d_agent_learnings.md`.
 - [ ] Nenhuma duplica linha já existente no `b_process/d_agent_learnings.md`.
 - [ ] A frase final diz algo que o dono não gostaria de ouvir, mas precisa.
 
+## Filtro de admissão (o que merece virar linha no APRENDIZADOS)
+Uma lição só entra se passar nos **quatro**. Sem filtro, o arquivo enche de redescrição do
+óbvio ao longo de 40 sessões — e aí ninguém lê o arquivo, inclusive as linhas que importavam.
+
+- **Incomum** — não é o comportamento padrão da linguagem, do framework ou da ferramenta.
+- **Opinativo** — poderia ter sido decidido de outro jeito; existe um trade-off atrás.
+- **Tribal** — alguém novo no projeto não descobriria sozinho lendo o código.
+- **Consistente** — vale além do caso que a gerou; repete-se ou vai se repetir.
+
+"Testar antes de entregar" falha em incomum e em tribal: é redescrição do óbvio.
+"Sandbox não é portão: o encoding do dono quebrou o script" passa nos quatro.
+
 ## Limites (mesmo tendo sido a skill certa)
 > A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
 > mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.

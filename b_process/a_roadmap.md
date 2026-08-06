@@ -89,6 +89,8 @@ Na sessão de autenticação, responda antes de aprovar: **o que exatamente voc�
 
 > **Não pare na primeira passagem.** Os defeitos que mais custam — segredo de sessão fixo, boot aceitando placeholder, divergência entre doc e código — não aparecem em teste de feature; aparecem em ataque dirigido, e raramente no primeiro. Repita 4a↔4b até o placar de crítico/alto zerar de verdade. (O [[b_reference_case_spo|caso de referência]] relata 14 passagens até chegar lá; é relato, não medição — trate como ordem de grandeza.)
 
+> **Critério de saída do laço — sem ele, "repita até zerar" é laço infinito.** Se o placar de crítico/alto **não cair em 3 passagens consecutivas**, **pare o laço de QA** e abra sessão de [[b_process/skills/artifact-consistency/SKILL|consistencia-artefatos]] ou [[b_process/skills/planner/SKILL|planejador]]. Achado que reaparece três vezes não é bug: é sintoma de plano errado, e continuar revisando queima sessões atacando o efeito. O sinal é objetivo e sai dos relatórios que a Fase 4b já escreve — não depende de o agente se autoavaliar.
+
 ---
 
 ## Fase 5 — Empacotar e operar (1–2 sessões)

@@ -52,6 +52,7 @@ Sessão separada com um único objetivo: **quebrar o que foi construído**. Voc�
 - [ ] Crítico e alto listados como bloqueantes de entrega, com `QA-NN` atribuído em [[c_decisions|DECISIONS]].
 - [ ] `python scripts/check.py --historico-completo` e `git grep` por segredo executados; varredura de cruft feita.
 - [ ] **Você não consertou nada.** Se consertou, a sessão deixou de ser adversarial — reporte isso como desvio.
+- [ ] **Comparação com a passagem anterior**, quando houver: o placar de crítico/alto caiu? Se **não caiu em 3 passagens seguidas**, declare o laço esgotado e recomende `consistencia-artefatos` ou `planejador` — achado que reaparece três vezes é sintoma de plano errado, e mais uma passagem ataca o efeito.
 
 ## Limites (mesmo tendo sido a skill certa)
 > A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**

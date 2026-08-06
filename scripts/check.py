@@ -17,11 +17,18 @@ FALHAS (código 1)
   5. Cruft óbvio                       11. IDs duplicados no DECISIONS
   6. Skill sem name/description        12. "Em andamento" divergindo entre BACKLOG e CONTEXT
                                        13. Tarefa apontando módulo que não existe no PLANO
+                                       14. Skill fora do esquema (Contexto/Limites/Saída)
 
 AVISOS (não reprovam; com --avisos-reprovam, reprovam)
   frontmatter ausente · placeholders · templates em rascunho · nota órfã ·
   arquivo grande não varrido · varredura de histórico que não rodou ·
-  portão automático (pre-commit) não instalado · módulo do PLANO sem tarefa
+  portão automático (pre-commit) não instalado · módulo do PLANO sem tarefa ·
+  description de skill sem fronteira negativa · CONTEXT perto do teto ·
+  DECISIONS perto do teto · tema de a_context/ fora do mapa de leitura
+
+O README declara quantos itens de checklist existem e quantos esta máquina julga.
+Esse número é cobrado por `test_check.py` — a frase mais honesta do kit não pode
+ser a que envelhece em silêncio.
 
 Marque uma linha com `checar:ignore` para isentá-la da varredura de segredo
 (use só quando o valor for comprovadamente falso — a marca fica visível no diff).
@@ -172,6 +179,14 @@ elif len(texto_ctx) > 4000:
         f"{CONTEXTO} com {len(texto_ctx)} caracteres (orçamento: 4.000). "
         f"Corte: detalhe -> a_context/<tema>.md, decisão -> {DECISOES}, datado -> d_history/a_changelog.md."
     )
+elif len(texto_ctx) > 3600:
+    # Avisar a 90% em vez de só reprovar a 100%: quando o teto estoura, quem escreve
+    # está no meio de uma sessão de trabalho e vai cortar o que estiver à mão — não o
+    # que devia sair. O aviso dá a chance de mover um tema com calma, antes da parede.
+    avisos.append(
+        f"{CONTEXTO} com {len(texto_ctx)}/4.000 caracteres ({100*len(texto_ctx)//4000}%) — "
+        "mova um tema para a_context/<tema>.md agora, não na sessão em que estourar."
+    )
 
 # 2. Registro de decisões inchado (projeto longo)
 dec = raiz / DECISOES
@@ -180,6 +195,17 @@ if texto_dec and len(texto_dec) > 12000:
     falhas.append(
         f"{DECISOES} acima de 12.000 caracteres — arquive SUPERSEDIDAS/rejeitadas antigas "
         "em e_qa/decisions_archive.md (IDs preservados) e deixe um ponteiro."
+    )
+elif texto_dec and len(texto_dec) > 9600:
+    # O README declarava esta fraqueza com todas as letras: "o arquivamento é manual e
+    # ninguém lembra". Portão que só roda quando alguém lembra não é portão — foi o
+    # argumento do QA-04, e valia contra o próprio kit. O script não arquiva (a decisão
+    # é do dono); ele avisa antes da parede e já aponta os candidatos.
+    velhas = re.findall(r"^\|\s*(D-\d+)\s*\|[^|]*\|\s*(?:ADOTADO|REJEITADO)", texto_dec, re.M)
+    amostra = ", ".join(velhas[:5]) if velhas else "as mais antigas"
+    avisos.append(
+        f"{DECISOES} com {len(texto_dec)}/12.000 caracteres ({100*len(texto_dec)//12000}%) — "
+        f"arquive as antigas em e_qa/decisions_archive.md, preservando os IDs. Candidatas: {amostra}."
     )
 
 # 3. Fonte única (regra 6) — o mesmo nome em dois lugares é estado duplicado
@@ -497,6 +523,21 @@ sem_fm = [
 ]
 if sem_fm:
     avisos.append(f"{len(sem_fm)} nota(s) sem frontmatter: " + ", ".join(sem_fm[:5]))
+
+# Tema de domínio que não entrou no mapa de leitura do CONTEXT. A regra é do próprio
+# kit — "doc fora do mapa nunca é lido" — e nada a cobrava: o arquivo existia, custava
+# manutenção e ninguém o abria. Aqui a máquina JULGA; escrever o mapa continua sendo do
+# dono, porque o CONTEXT é a verdade dele e script não escreve na verdade de ninguém.
+NUCLEO_CONTEXTO = {"a_context_source", "b_plan", "c_decisions", "README"}
+if texto_ctx:
+    fora = sorted(p.stem for p in (raiz / "a_context").glob("*.md")
+                  if p.stem not in NUCLEO_CONTEXTO and p.stem not in texto_ctx)
+    if fora:
+        avisos.append(
+            "Tema em a_context/ fora do Mapa de leitura do CONTEXT: " + ", ".join(fora)
+            + " — doc fora do mapa nunca é lido; ou entra no mapa com a condição que "
+            "justifica lê-lo, ou sai do repositório."
+        )
 
 placeholders = re.findall(r"<[A-Za-zÀ-ú][^<>\n]{2,60}>", texto_ctx)
 if placeholders:
