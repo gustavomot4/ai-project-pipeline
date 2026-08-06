@@ -21,6 +21,15 @@ status: atual
 - [ ] Mapa de módulos/serviços × dado dono × dependências, acíclico?
 - [ ] Representações obrigatórias declaradas no [[a_context_source|CONTEXT]] (dinheiro inteiro, data UTC, ID opaco, unidades)?
 
+## Consistência entre artefatos (Fase 1c — antes do primeiro código)
+> Sessão de [[b_process/skills/artifact-consistency/SKILL|consistencia-artefatos]], separada de quem escreveu o plano. Roda `python scripts/task.py check` **antes**: a metade formal já é máquina.
+- [ ] Todo módulo do [[b_plan|PLANO]] tem ao menos uma tarefa no [[c_backlog|BACKLOG]] marcada com `**Módulo:** M<N>` — ou está declarado fora do escopo no [[a_context_source|CONTEXT]]?
+- [ ] Toda **restrição inegociável** do CONTEXT tem um portão, em algum módulo, que a verifica? (Restrição que ninguém checa é decoração.)
+- [ ] Todo critério de aceite é um comando ou um número — nenhum "rápido", "seguro", "intuitivo"?
+- [ ] O PLANO não adota nada que o [[c_decisions|DECISIONS]] já **rejeitou**?
+- [ ] O mesmo conceito não aparece com dois nomes entre CONTEXT, PLANO e BACKLOG?
+- [ ] Zero achados **CRÍTICOS** em aberto antes de escrever a primeira linha de código?
+
 ## Backend / domínio
 - [ ] Migration roda num banco vazio e recria o schema inteiro?
 - [ ] Migration é aditiva (expand/contract)? Remoção só uma release depois?

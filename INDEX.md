@@ -10,8 +10,11 @@ status: atual
 
 ## Começar
 1. Projeto novo: `python scripts/new_project.py ../meu-app --name "Meu App" --code src`
-2. `cd ../meu-app && git init && python 77777777_*_Project_DOCs/scripts/install_hook.py` — a higiene passa a rodar sozinha em todo commit
+2. `cd ../meu-app && git init && python 77777777_*_Project_DOCs/scripts/task.py hook` — a higiene passa a rodar sozinha em todo commit
 3. Abra o [[a_roadmap|ROTEIRO]] e siga da Fase 0
+
+> **Todos os comandos moram em um lugar só:** `python scripts/task.py --help`.
+> Projeto que já usa o kit e ficou para trás: `python scripts/new_project.py <projeto> --upgrade --dry-run` mostra o que mudaria no **processo**, sem tocar na verdade do projeto.
 
 > **Onde cada coisa mora** e como se nomeia: [[e_repository_standard|padrão do repositório]]. Este kit **é** a pasta de documentação desse padrão — `new_project.py` o instala num projeto como `77777777_<TAG>_Project_DOCs/`.
 
@@ -31,7 +34,7 @@ status: atual
 | [[a_changelog|CHANGELOG]] | histórico datado do projeto (nenhuma sessão carrega) |
 | [[README]] | as 7 regras, seu papel e **onde o kit para** |
 
-## Os 23 agentes ([[b_process/skills/README|skills/]])
+## Os 24 agentes ([[b_process/skills/README|skills/]])
 Cada um é uma skill instalável, com regras e portão próprios. **Uma skill por sessão.**
 
 **Fases:** [[b_process/skills/context-bootstrap/SKILL|bootstrap-contexto]] (projeto novo) · [[b_process/skills/existing-project-adoption/SKILL|adocao-projeto-existente]] (projeto que já roda) · [[b_process/skills/planner/SKILL|planejador]] · [[b_process/skills/artifact-consistency/SKILL|consistencia-artefatos]] · [[b_process/skills/evolution-auditor/SKILL|auditor-evolucao]] · [[b_process/skills/delivery-review/SKILL|revisao-entrega]] · [[b_process/skills/retrospective/SKILL|retrospectiva]]
@@ -52,6 +55,8 @@ Cada um é uma skill instalável, com regras e portão próprios. **Uma skill po
 | [[b_reference_case_spo\|c_technical_docs/]] | caso de referência (narrativa, não medição — ver a ressalva lá) |
 
 ## Higiene
-`python scripts/check.py` — reprova orçamento estourado, estado duplicado, WIP acima do declarado, skill inválida, link quebrado, segredo versionado e ID inexistente. Com o hook instalado, roda em todo commit.
+`python scripts/task.py check` — reprova orçamento estourado, estado duplicado, WIP acima do declarado, skill fora do esquema, link quebrado, segredo versionado, ID inexistente e tarefa apontando módulo que não existe. Com o hook instalado, roda em todo commit.
 
-Antes de entregar, rode `python scripts/check.py --historico-completo`: no dia a dia a varredura de segredo olha só os 30 commits recentes, e o script diz qual alcance usou.
+Antes de entregar, `python scripts/task.py check-all`: no dia a dia a varredura de segredo olha só os 30 commits recentes, e o script diz qual alcance usou.
+
+`python scripts/task.py test` roda os testes de regressão dos próprios scripts — os mesmos que o CI roda em Linux **e Windows**, porque os dois bugs de encoding que o kit já pagou não reproduzem no Linux.

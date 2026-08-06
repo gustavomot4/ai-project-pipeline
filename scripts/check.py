@@ -131,7 +131,12 @@ PASTAS_VAULT = {"a_context", "b_process", "c_technical_docs", "d_history", "e_qa
 PASTAS_HISTORICAS = {"d_history", "e_qa", "docs"}
 # ----------------------------------------------------------------------------------
 
-IGNORAR = {".git", ".venv", "venv", "node_modules", ".obsidian", "__pycache__", ".next", "dist", "build"}
+# `.pytest_cache` e `.mypy_cache` entram porque um `README.md` gerado por ferramenta dentro
+# deles disparava "nota sem frontmatter" — aviso falso, sobre arquivo que não é nota e que o
+# dono não escreveu. Aviso falso ensina a ignorar aviso: é a regra do próprio kit, e ela
+# estava sendo violada na primeira execução real numa máquina com pytest instalado.
+IGNORAR = {".git", ".venv", "venv", "node_modules", ".obsidian", "__pycache__",
+           ".pytest_cache", ".mypy_cache", ".ruff_cache", ".next", "dist", "build"}
 # Notas que existem para serem lidas soltas: não são órfãs por não serem linkadas.
 ORFA_OK = {"README", "INDEX", "CLAUDE", "AGENTS"}
 # Acima disto o arquivo não é varrido (e o pulo é declarado como aviso, nunca silencioso).

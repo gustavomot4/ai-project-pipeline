@@ -41,10 +41,17 @@ for _fluxo in (sys.stdout, sys.stderr):
 # `docs/` é a pasta da auditoria do PRÓPRIO kit (ver e_qa/README.md) — excluída por
 # PASTA de propósito: relatório novo do kit fica de fora sozinho, sem ninguém precisar
 # lembrar de acrescentar o nome do arquivo aqui.
-EXCLUIR_PASTAS = {".git", "__pycache__", ".pytest_cache", ".venv", "venv", "node_modules", "docs"}
+# `.github/` é o CI DO KIT e não vai para projeto nenhum: ele acabaria dentro da pasta de
+# documentação, onde o GitHub Actions nem procura, rodando comandos com caminho de kit.
+EXCLUIR_PASTAS = {".git", ".github", "__pycache__", ".pytest_cache", ".venv", "venv",
+                  "node_modules", "docs"}
 EXCLUIR_ARQUIVOS = {
     ".obsidian/workspace.json",
     "scripts/new_project.py",
+    # Testa os scripts DO KIT (inclusive o `new_project.py`, que nem vai junto). Copiado
+    # para um projeto, ele reprova no primeiro `task.py test` — e suíte que nasce vermelha
+    # ensina a ignorar suíte, que é o vício que este kit combate em todo lugar.
+    "scripts/test_check.py",
     "d_history/b_kit_changelog.md",
     "c_technical_docs/b_reference_case_spo.md",
 }

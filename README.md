@@ -22,7 +22,7 @@ Nenhuma ferramenta serve para tudo, e o kit fica mais útil quando você sabe on
 | Multi-repo / monorepo grande | Não | o kit assume um repositório e um `CONTEXT` |
 | CI/CD, revisão por pares | Não cobre | o único automatismo é o pre-commit de `scripts/check.py` |
 
-**A limitação honesta mais importante:** o kit tem **278** itens de checklist (112 no [[b_checklist|CHECKLIST]] + 166 nos `b_process/skills/`); `scripts/check.py` julga **26** deles (14 reprovam o commit, 12 avisam) — cerca de 9%. Estes números são **cobrados por `scripts/test_check.py`**: a frase mais honesta do kit não pode ser a que envelhece em silêncio (ela já tinha envelhecido uma vez, dizendo 188/18). O resto depende de você rodar a seção certa do [[b_checklist|CHECKLIST]]. Isto é um kit de disciplina com algumas travas automáticas — não um sistema que impede erro.
+**A limitação honesta mais importante:** o kit tem **284** itens de checklist (118 no [[b_checklist|CHECKLIST]] + 166 nos `b_process/skills/`); `scripts/check.py` julga **26** deles (14 reprovam o commit, 12 avisam) — cerca de 9%. Estes números são **cobrados por `scripts/test_check.py`**: a frase mais honesta do kit não pode ser a que envelhece em silêncio (ela já tinha envelhecido uma vez, dizendo 188/18). O resto depende de você rodar a seção certa do [[b_checklist|CHECKLIST]]. Isto é um kit de disciplina com algumas travas automáticas — não um sistema que impede erro.
 
 **A segunda:** a varredura de segredo é uma rede de arrasto, não uma garantia. Ela cobre 11 famílias de padrão e foi medida contra 8 formatos reais de vazamento (8/8, 0 falsos-positivos em 12 iscas) — mas um segredo em formato que ela não conhece passa. Ver [[b_external_audit_report_260730_0900|a auditoria]], que mediu a versão anterior detectando **0 de 8**.
 
@@ -55,14 +55,22 @@ b_process/        COMO SE TRABALHA
   c_backlog.md              fonte única de tarefas, com WIP declarado
   d_agent_learnings.md      lições vivas, já com as herdadas
   e_repository_standard.md  o padrão — vai junto para todo projeto
-  skills/                   os 23 agentes (SKILL.md instalável)
+  skills/                   os 24 agentes (SKILL.md instalável)
   profiles/                 web-nextjs · dados-python · genérico
   templates/                modelos de D-NN, QA-NN e fecho de sessão
 
 c_technical_docs/ guia do Obsidian · caso de referência
 d_history/        changelog datado (nenhuma sessão carrega)
-e_qa/             relatórios de QA e auditoria, com timestamp no nome
-scripts/          check.py · install_hook.py · new_project.py
+e_qa/             relatórios de QA do PROJETO, com timestamp no nome
+docs/             auditoria do próprio KIT — não vai para projetos novos
+LICENSE           MIT
+.github/workflows portão rodando em Linux e Windows a cada push
+scripts/
+  task.py         ponto de entrada único: check · check-all · test · hook
+  check.py        o portão de higiene (14 falhas · 12 avisos)
+  test_check.py   testes de regressão dos scripts — só stdlib
+  install_hook.py instala o pre-commit
+  new_project.py  cria projeto novo · `--upgrade` atualiza o processo de um existente
 ```
 Projeto que roda continuamente ganha ainda um `RUNBOOK.md` na entrega (exigido pela Fase 6).
 

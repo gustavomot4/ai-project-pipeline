@@ -307,7 +307,7 @@ pula regra.**
 É mais rápido de pedir e mais lento de revisar. O diff grande não é lido por ninguém, e o
 código que estava certo volta diferente. Foi o maior custo medido em dois projetos.
 
-**"Preciso decorar os 23 agentes?"**
+**"Preciso decorar os 24 agentes?"**
 Não. No dia a dia você usa cinco ou seis. Os outros existem para quando o assunto aparece —
 e é a `description` de cada um que dispara sozinha quando a tarefa combina.
 

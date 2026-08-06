@@ -8,6 +8,38 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.1] — 2026-08-05
+**Double check de ponta a ponta antes de usar o kit num projeto real.** Seis defeitos, **todos
+introduzidos nesta mesma sessão** — enquanto o dia inteiro era gasto caçando divergência doc ×
+código em quatro kits alheios e neste. A ironia é o dado: quem mais mexe é quem mais deriva, e
+por isso deriva tem de ser cobrada por máquina, não por atenção.
+
+- **QA-09 · projeto novo nascia com o CI e a suíte do KIT.** `.github/workflows/check.yml` era
+  copiado **para dentro da pasta de documentação**, onde o GitHub Actions nem procura, rodando
+  comandos com caminho de kit. E `scripts/test_check.py` ia junto, **reprovando com 9 falhas no
+  primeiro `task.py test`** — porque testa scripts do kit, inclusive um (`new_project.py`) que
+  nem é instalado. Suíte que nasce vermelha ensina a ignorar suíte. Os dois entraram na lista
+  de exclusão, e o `task.py` explica em vez de só reclamar quando a tarefa não existe ali.
+- **QA-10 · quatro documentos diziam "23 agentes"** depois que a 24ª entrou (`INDEX`, `README`,
+  `skills/README`, `PRIMER`).
+- **QA-11 · a mesma skill tinha dois nomes de fase:** o roteiro numerava `1c`, a skill e o
+  índice diziam `Fase 1b`. Alinhado em **1c** (1a = arquitetura, 1b = plano, 1c = consistência).
+- **QA-12 · o `b_checklist.md` não conhecia a Fase 1c.** O portão da fase existia no roteiro e
+  na skill, e o arquivo que o dono usa para aceitar entrega não tinha uma linha sobre ele.
+- **QA-13 · `.pytest_cache/README.md` gerava aviso falso** ("nota sem frontmatter") na primeira
+  execução numa máquina com pytest instalado — sobre arquivo que não é nota e que o dono não
+  escreveu. Aviso falso ensina a ignorar aviso: regra do kit, violada pelo kit.
+- **`README` e `INDEX` não mencionavam nada do que foi construído hoje** — `task.py`,
+  `--upgrade`, LICENSE, `docs/`, o CI. A árvore de arquivos do README listava três scripts de
+  cinco.
+
+**E o conserto estrutural, que vale mais que os seis:** `TestDocumentacaoNaoMente` conta os
+agentes nos diretórios e cobra o número em toda a documentação, verifica que todo
+`scripts/*.py` citado existe, e que toda skill aparece no índice. Verificado nos dois sentidos:
+reintroduzir "23 agentes" reprova; criar skill fora do índice reprova. Nenhum portão pegava
+isso antes — o `check.py` conferia que os **links resolvem**, nunca que as **afirmações
+conferem**.
+
 ## [kit v13] — 2026-08-05
 **Validação de um relatório externo que comparou este kit a sete frameworks.** As medições
 dele conferem — `CLAUDE.md` 2.821, CONTEXT 2.768/69%, skills 5.489/2.464/7.570, `check.py`

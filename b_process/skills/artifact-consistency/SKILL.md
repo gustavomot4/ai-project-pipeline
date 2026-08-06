@@ -3,7 +3,7 @@ name: artifact-consistency
 description: Use depois do plano e antes de escrever código, para conferir se CONTEXT, PLANO, BACKLOG e DECISIONS contam a mesma história — módulo sem tarefa, tarefa sem módulo, restrição inegociável sem portão, critério de aceite sem número, termo com dois nomes, requisito duplicado. Dispare quando a tarefa mencionar "revisar o plano", "checar consistência", "cobertura", "está tudo coberto", "posso começar a implementar" ou ao fechar a Fase 1. Não use para caçar bug em código (é guardrails-review) nem para escrever ou corrigir os documentos — esta sessão é somente leitura.
 ---
 
-# Agente de Consistência entre Artefatos (Fase 1b)
+# Agente de Consistência entre Artefatos (Fase 1c)
 
 Você lê os quatro artefatos e responde **uma** pergunta: eles contam a mesma história?
 **Somente leitura.** Você não conserta, não reescreve, não melhora texto. Reporta e prova.

@@ -250,6 +250,15 @@ class TestProjetoNovo(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
             docs = next(destino.glob("*_Project_DOCs"))
             self.assertFalse((docs / "docs").exists(), "auditoria do kit vazou para o projeto")
+            # Infraestrutura de desenvolvimento DO KIT não é entregável de projeto. O CI
+            # cairia dentro da pasta de docs (onde o Actions não procura) e a suíte de
+            # testes reprovaria no primeiro `task.py test` — suíte que nasce vermelha
+            # ensina a ignorar suíte.
+            self.assertFalse((docs / ".github").exists(), "o CI do kit vazou para o projeto")
+            self.assertFalse((docs / "scripts/test_check.py").exists(),
+                             "a suíte do kit vazou para o projeto e reprovaria lá")
+            for obrigatorio in ("scripts/check.py", "scripts/task.py", "scripts/install_hook.py"):
+                self.assertTrue((docs / obrigatorio).exists(), f"{obrigatorio} não foi instalado")
             git(destino, "init", "-q")
             saida = rodar_check(destino, script=docs / "scripts" / "check.py")
             self.assertNotIn("Wikilink(s) sem destino", saida.stdout,
@@ -522,6 +531,39 @@ class TestHonestidadeDeclarada(unittest.TestCase):
         self.assertEqual(decl_soma, falhas + avisos, "o total julgado não soma")
         self.assertEqual(decl_falhas, falhas,
                          f"README diz {decl_falhas} falhas; o cabeçalho do check.py numera {falhas}")
+
+
+class TestDocumentacaoNaoMente(unittest.TestCase):
+    """Números e nomes que a documentação afirma sobre si mesma, contados dos arquivos.
+
+    Motivo: numa única sessão, uma skill nova entrou e QUATRO documentos continuaram
+    dizendo "23 agentes"; a mesma skill se chamava "Fase 1b" enquanto o roteiro a numerava
+    como "1c". Nenhum portão pegou — porque o `check.py` verifica que os LINKS resolvem,
+    não que as AFIRMAÇÕES conferem. Doc que mente sobre si é a divergência doc × código
+    que o próprio kit classifica como achado de QA."""
+
+    def test_contagem_de_agentes_bate_em_toda_documentacao(self):
+        real = len(list((KIT / "b_process/skills").glob("*/SKILL.md")))
+        for rel in ("INDEX.md", "README.md", "b_process/skills/README.md",
+                    "b_process/f_glossary_and_primer.md"):
+            texto = (KIT / rel).read_text(encoding="utf-8")
+            for n in {int(x) for x in re.findall(r"\b(\d{1,3})\s+agentes\b", texto)}:
+                self.assertEqual(n, real, f"{rel} afirma {n} agentes; existem {real}")
+
+    def test_scripts_citados_na_doc_existem(self):
+        reais = {p.name for p in (KIT / "scripts").glob("*.py")}
+        for p in KIT.rglob("*.md"):
+            if "docs" in p.parts or p.name == "b_kit_changelog.md":
+                continue  # auditoria histórica descreve versões antigas do kit, de propósito
+            for citado in set(re.findall(r"scripts/([a-z_]+\.py)", p.read_text(encoding="utf-8"))):
+                self.assertIn(citado, reais,
+                              f"{p.relative_to(KIT)} cita scripts/{citado}, que não existe")
+
+    def test_toda_skill_aparece_no_indice_de_skills(self):
+        indice = (KIT / "b_process/skills/README.md").read_text(encoding="utf-8")
+        for p in sorted((KIT / "b_process/skills").glob("*/SKILL.md")):
+            self.assertIn(p.parent.name, indice,
+                          f"a skill {p.parent.name} não está no índice — ninguém a encontra")
 
 
 class TestCanarioDosTemplates(unittest.TestCase):

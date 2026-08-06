@@ -64,7 +64,12 @@ def main() -> int:
         return 2
     cmd = TAREFAS[pedido][0] + sys.argv[2:]
     if not Path(cmd[1]).exists():
-        print(f"ERRO: {cmd[1]} não existe.")
+        # Acontece de propósito com `test` num PROJETO: `test_check.py` testa os scripts do
+        # kit e fica no kit. Mensagem que explica vale mais que mensagem que só reclama.
+        print(f"A tarefa '{pedido}' não existe aqui: {Path(cmd[1]).name} não foi instalado.")
+        if pedido == "test":
+            print("   `test` é do repositório do KIT — ele testa os próprios scripts.")
+            print("   Num projeto, o portão é `check` (e `check-all` antes de entregar).")
         return 1
     return subprocess.run(cmd, cwd=AQUI.parent).returncode
 
