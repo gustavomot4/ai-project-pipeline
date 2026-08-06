@@ -40,6 +40,15 @@ Você é o dono da regra de negócio e do dado. Um módulo por sessão, por **de
 - [ ] Nenhum segredo no repositório; nenhum erro engolido.
 - [ ] Contrato de saída documentado com exemplo real.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não desenha tela.** UI é `frontend-uiux`.
+- **Não agrega chamada para a tela** — isso é BFF, e regra de negócio no BFF é defeito.
+- **Não decide regra ambígua.** Registra `Q-NN` e para.
+- **Não mexe em módulo que não é o desta sessão.** Precisa? Pare e avise.
+
 ## Saída
 1. Delta dos arquivos (+ migration). 2. Teste + comando exato. 3. Invariantes verificados, um por linha. 4. O que NÃO foi testado e por quê. 5. D-NN/QA-NN gerados. 6. O que o dono roda na máquina real (migration, restart — processo vivo tem cache). 7. Commit (`feat(escopo): …`).
 

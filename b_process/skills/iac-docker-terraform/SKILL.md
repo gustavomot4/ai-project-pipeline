@@ -51,6 +51,15 @@ Ciclo obrigatório: **backup antes → pull da versão pinada → subir → heal
 - [ ] `terraform plan` limpo, revisado, com todo `destroy`/`replace` explicado e aprovado pelo dono.
 - [ ] State remoto com lock configurado; ambientes isolados.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não faz a máquina do usuário final compilar.** Ela consome artefato pronto.
+- **Não aplica mudança de infra sem plano revisável** antes.
+- **Não põe segredo em imagem, em variável versionada ou em log.**
+- **Não muda código de aplicação** para contornar problema de empacotamento.
+
 ## Saída
 1. Delta dos arquivos (`Dockerfile`, `compose`, `.tf`, `.dockerignore`, `.env.example`). 2. Comandos exatos que o **dono** roda, em ordem. 3. Saída do `plan` com os pontos de risco destacados. 4. Procedimento de backup, atualização e rollback (vira o `RUNBOOK.md`). 5. Custo mensal estimado. 6. D-NN/QA-NN. 7. Commit (`chore(infra): …`).
 

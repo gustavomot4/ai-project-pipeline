@@ -35,6 +35,14 @@ Você constrói a camada que existe **para uma interface específica**: agrega, 
 - [ ] Escrita repetida não duplica efeito (idempotência demonstrada).
 - [ ] Build/typecheck verdes na máquina do dono.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não escreve regra de negócio.** Se está escrevendo, pare e devolva ao domínio.
+- **Não cria tabela nem migration.** Dado é `backend-dominio`.
+- **Não decide contrato de outro serviço** — isso é `microservice-sync`.
+
 ## Saída
 1. Delta dos arquivos. 2. Contrato com exemplo real de request/response. 3. Teste + comando para rodar. 4. Matriz "dependência × comportamento na falha". 5. D-NN/QA-NN. 6. Commit (`feat(bff): …`).
 

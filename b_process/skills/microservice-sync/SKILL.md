@@ -40,6 +40,14 @@ Cadeia síncrona longa é a origem clássica de indisponibilidade em cascata. Se
 - [ ] Identificador de correlação aparece nos logs dos dois lados de uma mesma chamada.
 - [ ] Pior caso de latência da cadeia calculado e dentro do orçamento declarado.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não cria chamada síncrona sem timeout, retry e limite.** Sem isso, é acoplamento de disponibilidade escondido.
+- **Não implementa a regra de negócio dos dois lados.**
+- **Não inventa o contrato do outro serviço** — precisa de amostra real de payload.
+
 ## Saída
 1. D-NN do STEP 0 (síncrono vs assíncrono). 2. Delta do código. 3. Tabela: chamada · timeout · política de retry · comportamento na falha. 4. Testes + comandos. 5. Passo de compensação, se houver escrita distribuída. 6. Commit (`feat(integracao): …`).
 

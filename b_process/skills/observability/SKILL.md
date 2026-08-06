@@ -47,6 +47,14 @@ O default do kit é monólito, e monólito também precisa disto. "É simples, d
 - [ ] Rotação/retenção configurada; volume estimado por dia.
 - [ ] Nenhuma regressão de latência no fluxo crítico por causa da instrumentação.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não registra dado pessoal nem segredo em log.** Confira uma amostra real, não o código que a gera.
+- **Não cria alerta sem dono e sem ação** — alerta que ninguém atende ensina a ignorar alerta.
+- **Não instrumenta o que ninguém vai olhar.**
+
 ## Saída
 1. Tabela: evento · nível · campos · quem lê · o que faz com isso.
 2. Delta do código (instrumentação + configuração de log).

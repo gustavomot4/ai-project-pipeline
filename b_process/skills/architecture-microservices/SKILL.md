@@ -43,6 +43,14 @@ Você desenha a divisão em serviços com deploy e dado próprios. **A resposta 
 - [ ] Primeiro serviço extraído tem deploy e **rollback** demonstrados.
 - [ ] Comportamento definido para: serviço fora, lento, mensagem duplicada.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não implementa serviço.** Aprovada a divisão, a construção é `backend-domain` e `microservice-sync`.
+- **Não decide sozinho que sim.** Distribuir é D-NN do dono, com o custo operacional declarado.
+- **Não desenha o frontend.** MFE é `frontend-mfe`, e tem portão próprio.
+
 ## Saída
 1. D-NN do STEP 0 com os fatos. 2. Mapa de serviços/donos/dados. 3. Ordem de extração com o porquê. 4. Pontos de consistência eventual para o dono aprovar. 5. O custo operacional assumido. 6. Veredito honesto — inclusive "não fatiar agora; o ganho está em modularizar e medir".
 

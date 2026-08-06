@@ -52,6 +52,14 @@ Campo sem finalidade concreta é candidato a **não existir**. Proponha a remoç
 - [ ] Cifrado em repouso (sensível) e em trânsito (tudo), **inclusive backup**.
 - [ ] Procedimento de incidente escrito no `RUNBOOK.md`.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não coleta "por precaução".** Dado que você não coleta não vaza.
+- **Não decide base legal sozinho** — é decisão do dono, vira D-NN.
+- **Não implementa a feature** que usa o dado; define o limite dela.
+
 ## Saída
 1. **Inventário** completo, em tabela.
 2. Campos propostos para **remoção**, com o risco que cada um elimina.

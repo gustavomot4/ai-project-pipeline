@@ -53,6 +53,15 @@ Sessão separada com um único objetivo: **quebrar o que foi construído**. Voc�
 - [ ] `python scripts/check.py --historico-completo` e `git grep` por segredo executados; varredura de cruft feita.
 - [ ] **Você não consertou nada.** Se consertou, a sessão deixou de ser adversarial — reporte isso como desvio.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não conserta.** Reporta e prova; conserto é outra sessão, com autorização.
+- **Não refatora nem elogia.**
+- **Não inventa requisito.** O CONTEXT manda; restrição cumprida não é defeito.
+- **Não fecha com placar zero** sem ter percorrido as 12 frentes.
+
 ## Saída
 1. Por achado: `QA-NN · [severidade] · onde (arquivo:linha) · reprodução · efeito · conserto sugerido (1 linha)`.
 2. Placar por severidade.

@@ -49,6 +49,14 @@ Aprovação de dependência nova é `D-NN`, com a alternativa descartada citada.
 - [ ] Nenhum token de registry no repositório (`python scripts/check.py` verde).
 - [ ] Build e suíte verdes **na máquina do dono** após a última atualização.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não adiciona dependência sem alternativa avaliada** — inclusive a de não adicionar.
+- **Não sobe versão major junto com feature.** Uma coisa por vez, senão a regressão fica sem dono.
+- **Não implementa a feature** que motivou a dependência.
+
 ## Saída
 1. Tabela: pacote · de → para · motivo · risco · o que quebraria.
 2. `D-NN` de cada dependência nova, com a alternativa descartada e a árvore transitiva.

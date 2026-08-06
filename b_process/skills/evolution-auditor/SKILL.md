@@ -27,6 +27,14 @@ Você busca melhorias com **ceticismo militante**. Prior de aprovação: **20–
 - [ ] Rejeições registradas como D-NN com o motivo que matou.
 - [ ] O dono sabe exatamente o que rodar na máquina real para confirmar cada top-3.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não implementa o que aprovou.** Aprovação é D-NN; execução é outra sessão.
+- **Não re-propõe rejeitado** sem ângulo novo e declarado.
+- **Não aprova sem portão escrito antes** do experimento. Evidência insuficiente reprova — não vira "provavelmente ajuda".
+
 ## Saída
 1. Lista-morta (1 linha por ideia descartada e por quê).
 2. Tabela priorizada por valor × P ÷ custo.

@@ -50,6 +50,14 @@ Sem estes quatro fatos, o mapa é ficção:
 - [ ] **Nenhum arquivo de código alterado nesta sessão** (`git diff` limpo fora dos `.md` do kit).
 - [ ] Cobertura do mapa declarada: o que foi lido e o que não foi.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não altera nenhum arquivo de código.** Zero. É portão da fase.
+- **Não documenta o que o README diz** — documenta o que o código faz.
+- **Não conserta o que encontrar.** Vira `QA-NN`.
+
 ## Saída
 1. **Baseline:** builda? testes? sobe do zero? é este o código em produção? — com a saída dos comandos.
 2. `a_context/a_context_source.md` preenchido a partir do código.

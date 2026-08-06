@@ -8,6 +8,37 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v12] — 2026-08-05
+**Comparação com o `SuperClaude-Org/SuperClaude_Framework` v4.3.0 — foco nos agentes, feita
+sobre o pacote instalado (`pip download`), não sobre o README.** 20 agentes, esquema de corpo
+rígido, 447 KB de markdown. O resultado foi o mais preciso de todas as comparações: **cada kit
+tinha exatamente metade da mesma solução.**
+
+- **A medição que organiza tudo.** As `description` deles: **0/20** dizem quando NÃO escolher o
+  agente. As daqui: **21/24** já dizem (`Não use para X, é Y`). No corpo, o inverso: **15/20**
+  deles têm `## Boundaries` com *Will / Will Not*; **0/24** daqui tinham qualquer fronteira
+  explícita. Ou seja: este kit impede o agente errado de **disparar**; o deles impede o agente
+  certo de **extrapolar**. Duas metades do mesmo problema.
+- **`## Limites` nas 24 skills.** O que a skill NÃO faz mesmo tendo sido escolhida certo, e onde
+  aquilo mora. O conteúdo já existia espalhado nas regras ("Não conserte", "Desenha; não
+  implementa"); o que faltava era ser sistemático e achável. Custo real desprezível: como só
+  **uma** skill carrega por sessão, +300 caracteres por skill custam 300 por sessão — ao
+  contrário do `CLAUDE.md`, onde todo acréscimo é pago sempre.
+- **Esquema de skill virou checagem.** As 24 seguiam o mesmo formato por **hábito**, e hábito
+  não sobrevive a uma skill nova escrita com pressa. Agora `check.py` reprova skill sem
+  `## Contexto que você recebe`, `## Limites` ou `## Saída`, e **avisa** quando a `description`
+  não tem fronteira negativa — que é a força distintiva deste kit, até aqui não cobrada.
+- **Medição que dispensou adoção:** duplicação de linhas no corpus deles = **1%** (447 KB);
+  neste kit = **1,0%** (130 KB). Contra os 12% do BMAD. Nesse eixo os dois já estavam bem, e
+  não havia o que copiar — só o que confirmar.
+- **Não adotado: os 7 "modos comportamentais"** (Brainstorming, Token-Efficiency, Introspection
+  etc.), uma camada ortogonal aos agentes. Duas razões: economia de contexto aqui é
+  **estrutural** (teto de 4.000, uma skill por sessão, delta) e não precisa virar modo; e modo ×
+  skill é combinatório — 7 modos × 24 skills são 168 combinações para documentar num kit de um
+  mantenedor.
+- **Também não adotado: `## Triggers` no corpo.** Eles repetem no corpo o que a `description` já
+  diz. Duplicação é a doença que este kit mede desde a v10.
+
 ## [kit v11] — 2026-08-05
 **Comparação com o `zhu1090093659/spec_driven_develop` — o repositório mais próximo deste kit
 em restrições (Markdown puro, zero dependência, skills, agnóstico de plataforma).** A ideia

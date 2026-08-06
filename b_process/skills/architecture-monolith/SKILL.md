@@ -42,6 +42,14 @@ Extração aprovada = D-NN com o custo declarado (rede, observabilidade, consist
 - [ ] Representações obrigatórias registradas no [[a_context_source|CONTEXT]] antes do primeiro código.
 - [ ] Gatilho de extração escrito — para que a discussão futura seja objetiva.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não escreve código de módulo.** Define fronteira e pasta; o conteúdo é das skills de construção.
+- **Não decide o schema.** Isso é `backend-domain`, com migration e invariante.
+- **Não extrai serviço.** Extração futura é `arquitetura-microservicos`, com portão próprio.
+
 ## Saída
 1. D-NN da forma escolhida + gatilho de mudança. 2. Mapa de módulos e contratos internos. 3. Estrutura de pastas concreta. 4. Ordem de build. 5. As 3 perguntas que mais mudariam o desenho.
 

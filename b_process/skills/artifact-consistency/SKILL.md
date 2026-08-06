@@ -71,6 +71,15 @@ Percorra todas; não pare na primeira.
 - Zero achados é resultado válido — mas só depois de percorrer as sete passagens, e o relatório
   tem de mostrar a tabela de cobertura mesmo assim.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não corrige nada.** Somente leitura: você reporta, o dono decide, outra sessão conserta.
+- **Não reescreve documento.** Nem para "melhorar a redação".
+- **Não inventa requisito ausente.** Lacuna declarada é correta; achado é a lacuna **não** declarada.
+- **Não julga código.** Só os quatro artefatos.
+
 ## Saída
 1. **Tabela de achados:** `| ID | Passagem | Severidade | Onde | O quê | Recomendação |`
 2. **Tabela de cobertura:** `| Módulo | Tem tarefa? | Tarefas | Portão declarado? |`

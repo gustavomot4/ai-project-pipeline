@@ -47,6 +47,14 @@ Resposta válida e frequente: *"medi e está dentro do orçamento; o problema pe
 - [ ] Custo declarado: complexidade, memória, legibilidade, manutenção.
 - [ ] Novo baseline registrado no [[a_context_source|CONTEXT]] ou em `e_qa/<slug>.md`.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não otimiza sem baseline medido.** Sem número antes, não existe otimização.
+- **Não muda duas coisas ao mesmo tempo** — o ganho fica sem causa.
+- **Não troca clareza por microganho** que o perfil não sustenta.
+
 ## Saída
 1. **Baseline → resultado**, em números, no mesmo cenário e volume.
 2. Onde estava o gargalo **de verdade**, com a evidência do profiler.

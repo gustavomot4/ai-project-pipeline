@@ -231,6 +231,24 @@ if dir_skills.is_dir():
             falhas.append(f"{rel}: frontmatter sem 'name:'.")
         if "description:" not in cabeca:
             falhas.append(f"{rel}: frontmatter sem 'description:' — sem ela a skill não dispara.")
+        # Esquema do corpo. Medido: 24/24 das skills tinham "Contexto" e "Saída" por
+        # convenção, e NENHUMA tinha limite explícito — a convenção sobrevivia por hábito,
+        # e hábito não sobrevive a uma skill nova escrita com pressa.
+        #   Contexto = o que a sessão carrega (o oposto de "leia o repositório")
+        #   Limites  = o que o agente não faz mesmo tendo sido escolhido certo
+        #   Saída    = o artefato, para o dono saber o que esperar
+        texto_skill = corpo.get(skill, skill.read_text(encoding="utf-8"))
+        for secao in ("## Contexto que você recebe", "## Limites", "## Saída"):
+            if secao not in texto_skill:
+                falhas.append(f"{rel}: sem a seção '{secao}' — esquema obrigatório de skill.")
+        # A `description` é o único texto que a ferramenta lê para ESCOLHER a skill. Sem a
+        # fronteira negativa, duas skills disputam a mesma tarefa e a errada ganha metade
+        # das vezes. É aviso, não falha: skill em rascunho pode ainda não saber quem é a vizinha.
+        if "Não use" not in cabeca:
+            avisos.append(
+                f"{rel}: description sem 'Não use para … (é <outra skill>)' — "
+                "sem fronteira negativa, a skill errada dispara."
+            )
 
 # 7. Wikilinks: destino que não existe (link quebrado). A nota órfã virou AVISO — ver abaixo.
 por_caminho = {p.relative_to(topo).with_suffix("").as_posix() for p in notas}

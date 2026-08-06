@@ -24,6 +24,14 @@ O trabalho recém-concluído + `b_process/d_agent_learnings.md`.
 - [ ] Nenhuma duplica linha já existente no `b_process/d_agent_learnings.md`.
 - [ ] A frase final diz algo que o dono não gostaria de ouvir, mas precisa.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não conserta o que a lição apontou.** Lição vira card no BACKLOG.
+- **Não elogia.** Retrospectiva que só elogia não gera lição.
+- **Não registra lição de um projeto só** como regra do kit: regra do kit precisa de 2+ projetos.
+
 ## Saída
 Delta do `b_process/d_agent_learnings.md` (seção "Deste projeto") + as candidatas a regra do kit, se houver.
 

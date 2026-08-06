@@ -288,7 +288,12 @@ class TestAtualizacao(unittest.TestCase):
             # o kit evolui: skill nova + arquivo de processo alterado
             nova = kit / "b_process/skills/skill-nova/SKILL.md"
             nova.parent.mkdir(parents=True, exist_ok=True)
-            nova.write_text("---\nname: skill-nova\ndescription: nova\n---\n# nova\n", encoding="utf-8")
+            # Segue o esquema obrigatório de propósito: esta skill é só um veículo para
+            # testar a ATUALIZAÇÃO, e não pode reprovar por outro motivo — teste que falha
+            # pela razão errada é o defeito que já custou uma rodada nesta suíte.
+            nova.write_text(
+                "---\nname: skill-nova\ndescription: nova. Não use para outra coisa (é outra skill).\n---\n"
+                "# nova\n## Contexto que você recebe\nx\n## Limites\ny\n## Saída\nz\n", encoding="utf-8")
             roteiro = kit / "b_process/a_roadmap.md"
             roteiro.write_text(roteiro.read_text(encoding="utf-8") + "\n<!-- marca v9 -->\n", encoding="utf-8")
 
@@ -314,7 +319,12 @@ class TestAtualizacao(unittest.TestCase):
             kit, projeto, docs = self.preparar(tmp)
             nova = kit / "b_process/skills/skill-nova/SKILL.md"
             nova.parent.mkdir(parents=True, exist_ok=True)
-            nova.write_text("---\nname: skill-nova\ndescription: nova\n---\n# nova\n", encoding="utf-8")
+            # Segue o esquema obrigatório de propósito: esta skill é só um veículo para
+            # testar a ATUALIZAÇÃO, e não pode reprovar por outro motivo — teste que falha
+            # pela razão errada é o defeito que já custou uma rodada nesta suíte.
+            nova.write_text(
+                "---\nname: skill-nova\ndescription: nova. Não use para outra coisa (é outra skill).\n---\n"
+                "# nova\n## Contexto que você recebe\nx\n## Limites\ny\n## Saída\nz\n", encoding="utf-8")
 
             r = rodar_script("new_project.py", str(projeto), "--upgrade", "--dry-run", cwd=kit)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
@@ -426,6 +436,45 @@ class TestCoberturaModuloTarefa(unittest.TestCase):
         with area_temporaria() as tmp:
             repo = montar_kit(Path(tmp) / "repo")
             self.assertNotIn("Módulo do PLANO sem tarefa", rodar_check(repo).stdout)
+
+
+class TestEsquemaDasSkills(unittest.TestCase):
+    """As 24 skills seguiam o mesmo esquema por HÁBITO, não por regra — e hábito não
+    sobrevive a uma skill nova escrita com pressa. A ideia da seção de limites vem do
+    SuperClaude (`## Boundaries` — Will / Will Not); a diferença é que aqui ela é cobrada.
+
+    Medição que motivou: 21/24 das descriptions daqui já diziam quando NÃO escolher a
+    skill (0/20 lá); 0/24 diziam o que a skill não faz depois de escolhida (15/20 lá).
+    Cada kit tinha metade."""
+
+    def test_toda_skill_entregue_segue_o_esquema(self):
+        for p in sorted((KIT / "b_process/skills").glob("*/SKILL.md")):
+            t = p.read_text(encoding="utf-8")
+            for secao in ("## Contexto que você recebe", "## Limites", "## Saída"):
+                self.assertIn(secao, t, f"{p.parent.name} sem '{secao}'")
+            self.assertIn("Não use", t[:900],
+                          f"{p.parent.name}: description sem fronteira negativa")
+
+    def test_skill_sem_limites_reprova(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            nova = repo / "b_process/skills/skill-torta/SKILL.md"
+            nova.parent.mkdir(parents=True, exist_ok=True)
+            nova.write_text("---\nname: skill-torta\ndescription: faz coisas. Não use para outras.\n---\n"
+                            "# Torta\n## Contexto que você recebe\nx\n## Saída\ny\n", encoding="utf-8")
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("## Limites", r.stdout)
+
+    def test_description_sem_fronteira_negativa_avisa(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            nova = repo / "b_process/skills/skill-vaga/SKILL.md"
+            nova.parent.mkdir(parents=True, exist_ok=True)
+            nova.write_text("---\nname: skill-vaga\ndescription: faz coisas boas.\n---\n"
+                            "# Vaga\n## Contexto que você recebe\nx\n## Limites\nz\n## Saída\ny\n",
+                            encoding="utf-8")
+            self.assertIn("fronteira negativa", rodar_check(repo).stdout)
 
 
 class TestCanarioDosTemplates(unittest.TestCase):

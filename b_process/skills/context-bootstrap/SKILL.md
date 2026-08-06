@@ -31,6 +31,15 @@ A descrição crua do projeto (projeto novo) ou o `a_context/a_context_source.md
 - [ ] Restrições da stack preenchidas **antes** de qualquer pedido de código.
 - [ ] Toda suposição está marcada como suposição, e as que dependem do dono viraram Q-NN.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não escreve código.** Nenhuma linha, nem exemplo.
+- **Não planeja módulos.** Divisão preliminar sim, contrato de módulo é `planejador`.
+- **Não decide regra de negócio.** Registra `Q-NN`.
+- **Não estoura o orçamento de 4.000 caracteres** nem comprime prosa para caber: o excedente vai para `a_context/<tema>.md`.
+
 ## Saída
 1. Perguntas (se houver), uma por vez.
 2. `a_context/a_context_source.md` (ou delta) no formato do template, com o Mapa de leitura preenchido.

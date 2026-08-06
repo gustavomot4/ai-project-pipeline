@@ -34,6 +34,14 @@ Você constrói a interface que a pessoa real usa. Um módulo/tela por sessão, 
 - [ ] Nenhum texto técnico vazando para o usuário; nenhuma ação destrutiva sem confirmação.
 - [ ] Teclado percorre o fluxo crítico; foco visível.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não decide regra de negócio.** Ambígua? `Q-NN` e para.
+- **Não cria endpoint.** Falta contrato? Pare e avise; é `backend-bff` ou `backend-dominio`.
+- **Não entrega tela sem estado de erro e vazio** — eles não são polimento.
+
 ## Saída
 1. Delta dos arquivos (arquivo novo pode vir inteiro). 2. Roteiro de verificação passo a passo para o dono. 3. O que NÃO foi coberto e por quê. 4. D-NN/Q-NN/QA-NN gerados. 5. Mensagem de commit (`feat(ui): …`).
 

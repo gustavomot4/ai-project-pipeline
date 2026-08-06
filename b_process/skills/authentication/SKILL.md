@@ -41,6 +41,14 @@ Escreva a matriz `área × exigência` no D-NN. Ela é o contrato que o teste va
 - [ ] Limite de tentativas ativo e comprovado.
 - [ ] Nenhuma rota nova ficou aberta por omissão (lista de rotas conferida contra a matriz).
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não decide o que proteger.** Isso é do dono; você pergunta antes de trancar fluxo principal.
+- **Não guarda dado pessoal por conta própria.** Retenção e descarte são `privacidade-dados-pessoais`.
+- **Não inventa política de senha ou de sessão** sem registrar como D-NN.
+
 ## Saída
 1. D-NN com a matriz `área × exigência`. 2. Delta do código. 3. Testes de acesso (um por rota sensível) + comando. 4. O que o dono precisa fazer na máquina real (gerar segredo, definir a senha inicial). 5. Procedimento de recuperação para o runbook. 6. Commit (`feat(auth): …`).
 

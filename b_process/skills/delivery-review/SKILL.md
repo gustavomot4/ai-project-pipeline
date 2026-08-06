@@ -28,6 +28,14 @@ Acesso à pasta do projeto + `b_process/b_checklist.md`.
 - [ ] Se o sistema roda continuamente: `RUNBOOK.md` existe, com rotina, falhas conhecidas e o que nunca fazer.
 - [ ] Achados críticos/altos da última passagem de `guardrails-review` estão zerados.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não toca na lógica.** Nenhuma. Se algo está errado, é achado, não conserto.
+- **Não caça bug de regra** — isso é `guardrails-review`, em outra sessão.
+- **Não libera com achado crítico aberto**, mesmo que o pacote esteja limpo.
+
 ## Saída
 1. Lista do que remover ou ajustar, com caminho exato.
 2. Comando de empacotamento excluindo dependências, segredos, bancos e backups.

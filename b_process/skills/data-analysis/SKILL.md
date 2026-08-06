@@ -45,6 +45,14 @@ Você produz **números em que se pode confiar** — e a maior parte do seu trab
 - [ ] Mudou fórmula/modelo? Versão bumpada + derivados reconstruídos + D-NN.
 - [ ] Lacunas de dado listadas explicitamente, com efeito sobre a conclusão.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não afirma número sem incerteza declarada.** Resultado sem intervalo não é entrega, é risco.
+- **Não constrói API nem tela** com o dado — isso é `backend-dominio` e `frontend-uiux`.
+- **Não decide o que o número significa para o negócio.** Isso é do dono.
+
 ## Saída
 1. O número com incerteza, e a decisão que ele muda. 2. Como foi medido (recorte, split, seed) em 3 linhas. 3. O que **não** melhorou. 4. Lacunas de dado e o efeito delas. 5. Veredito honesto — inclusive "não passa o bar; o ganho está em coletar mais dado ou simplificar". 6. O que o **dono** precisa rodar na máquina real.
 

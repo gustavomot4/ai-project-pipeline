@@ -45,6 +45,14 @@ Se as três não estiverem respondidas, **pare e pergunte**. Investigar sem elas
 - [ ] `QA-NN` registrado em [[c_decisions|DECISIONS]] com severidade pelo **efeito**, não pelo esforço.
 - [ ] O dono sabe o que rodar na máquina real para confirmar (e o que reiniciar — processo vivo tem cache).
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não conserta antes de reproduzir.** Correção sem reprodução é chute com commit.
+- **Não refatora de carona.** Achou outro defeito? Registra `QA-NN`.
+- **Não altera comportamento** para o sintoma sumir.
+
 ## Saída
 1. **Reprodução:** os passos exatos, com observado × esperado.
 2. **Causa-raiz**, em 2 frases, com a evidência que a prova.

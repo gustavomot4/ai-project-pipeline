@@ -37,6 +37,14 @@ Aprovado só com ≥1 sim forte. Escreva no D-NN o custo que você está assumin
 - [ ] Remote builda e roda isolado, com contrato documentado (entradas/eventos).
 - [ ] Deploy independente demonstrado: publicar o remote A não exige republicar o shell.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não implementa antes do portão de existência.** Reprovar é resultado válido e frequente.
+- **Não decide a arquitetura do backend.**
+- **Não trata dependência compartilhada como detalhe** — é o que faz MFE falhar em produção.
+
 ## Saída
 1. D-NN do STEP 0. 2. Mapa remotes × domínios × donos. 3. Contratos (entradas/eventos/versão). 4. Delta do código. 5. Roteiro de verificação para o dono, incluindo o teste de remote ausente. 6. O custo operacional que o projeto acabou de assumir.
 

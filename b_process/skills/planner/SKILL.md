@@ -29,6 +29,15 @@ Você produz um `a_context/b_plan.md` curto e **congelável** a partir do `a_con
 - [ ] Nenhum número de estado vigente duplicado do `a_context/a_context_source.md`.
 - [ ] Aprovado = **congelado** como D-NN. Mudança posterior é D-NN novo — nunca replanejar do zero.
 
+## Limites (mesmo tendo sido a skill certa)
+> A `description` diz quando **não escolher** esta skill. Isto diz o que ela **não faz**
+> mesmo tendo sido escolhida certo — extrapolar escopo é o defeito mais caro deste kit.
+
+- **Não implementa.** Nenhuma linha.
+- **Não decide a forma da arquitetura** — isso já é D-NN, vindo das skills de arquitetura.
+- **Não resolve o que ainda não precisa ser resolvido.** Detalhe prematuro faz plano nascer desatualizado.
+- **Não guarda estado** (o que já está pronto): isso mora só no CONTEXT.
+
 ## Saída
 1. `a_context/b_plan.md` no formato do template.
 2. Decisões para virar D-NN.
