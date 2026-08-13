@@ -534,6 +534,19 @@ class TestHonestidadeDeclarada(unittest.TestCase):
         self.assertEqual(decl_falhas, falhas,
                          f"README diz {decl_falhas} falhas; o cabeçalho do check.py numera {falhas}")
 
+        # A PORCENTAGEM também. Ela ficou de fora quando este teste nasceu — o regex parava
+        # onde a prosa começava — e envelheceu na primeira vez que alguém mexeu nas contagens:
+        # o README passou a dizer "cerca de 9%" com 30/284 = 10,6% no disco, no MESMO dia em que
+        # o kit ganhou um aviso cujo propósito é "número que um script calcula não se mantém à
+        # mão". Terceira ocorrência da espécie do QA-14/QA-15, e desta vez dentro da frase que
+        # existe para não apodrecer. "Cerca de" arredonda; não autoriza divergir.
+        m3 = re.search(r"— cerca de (\d+)%", readme)
+        self.assertIsNotNone(m3, "a porcentagem de cobertura sumiu do README")
+        esperado = round(100 * (falhas + avisos) / (checklist + skills))
+        self.assertEqual(int(m3.group(1)), esperado,
+                         f"README diz cerca de {m3.group(1)}%; "
+                         f"{falhas + avisos}/{checklist + skills} arredonda para {esperado}%")
+
 
 class TestDocumentacaoNaoMente(unittest.TestCase):
     """Números e nomes que a documentação afirma sobre si mesma, contados dos arquivos.
