@@ -11,6 +11,8 @@ Cada teste aqui existe porque o bug já aconteceu de verdade, não porque era pl
          em silêncio — segredo no histórico, mensagem verde, exit 0
   QA-03  a linha final anunciava "últimos 30 commits" mesmo sem ter lido nenhum
   QA-04  nada cobrava a instalação do próprio portão
+  QA-14  a checagem de ID filtrava o trecho entre crases: 300 de 341 citações
+         de um projeto real eram invisíveis, e o portão imprimia verde
 
 O teste do acento é o motivo de este arquivo rodar em CI no Windows: num Linux com
 locale UTF-8 o bug do QA-01 NÃO reproduz — foi exatamente esse falso "passou" que fez
@@ -637,6 +639,169 @@ class TestCanarioDosTemplates(unittest.TestCase):
             self.assertEqual(r.returncode, 1, r.stdout)
             self.assertIn("D-77", r.stdout,
                           "o parser da tabela de DECISIONS não casa mais com o template entregue")
+
+
+class TestTodaChecagemTemIsca(unittest.TestCase):
+    """Uma isca canônica por FALHA numerada: o caso concreto que aquela checagem existe
+    para pegar. Se a checagem emudecer, a isca passa e este teste reprova.
+
+    QA-14, medido no primeiro projeto real construído com o kit: a checagem 10 filtrava a
+    nota por `sem_codigo`, que descarta o trecho entre crases — e a casa escreve `D-13`,
+    não D-13. Das 341 citações de ID daquele projeto, 300 estavam entre crases: o portão
+    enxergava 12% e imprimia verde sobre o resto. Havia canário para esta checagem, e ele
+    escrevia `D-77` SEM crases — passava, e a cegueira sobreviveu inclusive a uma auditoria
+    externa que citou o portão como ponto forte.
+
+    A lição não é "conserte a checagem 10", é que uma checagem pode parar de checar sem que
+    nada grite. `test_toda_falha_numerada_tem_isca` fecha a classe inteira: FALHA nova sem
+    isca reprova aqui, e isca que deixa de pegar o próprio caso reprova aqui.
+
+    Testa o RESULTADO (reprovou? disse o quê?), nunca o regex: teste que espelha a
+    implementação quebra junto com ela e não protege nada.
+    """
+
+    def anexar(self, repo: Path, rel: str, texto: str):
+        p = repo / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        antes = p.read_text(encoding="utf-8") if p.exists() else ""
+        p.write_text(antes + texto, encoding="utf-8")
+
+    def trocar(self, repo: Path, rel: str, de: str, para: str):
+        p = repo / rel
+        t = p.read_text(encoding="utf-8")
+        self.assertIn(de, t, f"{rel}: a âncora da isca sumiu do template — a isca deixou de sabotar")
+        p.write_text(t.replace(de, para, 1), encoding="utf-8")
+
+    def escrever_skill(self, repo: Path, nome: str, corpo: str):
+        (repo / "b_process/skills" / nome).mkdir(parents=True, exist_ok=True)
+        (repo / "b_process/skills" / nome / "SKILL.md").write_text(corpo, encoding="utf-8")
+
+    # ---- as iscas, uma por FALHA numerada no cabeçalho do check.py ----------
+    def iscas(self):
+        SEC = "## Contexto que você recebe\nx\n## Limites\ny\n## Saída\nz\n"
+        return {
+            1: (lambda r: self.anexar(r, "a_context/a_context_source.md", "\n" + "x" * 4100),
+                "orçamento: 4.000"),
+            2: (lambda r: self.anexar(r, "a_context/c_decisions.md", "\n" + "y" * 12100),
+                "acima de 12.000"),
+            3: (lambda r: self.anexar(r, "e_qa/c_backlog.md", "---\ntags: [x]\n---\n# copia\n"),
+                "duplicado"),
+            4: (lambda r: self.trocar(r, "b_process/c_backlog.md",
+                                      "- [ ] T-00 — <a tarefa do momento>",
+                                      "- [ ] T-10 — a\n- [ ] T-11 — b\n- [ ] T-12 — c"),
+                "limite declarado"),
+            5: (lambda r: self.anexar(r, "lixo.bak", "sobra de editor\n"),
+                "Cruft"),
+            6: (lambda r: self.escrever_skill(r, "skill-muda",
+                                              "---\nname: skill-muda\n---\n# Muda\n" + SEC),
+                "sem 'description:'"),
+            7: (lambda r: self.anexar(r, "INDEX.md", "\n\nVer [[destino-que-nao-existe-mesmo]].\n"),
+                "sem destino"),
+            8: (lambda r: self.anexar(r, "vazou.txt", ISCA + "\n"),
+                "segredo versionado"),
+            # Sobrescreve o arquivo inteiro: trocar só ".env" deixa ".env.local", que
+            # CONTÉM ".env", e a isca não sabotava nada (falso verde, achado ao escrever
+            # esta classe). Limite conhecido e NÃO consertado aqui (regra 4): a checagem 9
+            # é `substring`, então um .gitignore só de comentários citando os padrões passa.
+            9: (lambda r: (r / ".gitignore").write_text("node_modules/\n", encoding="utf-8"),
+                ".gitignore sem cobertura"),
+            # A isca da 10 escreve o ID ENTRE CRASES de propósito: é como a casa escreve,
+            # e era exatamente o caso que passava. Sem crases o teste não prova nada.
+            10: (lambda r: self.anexar(r, "INDEX.md", "\n\nVer `D-77` para o detalhe.\n"),
+                 "D-77"),
+            11: (lambda r: self.anexar(r, "a_context/c_decisions.md",
+                                       "\n| D-01 | <data> | ADOTADO | linha repetida | |\n"),
+                 "ID duplicado"),
+            12: (lambda r: (self.trocar(r, "b_process/c_backlog.md",
+                                        "- [ ] T-00 — <a tarefa do momento>", "- [ ] T-42 — a"),
+                            self.trocar(r, "a_context/a_context_source.md",
+                                        "**Em andamento (máx 1):** <a única tarefa ativa>",
+                                        "**Em andamento (máx 1):** T-99 outra coisa")),
+                 "'Em andamento' divergente"),
+            13: (lambda r: (self.anexar(r, "a_context/b_plan.md", "\n### M7 — cobranca\n- **Recebe:** x\n"),
+                            self.anexar(r, "b_process/c_backlog.md",
+                                        "\n- [ ] T-80 — x · **Módulo:** M42 · **Portão:** y\n")),
+                 "módulo inexistente"),
+            14: (lambda r: self.escrever_skill(
+                    r, "skill-sem-limites",
+                    "---\nname: skill-sem-limites\ndescription: faz coisas. Não use para outras.\n---\n"
+                    "# Sem limites\n## Contexto que você recebe\nx\n## Saída\nz\n"),
+                 "## Limites"),
+        }
+
+    def test_toda_falha_numerada_tem_isca(self):
+        """O portão do portão: FALHA nova no cabeçalho sem isca aqui reprova."""
+        cab = (KIT / "scripts/check.py").read_text(encoding="utf-8").split('"""')[1]
+        bloco = cab.split("FALHAS", 1)[1].split("AVISOS", 1)[0]
+        numeradas = {int(n) for n in re.findall(r"\b(\d{1,2})\.\s+\S", bloco)}
+        self.assertEqual(
+            numeradas, set(self.iscas()),
+            "toda FALHA numerada precisa da isca que prova que ela ainda pega o próprio caso "
+            f"(cabeçalho: {sorted(numeradas)}; iscas: {sorted(self.iscas())})")
+
+    def test_cada_isca_reprova(self):
+        for numero, (sabotar, trecho) in sorted(self.iscas().items()):
+            with self.subTest(falha=numero), area_temporaria() as tmp:
+                repo = montar_kit(Path(tmp) / "repo")
+                sabotar(repo)
+                r = rodar_check(repo)
+                self.assertEqual(r.returncode, 1,
+                                 f"FALHA {numero}: a isca passou — a checagem emudeceu.\n{r.stdout}")
+                self.assertIn(trecho, r.stdout,
+                              f"FALHA {numero}: reprovou, mas por outro motivo.\n{r.stdout}")
+
+    def test_kit_entregue_passa_sem_isca(self):
+        """Contraprova: sem sabotagem, o portão não pode reprovar. Sem isto, uma isca que
+        reprova por acidente (e não pelo que ela sabota) passaria despercebida."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 0, f"o kit entregue reprova sozinho:\n{r.stdout}")
+
+
+class TestInstrumentacaoDaSessao(unittest.TestCase):
+    """Qual skill rodou na sessão. Sem este campo, "qual agente paga o próprio custo" só se
+    responde por arqueologia de git — foi onde a primeira avaliação de campo do kit parou,
+    e a resposta ficou em [suposto] por falta de um dado que custa uma linha.
+
+    Mora no changelog porque nenhuma sessão o carrega: custo de contexto zero."""
+
+    def entrada(self, repo: Path, texto: str):
+        p = repo / "d_history/a_changelog.md"
+        p.write_text(p.read_text(encoding="utf-8") + texto, encoding="utf-8")
+
+    def test_entrada_datada_sem_skill_avisa(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.entrada(repo, "\n## [2026-08-13] — fez alguma coisa\n- Mudou X.\n")
+            self.assertIn("Sessão sem skill declarada", rodar_check(repo).stdout)
+
+    def test_entrada_com_skill_valida_cala(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.entrada(repo, "\n## [2026-08-13] — fez alguma coisa\n- **Skill:** planner\n- Mudou X.\n")
+            self.assertNotIn("Sessão sem skill declarada", rodar_check(repo).stdout)
+
+    def test_skill_declarada_que_nao_existe_avisa(self):
+        """Campo que aceita qualquer texto vira campo que ninguém confere."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.entrada(repo, "\n## [2026-08-13] — x\n- **Skill:** agente-imaginario\n")
+            saida = rodar_check(repo).stdout
+            self.assertIn("agente-imaginario", saida)
+            self.assertIn("não existe", saida)
+
+    def test_template_sem_entrada_datada_nao_avisa(self):
+        """O changelog entregue só tem `[Não lançado]` e o modelo comentado: aviso aqui
+        seria falso, e aviso falso ensina a ignorar aviso."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.assertNotIn("Sessão sem skill declarada", rodar_check(repo).stdout)
+
+    def test_o_template_de_fecho_pede_o_campo(self):
+        """Se o template parar de pedir, o campo some dos projetos e o aviso vira ruído."""
+        t = (KIT / "b_process/templates/c_session_closing.md").read_text(encoding="utf-8")
+        self.assertIn("**Skill:**", t, "o template de fecho de sessão não pede mais a skill")
 
 
 if __name__ == "__main__":

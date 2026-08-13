@@ -24,7 +24,8 @@ AVISOS (não reprovam; com --avisos-reprovam, reprovam)
   arquivo grande não varrido · varredura de histórico que não rodou ·
   portão automático (pre-commit) não instalado · módulo do PLANO sem tarefa ·
   description de skill sem fronteira negativa · CONTEXT perto do teto ·
-  DECISIONS perto do teto · tema de a_context/ fora do mapa de leitura
+  DECISIONS perto do teto · tema de a_context/ fora do mapa de leitura ·
+  sessão sem skill declarada no changelog
 
 O README declara quantos itens de checklist existem e quantos esta máquina julga.
 Esse número é cobrado por `test_check.py` — a frase mais honesta do kit não pode
@@ -122,6 +123,7 @@ PLANO = "a_context/b_plan.md"                   # plano congelado
 DECISOES = "a_context/c_decisions.md"           # D-NN / Q-NN / QA-NN, append-only
 BACKLOG = "b_process/c_backlog.md"              # fonte única de tarefas
 SKILLS = "b_process/skills"                     # os agentes instaláveis
+CHANGELOG = "d_history/a_changelog.md"          # histórico datado; nenhuma sessão carrega
 # Pastas do vault: só nelas "nota órfã" faz sentido. Markdown do próprio app
 # (content/, docs de pacote, README de módulo) não é nota e não bloqueia commit.
 PASTAS_VAULT = {"a_context", "b_process", "c_technical_docs", "d_history", "e_qa"}
@@ -165,8 +167,23 @@ def alvos_de_varredura():
 
 
 def sem_codigo(texto):
+    """Sem bloco cercado E sem trecho entre crases. Use quando o exemplo entre crases NÃO
+    deve contar — o caso do wikilink de demonstração, que não é link de verdade."""
     texto = re.sub(r"```.*?```", "", texto, flags=re.S)
     return re.sub(r"`[^`\n]*`", "", texto)
+
+
+def sem_bloco_de_codigo(texto):
+    """Só o bloco cercado. É o filtro certo para a checagem de ID (10).
+
+    Medido no primeiro projeto real construído com o kit: 300 de 341 citações de ID
+    estavam ENTRE CRASES — a casa escreve `D-13`, não D-13. Como a checagem 10 filtrava
+    por `sem_codigo`, ela enxergava 12% das citações e imprimia verde sobre os outros 88%.
+    É a mesma classe de defeito que o comentário da checagem 13 já nomeava ("checagem que
+    emudece é pior que checagem que não existe"): a lição estava escrita neste arquivo e
+    não tinha sido aplicada duas checagens acima.
+    """
+    return re.sub(r"```.*?```", "", texto, flags=re.S)
 
 
 # Notas do repositório inteiro: o padrão deixa CLAUDE.md e README.md fora do vault,
@@ -470,7 +487,7 @@ if texto_dec:
         rel_nota = nota.relative_to(topo)
         if nota == dec or PASTAS_HISTORICAS & set(rel_nota.parts) or nota.stem == "d_agent_learnings":
             continue
-        for i in set(re.findall(r"\b((?:D|Q|QA)-\d+)\b", sem_codigo(corpo[nota]))):
+        for i in set(re.findall(r"\b((?:D|Q|QA)-\d+)\b", sem_bloco_de_codigo(corpo[nota]))):
             citados.setdefault(i, set()).add(nota.relative_to(topo).as_posix())
     fantasmas = {i: v for i, v in citados.items() if i not in definidos and not re.fullmatch(r"(D|Q|QA)-0*(0|NN)", i)}
     if fantasmas:
@@ -542,6 +559,32 @@ if texto_ctx:
             "Tema em a_context/ fora do Mapa de leitura do CONTEXT: " + ", ".join(fora)
             + " — doc fora do mapa nunca é lido; ou entra no mapa com a condição que "
             "justifica lê-lo, ou sai do repositório."
+        )
+
+# Instrumentação da sessão: QUAL skill rodou.
+# Sem este campo, "qual dos agentes paga o próprio custo" só se responde por arqueologia
+# de git — foi exatamente onde a primeira avaliação de campo do kit parou, e a conclusão
+# ficou em [suposto] por falta de um dado que custa uma linha para existir.
+# O changelog é o lugar certo justamente porque NENHUMA sessão o carrega: o dado custa
+# zero contexto e fica onde a sessão já escreve de qualquer jeito.
+# Aviso, não falha: projeto que já existia não vai reescrever o histórico para adotar isto.
+texto_cl = corpo.get(raiz / CHANGELOG, "")
+if texto_cl:
+    entradas = re.findall(r"^## \[(\d{4}-\d{2}-\d{2})\][^\n]*\n(.*?)(?=^## |\Z)",
+                          texto_cl, re.S | re.M)[:3]
+    catalogo = {q.parent.name for q in (raiz / SKILLS).glob("*/SKILL.md")}
+    problemas = []
+    for data_e, bloco_e in entradas:
+        m = re.search(r"\*\*Skill:\*\*\s*`?([a-z0-9][a-z0-9-]*)`?", bloco_e)
+        if not m:
+            problemas.append(f"{data_e} (sem '**Skill:**')")
+        elif catalogo and m.group(1) not in catalogo and m.group(1) != "nenhuma":
+            problemas.append(f"{data_e} (skill '{m.group(1)}' não existe em {SKILLS}/)")
+    if problemas:
+        avisos.append(
+            "Sessão sem skill declarada no changelog: " + " · ".join(problemas)
+            + " — sem este campo ninguém sabe qual agente rodou, e medir o kit vira "
+            "arqueologia. Formato: uma linha `- **Skill:** <nome>` na entrada."
         )
 
 placeholders = re.findall(r"<[A-Za-zÀ-ú][^<>\n]{2,60}>", texto_ctx)

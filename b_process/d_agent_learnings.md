@@ -22,6 +22,9 @@ status: atual
 - **Processo vivo tem cache:** servidor/build antigo mascara sua mudança — reinicie antes de julgar (e avise o dono).
 - **Sandbox ≠ máquina real:** o portão final roda na máquina do dono; termine dizendo o que ele precisa rodar.
 - **Rejeitar é o portão funcionando:** registre a rejeição com o número/motivo que matou.
+- **Lição escrita não é lição aplicada:** o comentário de uma checagem já nomeava "checagem que emudece" enquanto outra, no mesmo arquivo, tinha a doença — conserte a espécie (um teste que cobre a classe), não o caso.
+- **Isca tem de sabotar como a casa escreve:** o canário citava o ID sem crases e a casa escreve com crases; ele passava e a cegueira sobrevivia. Teste que passa pelo motivo errado é pior que teste ausente.
+- **Processo que não se instrumenta não se prova:** se ninguém registra qual agente rodou, a pergunta "o que pagou o próprio custo" só tem resposta suposta.
 - **Honestidade compõe:** reportar fraqueza gera mais confiança do que esconder — e não precisa ser desfeito depois.
 
 ## Deste projeto

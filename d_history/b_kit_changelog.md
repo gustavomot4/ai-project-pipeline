@@ -8,6 +8,56 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.2] — 2026-08-13
+**Primeira avaliação de campo do kit, e ela achou o portão mentindo.** Um projeto real
+construído com o kit v13.1 foi medido por uma sessão isolada, com o critério de sucesso escrito
+e hasheado ANTES de qualquer arquivo do projeto ser aberto. O kit saiu bem em 9 de 9 hipóteses
+— e a mesma medição encontrou uma checagem que tinha parado de checar sem que nada gritasse.
+- **Skill:** nenhuma (sessão de evolução do próprio kit, fora do ciclo de projeto)
+
+- **QA-14 · a checagem 10 enxergava 12% do que dizia enxergar.** `sem_codigo()` descarta o
+  trecho entre crases antes de procurar `D-NN`/`Q-NN`/`QA-NN` citados — e a casa escreve
+  `` `D-13` ``, não D-13. No projeto medido, **300 de 341 citações estavam entre crases**: o
+  portão anunciava "ID inexistente" entre as falhas e reprovava ~12% dos casos. Corrigido com
+  `sem_bloco_de_codigo()`, que remove só o bloco cercado; `sem_codigo()` fica como está para os
+  wikilinks, onde descartar o exemplo entre crases é o comportamento certo.
+  **Verificado nos dois sentidos:** com a correção revertida, a isca 10 reprova e só ela
+  (1 falha em 3 testes); com a correção, a suíte inteira passa (38 testes).
+  **E o canário que já existia continuava verde** com o defeito presente — porque escrevia
+  `D-77` SEM crases, isto é, sabotava de um jeito que a casa nunca escreve.
+
+- **O conserto estrutural, que vale mais que o defeito:** `TestTodaChecagemTemIsca` dá a CADA
+  uma das 14 FALHAS numeradas uma isca canônica — o caso concreto que aquela checagem existe
+  para pegar — e `test_toda_falha_numerada_tem_isca` compara o conjunto de iscas com os números
+  do cabeçalho do `check.py`. FALHA nova sem isca reprova; isca que deixa de pegar o próprio
+  caso reprova. É a generalização que faltava: o comentário da checagem 13 já nomeava a doença
+  ("checagem que emudece é pior que checagem que não existe, porque o verde continua saindo"),
+  a lição estava escrita neste mesmo arquivo, e a checagem 10 a tinha duas telas acima.
+  Uma contraprova junto (`test_kit_entregue_passa_sem_isca`): sem sabotagem o portão não pode
+  reprovar, senão uma isca que reprova por acidente passaria por isca que funciona.
+
+- **Instrumentação da sessão (aviso novo, o 13º):** o changelog do projeto passa a declarar
+  `- **Skill:** <nome>` por entrada datada, e o `check.py` avisa quando as 3 mais recentes não
+  o trazem — ou quando o nome não existe em `b_process/skills/`. Motivo medido: a avaliação de
+  campo não conseguiu responder "qual dos 24 agentes pagou o próprio custo" com evidência
+  mecânica, porque **o kit não registrava qual skill rodava**; a resposta ficou em `[suposto]`
+  por falta de um dado que custa uma linha. Mora no changelog de propósito — nenhuma sessão o
+  carrega, então o dado custa **zero contexto**. É aviso, não falha: projeto que já existe não
+  vai reescrever histórico para adotar isto. `README` (26→27 julgados, 12→13 avisos, cobrado
+  pelo teste de honestidade), `CLAUDE.md` e o template de fecho de sessão acompanham.
+
+**Conhecido e NÃO consertado aqui (regra 4 — achado vira nota, não commit de carona):**
+- **A checagem 9 é `substring`:** um `.gitignore` contendo só um COMENTÁRIO que cita `.env`,
+  `*.pem` etc. passa. Medido ao escrever a isca 9 — que, na primeira versão, também não
+  sabotava nada (trocar `.env` deixava `.env.local`, que contém `.env`). Mesma espécie do QA-14.
+- **Cinco melhorias levantadas pela avaliação e adiadas:** número que um script pode calcular
+  não se digita (o campo "Passagens de revisão" do projeto medido dizia 1 com 3 no arquivo);
+  `task.py arquivar` (5 de 34 sessões do projeto medido foram encolher arquivo à mão);
+  aviso de achado vencido e de pergunta do dono com prazo estourado; card de faxina por módulo
+  como papel de primeira classe; e trocar o caso de referência — que se declara "relato, não
+  medição" — pela medição de campo, **com o imposto junto** (15% das sessões em manutenção do
+  próprio processo, 43% dos commits sem código).
+
 ## [kit v13.1] — 2026-08-05
 **Double check de ponta a ponta antes de usar o kit num projeto real.** Seis defeitos, **todos
 introduzidos nesta mesma sessão** — enquanto o dia inteiro era gasto caçando divergência doc ×

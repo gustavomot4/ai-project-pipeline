@@ -6,6 +6,7 @@ status: atual
 
 **Entregue:** <o que saiu desta sessão, 1 linha>
 **Portão rodado:** <comando + resultado — na SUA máquina, não no sandbox>
+**Skill:** <a skill desta sessão, ou `nenhuma`> — repita no CHANGELOG; é o único registro de qual agente rodou, e sem ele medir o kit vira arqueologia de git
 
 - [ ] Passou no portão objetivo (o número, não "parece bom"). Falhou? → devolve pedindo **delta**, não recomeça.
 - [ ] Veio como delta (só o alterado), não regeneração.
@@ -14,7 +15,7 @@ status: atual
 - [ ] Pendência que é **sua** (não do agente) → **Q-NN** em [[c_decisions|DECISIONS]].
 - [ ] "Estado atual" do [[a_context_source|CONTEXT]] reescrito **por substituição** — versão, pronto, em andamento (máx 1), próximo, bloqueado, Q-NN abertas.
 - [ ] Nenhum número vigente duplicado fora do [[a_context_source|CONTEXT]] (regra 6).
-- [ ] Linha datada no [[a_changelog|CHANGELOG]].
+- [ ] Linha datada no [[a_changelog|CHANGELOG]], com a linha `- **Skill:** <nome>` (o `check.py` avisa se faltar).
 - [ ] [[c_backlog|BACKLOG]] atualizado: card movido, novo card com **portão escrito**.
 - [ ] Lição nova? 1 linha em [[d_agent_learnings|APRENDIZADOS]] — inclusive erro do agente.
 - [ ] `python scripts/check.py` verde.

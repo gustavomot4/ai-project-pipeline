@@ -45,7 +45,7 @@ são históricos, e nenhuma sessão precisa deles. Se faltar informação, peça
 D-NN / QA-NN / Q-NN registrados em a_context/c_decisions.md
    → "Estado atual" de a_context/a_context_source.md reescrito POR SUBSTITUIÇÃO
      (nunca anexado no fim)
-   → linha datada em d_history/a_changelog.md
+   → linha datada em d_history/a_changelog.md, com `- **Skill:** <nome>` (o script avisa se faltar)
    → commit citando os IDs:  TIPO: o que mudou (D-NN/QA-NN)
    → lição nova? 1 linha em b_process/d_agent_learnings.md
 ```
