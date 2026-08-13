@@ -703,7 +703,12 @@ class TestTodaChecagemTemIsca(unittest.TestCase):
             # CONTÉM ".env", e a isca não sabotava nada (falso verde, achado ao escrever
             # esta classe). Limite conhecido e NÃO consertado aqui (regra 4): a checagem 9
             # é `substring`, então um .gitignore só de comentários citando os padrões passa.
-            9: (lambda r: (r / ".gitignore").write_text("node_modules/\n", encoding="utf-8"),
+            # QA-15: a isca é um .gitignore que só COMENTA os padrões. A versão anterior
+            # ("node_modules/") provava menos: a checagem era `substring`, então um
+            # comentário citando `.env` a satisfazia sem ignorar nada.
+            9: (lambda r: (r / ".gitignore").write_text(
+                    "# nunca commite .env, *.pem, *.key, id_rsa, credentials.json, *.p12\nnode_modules/\n",
+                    encoding="utf-8"),
                 ".gitignore sem cobertura"),
             # A isca da 10 escreve o ID ENTRE CRASES de propósito: é como a casa escreve,
             # e era exatamente o caso que passava. Sem crases o teste não prova nada.
@@ -802,6 +807,179 @@ class TestInstrumentacaoDaSessao(unittest.TestCase):
         """Se o template parar de pedir, o campo some dos projetos e o aviso vira ruído."""
         t = (KIT / "b_process/templates/c_session_closing.md").read_text(encoding="utf-8")
         self.assertIn("**Skill:**", t, "o template de fecho de sessão não pede mais a skill")
+
+
+class TestNumeroDeclarado(unittest.TestCase):
+    """Número que um script calcula não se mantém à mão. O kit já apanhou disso uma vez (a
+    frase de cobertura dizia 188/18 com 277/23 no disco) e a correção valeu só para aquele
+    número; aqui a lição vira classe."""
+
+    def preparar(self, tmp, linha_estado: str):
+        repo = montar_kit(Path(tmp) / "repo")
+        p = repo / "a_context/a_context_source.md"
+        p.write_text(p.read_text(encoding="utf-8") + "\n" + linha_estado + "\n", encoding="utf-8")
+        return repo
+
+    def test_ocupacao_declarada_errada_avisa(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "- **Registro:** 9.999/12.000")
+            saida = rodar_check(repo).stdout
+            self.assertIn("não se mantém à mão", saida)
+            self.assertIn("9999/12000", saida.replace(".", ""))
+
+    def test_ocupacao_declarada_certa_cala(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            real = len((repo / "a_context/c_decisions.md").read_text(encoding="utf-8"))
+            p = repo / "a_context/a_context_source.md"
+            p.write_text(p.read_text(encoding="utf-8") + f"\n- **Registro:** {real}/12.000\n",
+                         encoding="utf-8")
+            self.assertNotIn("não se mantém à mão", rodar_check(repo).stdout)
+
+    def test_numero_alheio_ao_orcamento_nao_dispara(self):
+        """`385/385` é suíte de teste, não orçamento. Aviso falso ensina a ignorar aviso."""
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "- **Suíte:** 385/385 verde")
+            self.assertNotIn("não se mantém à mão", rodar_check(repo).stdout)
+
+
+class TestFilaDoDono(unittest.TestCase):
+    """Questão aberta que não aparece no CONTEXT não é feita a ninguém: o CONTEXT é o único
+    arquivo que TODA sessão carrega. Medido no primeiro projeto real: três Q-NN abertas, duas
+    com prazo estourado, e quem registrou o estouro foi uma sessão que por acaso olhou."""
+
+    def preparar(self, tmp, linha_q: str, no_contexto: str):
+        repo = montar_kit(Path(tmp) / "repo")
+        d = repo / "a_context/c_decisions.md"
+        d.write_text(d.read_text(encoding="utf-8") + "\n" + linha_q + "\n", encoding="utf-8")
+        c = repo / "a_context/a_context_source.md"
+        c.write_text(c.read_text(encoding="utf-8").replace(
+            "- **Questões abertas:** <só os IDs Q-NN — detalhe no DECISIONS>",
+            f"- **Questões abertas:** {no_contexto}"), encoding="utf-8")
+        return repo
+
+    def test_questao_aberta_ausente_do_contexto_avisa(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "| Q-42 | a pergunta | antes de T-10 |", "nenhuma")
+            saida = rodar_check(repo).stdout
+            self.assertIn("ausente do CONTEXT", saida)
+            self.assertIn("Q-42", saida)
+
+    def test_questao_listada_no_contexto_cala(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "| Q-42 | a pergunta | antes de T-10 |", "Q-42")
+            self.assertNotIn("ausente do CONTEXT", rodar_check(repo).stdout)
+
+    def test_questao_respondida_nao_conta_como_aberta(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "| Q-42 | ~~a pergunta~~ | **RESPONDIDA 2026-01-01 → D-01** |",
+                                 "nenhuma")
+            self.assertNotIn("ausente do CONTEXT", rodar_check(repo).stdout)
+
+
+class TestAchadoVencido(unittest.TestCase):
+    """O registro era append-only na CRIAÇÃO e não tinha disciplina de EXPIRAÇÃO: no projeto
+    medido, o único QA crítico aberto descrevia uma condição já resolvida havia dias."""
+
+    def preparar(self, tmp, linha_qa: str):
+        repo = montar_kit(Path(tmp) / "repo")
+        d = repo / "a_context/c_decisions.md"
+        d.write_text(d.read_text(encoding="utf-8") + "\n" + linha_qa + "\n", encoding="utf-8")
+        return repo
+
+    def test_critico_antigo_e_aberto_avisa(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "| QA-42 | 2020-01-01 | Crítico | `x.py:1` | quebrava | — | _(aberto)_ |")
+            saida = rodar_check(repo).stdout
+            self.assertIn("Achado grave aberto há mais de 14 dias", saida)
+            self.assertIn("QA-42", saida)
+
+    def test_critico_fechado_cala(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "| QA-42 | 2020-01-01 | Crítico | `x.py:1` | quebrava | — | ✔ 2020-01-02 |")
+            self.assertNotIn("Achado grave aberto", rodar_check(repo).stdout)
+
+    def test_medio_antigo_nao_avisa(self):
+        """Só Crítico/Alto. Cobrar Médio antigo transformaria o aviso em ruído de fundo."""
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "| QA-42 | 2020-01-01 | Médio | `x.py:1` | quebrava | — | _(aberto)_ |")
+            self.assertNotIn("Achado grave aberto", rodar_check(repo).stdout)
+
+    def test_tabela_sem_a_coluna_diz_que_nao_julgou(self):
+        """A doença do QA-14 é emudecer. Sem a coluna, a checagem fala em voz alta."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            d = repo / "a_context/c_decisions.md"
+            d.write_text(d.read_text(encoding="utf-8").replace(
+                "| O que quebrava | Correção | Fechado em |", "| O que quebrava | Correção |"),
+                encoding="utf-8")
+            self.assertIn("NÃO rodou", rodar_check(repo).stdout)
+
+
+class TestArquivar(unittest.TestCase):
+    """`task.py arquivar`: a parte cara do arquivamento nunca foi mover o texto, foi DECIDIR
+    o que pode sair. Critério do `D-43`: sai quem nenhum `.md` vivo cita.
+
+    Relata por padrão. O `check.py` declara em código que "script não escreve na verdade de
+    ninguém" — a exceção é explícita e exige `--aplicar`."""
+
+    def preparar(self, tmp, linhas_d: str, citacao: str = ""):
+        repo = montar_kit(Path(tmp) / "repo")
+        d = repo / "a_context/c_decisions.md"
+        d.write_text(d.read_text(encoding="utf-8") + "\n" + linhas_d + "\n", encoding="utf-8")
+        if citacao:
+            p = repo / "a_context/b_plan.md"
+            p.write_text(p.read_text(encoding="utf-8") + "\n" + citacao + "\n", encoding="utf-8")
+        return repo
+
+    def rodar(self, repo, *extra):
+        return subprocess.run([sys.executable, str(repo / "scripts/arquivar.py"), str(repo), *extra],
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", env=AMBIENTE_UTF8, timeout=120)
+
+    def test_template_puro_nao_tem_candidata(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.assertIn("Nada a arquivar", self.rodar(repo).stdout)
+
+    def test_decisao_que_ninguem_cita_e_candidata(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "| D-42 | 2026-01-01 | ADOTADO | ninguém me cita | |")
+            self.assertIn("D-42", self.rodar(repo).stdout)
+
+    def test_decisao_citada_por_arquivo_vivo_fica(self):
+        """Inclusive citada ENTRE CRASES, que é como a casa escreve (QA-14)."""
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "| D-42 | 2026-01-01 | ADOTADO | alguém me cita | |",
+                                 "O módulo segue `D-42`.")
+            saida = self.rodar(repo).stdout
+            self.assertIn("Nada a arquivar", saida)
+            self.assertIn("D-42", saida.split("Candidatas")[0])
+
+    def test_rejeitada_e_preservada_por_padrao(self):
+        """A lista-morta é a tese do kit: ela some só por decisão explícita."""
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "| D-43 | 2026-01-01 | REJEITADO | morreu | |")
+            self.assertIn("REJEITADAS preservadas", self.rodar(repo).stdout)
+            self.assertIn("D-43", self.rodar(repo, "--incluir-rejeitadas").stdout)
+
+    def test_sem_aplicar_nao_escreve(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "| D-42 | 2026-01-01 | ADOTADO | ninguém me cita | |")
+            antes = (repo / "a_context/c_decisions.md").read_text(encoding="utf-8")
+            self.rodar(repo)
+            self.assertEqual(antes, (repo / "a_context/c_decisions.md").read_text(encoding="utf-8"))
+
+    def test_aplicar_move_e_preserva_a_integra(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp, "| D-42 | 2026-01-01 | ADOTADO | ninguém me cita | |")
+            reg = repo / "a_context/c_decisions.md"
+            antes = len(reg.read_text(encoding="utf-8"))
+            self.rodar(repo, "--aplicar")
+            depois = reg.read_text(encoding="utf-8")
+            self.assertLess(len(depois), antes)
+            self.assertNotIn("| D-42 |", depois)
+            self.assertIn("D-42", (repo / "e_qa/decisions_archive.md").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

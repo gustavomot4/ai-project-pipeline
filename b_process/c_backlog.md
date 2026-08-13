@@ -28,5 +28,11 @@ status: rascunho
 ## Feito (mover para cá; detalhe no [[a_changelog|CHANGELOG]])
 - [x] T-… — <tarefa>
 
+## Faxina (achados pequenos, por módulo)
+> Onde vai parar o `QA-NN` que a regra 4 impediu de consertar de carona. Sem esta seção
+> ele fica sem dono e sem data — no primeiro projeto medido com o kit eram **9 achados**
+> abertos, um deles de UMA linha de CSS. Um card por módulo, fechado quando a lista dele zera.
+- [ ] F-M1 — <achados pequenos de M1: QA-NN, QA-NN> · **Portão:** as linhas citadas fechadas com data
+
 ## Ideias (não comprometidas)
 - <solta; só vira T-NN quando promovida com portão escrito>

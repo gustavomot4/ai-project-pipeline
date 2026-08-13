@@ -17,6 +17,9 @@ status: rascunho
 | D-03 | <data> | SUPERSEDE D-01 | <nova escolha> | <o que mudou> |
 
 ## Questões abertas (Q-NN — decisões do DONO, não do agente)
+> **Respondida = a linha diz `RESPONDIDA` (ou vem riscada) e aponta o `D-NN` que a fechou.**
+> Enquanto isso não acontece a questão é aberta, e o `check.py` cobra que ela apareça no
+> [[a_context_source|CONTEXT]] — fila que o dono não vê não é fila, é espera.
 | # | Questão | Decidir quando |
 |---|---|---|
 | Q-01 | <ex.: quais formas de pagamento entram no escopo?> | <marco/condição> |
@@ -24,6 +27,6 @@ status: rascunho
 ## Achados de QA (QA-NN — citados no commit: `fix: QA-NN …`)
 > Preenchido pelas sessões de [[b_process/skills/guardrails-review/SKILL|guardrails-review]]. Relatório completo de cada passagem em `e_qa/<n>_qa_pass<NN>_report_<AAMMDD>_<HHMM>.md`; aqui fica só a linha rastreável.
 
-| # | Data | Sev. | Onde | O que quebrava | Correção |
-|---|---|---|---|---|---|
-| QA-01 | <data> | <Crítico/Alto/Médio/Baixo> | `arquivo:linha` | <invariante quebrada> | <o que mudou> |
+| # | Data | Sev. | Onde | O que quebrava | Correção | Fechado em |
+|---|---|---|---|---|---|---|
+| QA-01 | <data> | <Crítico/Alto/Médio/Baixo> | `arquivo:linha` | <invariante quebrada> | <o que mudou> | _(aberto)_ |

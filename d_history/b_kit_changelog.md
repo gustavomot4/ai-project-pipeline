@@ -8,6 +8,64 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.3] — 2026-08-13
+**As cinco melhorias que a avaliação de campo levantou e a v13.2 deixou anotadas.** Uma delas
+foi implementada e **não resolve o problema que a motivou** — está escrito abaixo, com o número.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **QA-15 · a checagem 9 aceitava COMENTÁRIO como cobertura.** Um `.gitignore` contendo só
+  `# nunca commite .env, *.pem…` passava: a checagem era `substring` e não distinguia linha
+  efetiva de comentário. Regra satisfeita pelo TEXTO, não pelo EFEITO — mesma espécie do
+  `QA-14`. Achado ao escrever a isca da checagem 9, que **também não sabotava nada** na
+  primeira versão (trocar `.env` deixava `.env.local`, que contém `.env`). A isca agora é o
+  caso do comentário, que é o forte.
+
+- **Número declarado é conferido (aviso 14).** Ocupação que o CONTEXT afirma sobre um arquivo
+  que o script mede passa a ser comparada com o arquivo. O kit já apanhou disso uma vez — a
+  frase de cobertura dizia 188/18 com 277/23 no disco — e a correção valeu só para AQUELE
+  número; agora vale para a classe. `385/385` (suíte) não dispara: número alheio ao orçamento
+  não é assunto do aviso, e aviso falso ensina a ignorar aviso.
+
+- **Fila do dono visível (aviso 15).** `Q-NN` aberta no registro e ausente da linha "Questões
+  abertas" do CONTEXT vira aviso: o CONTEXT é o único arquivo que toda sessão carrega, e fora
+  dele a pergunta não é feita a ninguém. O template documenta a convenção que torna isto
+  julgável por máquina — respondida é a linha que diz `RESPONDIDA` ou vem riscada.
+
+- **Achado vencido (aviso 16).** A tabela de QA ganha a coluna `Fechado em`, e `QA-NN`
+  Crítico/Alto aberto há mais de 14 dias vira aviso. Motivo medido: no projeto avaliado, o
+  ÚNICO crítico aberto descrevia uma condição já resolvida havia dias — o registro era
+  append-only na criação e não tinha disciplina de expiração. **Sem a coluna, a checagem diz
+  em voz alta que não julgou**, em vez de emudecer: é a lição do `QA-14` aplicada na hora de
+  escrever a checagem, não depois.
+
+- **Faxina vira seção do BACKLOG.** Onde o `QA-NN` que a regra 4 impediu de consertar de
+  carona ganha dono e data. No projeto medido eram **9 achados abertos**, um deles de uma
+  linha de CSS. Um card por módulo; o template de fecho de sessão passa a apontar para lá.
+
+- **`task.py arquivar`.** Lista as decisões que nenhum `.md` vivo cita (critério do `D-43`),
+  **relata por padrão e só escreve com `--aplicar`** — o `check.py` declara em código que
+  "script não escreve na verdade de ninguém", e a exceção fica explícita em vez de virar
+  efeito colateral. **REJEITADAS são preservadas por padrão** (`--incluir-rejeitadas` para
+  soltar): a lista-morta é a tese do kit, e no projeto medido duas passagens de arquivamento
+  já as tinham preservado de propósito, com a razão escrita.
+
+  **E o resultado honesto: rodado contra o registro real do projeto medido, ele devolve ZERO
+  candidatas.** 33 das 39 linhas são citadas por arquivo vivo e 6 são rejeitadas preservadas —
+  isto é, o critério do `D-43` está **esgotado** lá, exatamente como o card `A-13` daquele
+  projeto previu ("daqui em diante arquivar custa mover texto de verdade"). O script confirma
+  por máquina o que a análise humana tinha concluído, e **não devolve um caractere de folga**.
+  A melhoria que eu havia chamado de "maior redução de imposto disponível" não reduz o imposto
+  do projeto que pediu por ela. O remédio de verdade continua sendo a outra saída que o `A-13`
+  listou — **subir o teto** —, e essa fica aberta.
+
+- **A medição vira documento:** [[c_field_evaluation_tapgo_260813|avaliação de campo]] em
+  `docs/`, com o critério hasheado antes dos dados, os números, o imposto e o defeito do
+  próprio instrumento de avaliação (dois testes de "atrapalhou" mal calibrados, descritos em
+  vez de consertados em silêncio). O README passa a apontar para ela na frase de honestidade.
+
+`README` de 27 para 30 julgados (14 falhas, 16 avisos), cobrado pelo teste de honestidade.
+Suíte de 38 para 54 testes.
+
 ## [kit v13.2] — 2026-08-13
 **Primeira avaliação de campo do kit, e ela achou o portão mentindo.** Um projeto real
 construído com o kit v13.1 foi medido por uma sessão isolada, com o critério de sucesso escrito

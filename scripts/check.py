@@ -25,7 +25,8 @@ AVISOS (não reprovam; com --avisos-reprovam, reprovam)
   portão automático (pre-commit) não instalado · módulo do PLANO sem tarefa ·
   description de skill sem fronteira negativa · CONTEXT perto do teto ·
   DECISIONS perto do teto · tema de a_context/ fora do mapa de leitura ·
-  sessão sem skill declarada no changelog
+  sessão sem skill declarada no changelog · ocupação declarada divergindo do arquivo ·
+  questão do dono ausente do CONTEXT · achado grave aberto há mais de 14 dias
 
 O README declara quantos itens de checklist existem e quantos esta máquina julga.
 Esse número é cobrado por `test_check.py` — a frase mais honesta do kit não pode
@@ -37,6 +38,7 @@ Marque uma linha com `checar:ignore` para isentá-la da varredura de segredo
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 # O git emite caminhos em UTF-8. `text=True` SOZINHO decodifica com o encoding do
@@ -469,7 +471,11 @@ gi = topo / ".gitignore"
 if not gi.exists():
     falhas.append(".gitignore ausente — o kit assume que ele existe antes do primeiro commit.")
 else:
-    texto_gi = gi.read_text(encoding="utf-8")
+    # QA-15: só as linhas EFETIVAS. Um .gitignore que apenas COMENTA os padrões
+    # ("# nunca commite .env, *.pem…") satisfazia a checagem por substring sem ignorar
+    # nada — regra satisfeita pelo TEXTO, não pelo EFEITO. Mesma espécie do QA-14.
+    texto_gi = "\n".join(l for l in gi.read_text(encoding="utf-8").splitlines()
+                         if l.strip() and not l.lstrip().startswith("#"))
     faltando = [p for p in (".env", "*.pem", "*.key", "id_rsa", "credentials.json", "*.p12") if p not in texto_gi]
     if faltando:
         falhas.append(".gitignore sem cobertura mínima de segredo — faltam: " + ", ".join(faltando))
@@ -586,6 +592,82 @@ if texto_cl:
             + " — sem este campo ninguém sabe qual agente rodou, e medir o kit vira "
             "arqueologia. Formato: uma linha `- **Skill:** <nome>` na entrada."
         )
+
+# Número que um script calcula não se mantém à mão. O kit já aprendeu isto uma vez — a
+# frase de cobertura do README dizia 188/18 quando o real era 277/23 — e a correção valeu
+# só para AQUELE número. Aqui a lição vira classe: ocupação declarada no CONTEXT sobre um
+# arquivo que este script mede é conferida contra o arquivo.
+ORCAMENTOS = {4000: (CONTEXTO, texto_ctx), 12000: (DECISOES, texto_dec)}
+if texto_ctx:
+    divergentes = []
+    for bruto_n, bruto_teto in re.findall(r"(\d[\d.]*)\s*/\s*(\d[\d.]*)", texto_ctx):
+        try:
+            declarado, teto = int(bruto_n.replace(".", "")), int(bruto_teto.replace(".", ""))
+        except ValueError:
+            continue
+        if teto not in ORCAMENTOS:
+            continue
+        nome, texto_alvo = ORCAMENTOS[teto]
+        if texto_alvo and declarado != len(texto_alvo):
+            divergentes.append(f"diz {nome} em {declarado}/{teto}, o arquivo tem {len(texto_alvo)}")
+    if divergentes:
+        avisos.append(
+            f"{CONTEXTO} " + " · ".join(divergentes)
+            + " — número que o script calcula não se mantém à mão; atualize ao reescrever o Estado atual."
+        )
+
+# A fila do dono só existe se ele a VÊ. O CONTEXT é o único arquivo que toda sessão carrega:
+# questão aberta que não aparece lá fica esperando alguém abrir o DECISIONS por conta própria.
+# Medido no primeiro projeto real: três Q-NN abertas, duas com prazo estourado, e o achado
+# que registrou o estouro foi feito à mão numa sessão que por acaso olhou.
+if texto_dec and texto_ctx:
+    abertas = [m.group(1) for m in re.finditer(r"^\|\s*(Q-\d+)\s*\|(.*)$", texto_dec, re.M)
+               if "RESPONDIDA" not in m.group(2).upper() and "~~" not in m.group(2)
+               and "<" not in m.group(2)]
+    linha_q = re.search(r"\*\*Quest(?:ões|oes) abertas[^:]*:\*\*\s*(.+)", texto_ctx)
+    if abertas and linha_q and "<" not in linha_q.group(1):
+        ausentes = [q for q in abertas if q not in linha_q.group(1)]
+        if ausentes:
+            avisos.append(
+                "Questão do dono aberta no " + DECISOES + " e ausente do CONTEXT: "
+                + ", ".join(ausentes) + " — o CONTEXT é o único arquivo que toda sessão lê; "
+                "fora dele a pergunta não é feita a ninguém."
+            )
+
+# Achado que envelhece aberto. O registro é append-only na CRIAÇÃO e não tinha disciplina de
+# EXPIRAÇÃO: no projeto medido, o único QA crítico aberto descrevia uma condição já resolvida.
+# Só julga se a tabela tiver a coluna — e, quando não tiver, DIZ que não julgou, em vez de
+# emudecer (a doença do QA-14).
+if texto_dec and re.search(r"^\|\s*#\s*\|.*Fechado", texto_dec, re.M | re.I):
+    velhos = []
+    for linha in texto_dec.splitlines():
+        if not re.match(r"^\|\s*QA-\d+\s*\|", linha):
+            continue
+        celulas = [c.strip() for c in linha.strip().strip("|").split("|")]
+        if len(celulas) < 5:
+            continue
+        ident, quando_txt, sev, fechado = celulas[0], celulas[1], celulas[2].upper(), celulas[-1]
+        if fechado and "ABERTO" not in fechado.upper():
+            continue
+        if not any(g in sev for g in ("CRÍTICO", "CRITICO", "ALTO")):
+            continue
+        try:
+            idade = (date.today() - date.fromisoformat(quando_txt[:10])).days
+        except ValueError:
+            continue
+        if idade > 14:
+            velhos.append(f"{ident} ({celulas[2].strip()}, {idade} dias)")
+    if velhos:
+        avisos.append(
+            "Achado grave aberto há mais de 14 dias: " + ", ".join(velhos)
+            + " — ou fecha com data, ou vira card no BACKLOG. Registro append-only precisa "
+            "de disciplina de expiração, senão a linha descreve um mundo que já acabou."
+        )
+elif texto_dec:
+    avisos.append(
+        "Tabela de QA sem a coluna 'Fechado em' — a checagem de achado vencido NÃO rodou. "
+        "Dito em voz alta de propósito: checagem que emudece é pior que checagem que não existe."
+    )
 
 placeholders = re.findall(r"<[A-Za-zÀ-ú][^<>\n]{2,60}>", texto_ctx)
 if placeholders:

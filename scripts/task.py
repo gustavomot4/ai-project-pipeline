@@ -37,6 +37,8 @@ TAREFAS = {
                   "Instala o pre-commit — sem isto o portão só roda quando você lembra.", False),
     "unhook":    ([PY, str(AQUI / "install_hook.py"), "--remover"],
                   "Remove o pre-commit deste kit.", False),
+    "arquivar":  ([PY, str(AQUI / "arquivar.py")],
+                  "Lista as decisões que ninguém vivo cita (relata; só escreve com --aplicar).", False),
     "test":      ([PY, str(AQUI / "test_check.py")],
                   "Testes de regressão dos scripts (encoding, worktree, git ausente).", True),
 }

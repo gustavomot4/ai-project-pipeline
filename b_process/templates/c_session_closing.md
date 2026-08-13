@@ -11,6 +11,7 @@ status: atual
 - [ ] Passou no portão objetivo (o número, não "parece bom"). Falhou? → devolve pedindo **delta**, não recomeça.
 - [ ] Veio como delta (só o alterado), não regeneração.
 - [ ] Decisão fechada → **D-NN** em [[c_decisions|DECISIONS]] (com gatilho, se for estrutural).
+- [ ] Achado pequeno e fora do escopo desta sessão → linha no card de **Faxina** do módulo, não "fica para depois" sem dono.
 - [ ] Bug encontrado → **QA-NN** em [[c_decisions|DECISIONS]] + reprodução em `dev/qa-{{date:YYYY-MM-DD}}.md`.
 - [ ] Pendência que é **sua** (não do agente) → **Q-NN** em [[c_decisions|DECISIONS]].
 - [ ] "Estado atual" do [[a_context_source|CONTEXT]] reescrito **por substituição** — versão, pronto, em andamento (máx 1), próximo, bloqueado, Q-NN abertas.
