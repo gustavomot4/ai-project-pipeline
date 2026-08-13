@@ -8,6 +8,35 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.4] — 2026-08-13
+**A correção do `QA-14` não servia para nenhum projeto que já tivesse arquivado.** Descoberto ao
+medir o merge antes de fazê-lo, não durante.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **QA-16 · ID retirado da tabela virava fantasma.** Com o `QA-14` sozinho, o primeiro projeto
+  real passava de 0 para **22 fantasmas** — `D-05`, `D-11`, `D-12`, `D-14`..`D-21`, `D-23`..`D-26`,
+  `D-29`, `D-33`, `D-34`, `Q-06`, `QA-01`..`QA-03` — todos legitimamente retirados por passagens
+  de arquivamento, com a íntegra preservada. O portão passaria a **reprovar todo commit**.
+  Causa: a checagem lia só linha de tabela do registro vivo, e no arquivo-morto o ID vem entre
+  crases (`` | `D-05` | 2026-08-06 | … ``). Agora qualquer ocorrência em
+  `e_qa/decisions_archive.md` vale como definição — "ID preservado, nada revertido" quer dizer
+  que o ID continua real.
+
+  **Detalhe de desenho que não é cosmético:** o arquivado NÃO entra em `definidos`. A checagem
+  11 (ID duplicado) tem de continuar olhando só a tabela viva, senão a convenção
+  `ADOTADO · ARQUIVADO` — linha que FICA na tabela com a íntegra no arquivo — viraria duplicata
+  falsa em cima da própria regra do kit. Tem teste para isso.
+
+  **Verificado nos dois sentidos e contra dado real:** com o conserto revertido, 1 falha em 57
+  testes, e é a do arquivado; com ele, 57 verdes. Na árvore do projeto medido, 22 fantasmas
+  viram **0**, com 61 IDs reconhecidos no arquivo-morto.
+
+**A lição, que vale mais que o conserto:** o `QA-14` foi validado contra o template do kit — que
+**não tem** arquivo-morto — e passou. O caso difícil só existe em projeto de verdade, que é onde
+o defeito estava. Conserto validado só no template é conserto validado no caso mais fácil.
+Segunda vez em dois dias que rodar contra o projeto real mudou o resultado; da primeira, o
+`arquivar` devolveu zero candidatas onde eu esperava folga.
+
 ## [kit v13.3] — 2026-08-13
 **As cinco melhorias que a avaliação de campo levantou e a v13.2 deixou anotadas.** Uma delas
 foi implementada e **não resolve o problema que a motivou** — está escrito abaixo, com o número.

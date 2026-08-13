@@ -25,6 +25,7 @@ status: atual
 - **Lição escrita não é lição aplicada:** o comentário de uma checagem já nomeava "checagem que emudece" enquanto outra, no mesmo arquivo, tinha a doença — conserte a espécie (um teste que cobre a classe), não o caso.
 - **Isca tem de sabotar como a casa escreve:** o canário citava o ID sem crases e a casa escreve com crases; ele passava e a cegueira sobrevivia. Teste que passa pelo motivo errado é pior que teste ausente.
 - **Processo que não se instrumenta não se prova:** se ninguém registra qual agente rodou, a pergunta "o que pagou o próprio custo" só tem resposta suposta.
+- **Conserto validado só no template é validado no caso mais fácil:** o template do kit não tem arquivo-morto e o projeto real tem — a correção passava lá e travaria todo commit aqui. Rode contra o projeto de verdade antes de chamar de pronto.
 - **Melhoria se valida contra o dado que a motivou:** um comando de arquivamento escrito para matar 5 sessões de manutenção devolveu ZERO candidatas no projeto que pediu por ele — o critério já estava esgotado. Rode a melhoria contra o caso real antes de comemorar.
 - **Regra satisfeita pelo texto não é regra satisfeita pelo efeito:** `.gitignore` só com comentário citando os padrões passava na checagem por substring.
 - **Honestidade compõe:** reportar fraqueza gera mais confiança do que esconder — e não precisa ser desfeito depois.

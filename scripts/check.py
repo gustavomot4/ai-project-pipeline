@@ -126,6 +126,7 @@ DECISOES = "a_context/c_decisions.md"           # D-NN / Q-NN / QA-NN, append-on
 BACKLOG = "b_process/c_backlog.md"              # fonte única de tarefas
 SKILLS = "b_process/skills"                     # os agentes instaláveis
 CHANGELOG = "d_history/a_changelog.md"          # histórico datado; nenhuma sessão carrega
+ARQUIVO_MORTO = "e_qa/decisions_archive.md"     # íntegra das linhas retiradas da tabela
 # Pastas do vault: só nelas "nota órfã" faz sentido. Markdown do próprio app
 # (content/, docs de pacote, README de módulo) não é nota e não bloqueia commit.
 PASTAS_VAULT = {"a_context", "b_process", "c_technical_docs", "d_history", "e_qa"}
@@ -483,6 +484,17 @@ else:
 # 10 e 11. Integridade dos IDs rastreáveis (regra 4).
 if texto_dec:
     definidos = set(re.findall(r"^\|\s*((?:D|Q|QA)-\d+)\s*\|", texto_dec, re.M))
+    # QA-16: ID arquivado continua sendo ID REAL — é o que "ID preservado, nada revertido"
+    # significa. Sem isto, a correção do QA-14 é inutilizável em qualquer projeto que já
+    # tenha arquivado: medido no primeiro projeto real, 22 IDs legitimamente retirados da
+    # tabela viravam fantasma e o portão passaria a reprovar TODO commit.
+    # Aqui não se procura linha de tabela: no arquivo-morto o ID vem entre crases
+    # (`| `D-05` | 2026-08-06 | …`), então qualquer ocorrência dele naquele arquivo vale
+    # como definição. E de propósito NÃO entra em `definidos`: a checagem 11 (ID duplicado)
+    # tem de continuar olhando só a tabela viva, senão a convenção `ARQUIVADO` — linha que
+    # FICA na tabela com a íntegra lá — viraria duplicata falsa.
+    morto = raiz / ARQUIVO_MORTO
+    arquivados = set(re.findall(r"\b((?:D|Q|QA)-\d+)\b", corpo.get(morto, ""))) if morto.exists() else set()
     repetidos = [i for i in definidos if len(re.findall(rf"^\|\s*{re.escape(i)}\s*\|", texto_dec, re.M)) > 1]
     if repetidos:
         falhas.append(f"ID duplicado em {DECISOES}: " + ", ".join(sorted(repetidos)) + " — cada ID é único e append-only.")
@@ -495,10 +507,12 @@ if texto_dec:
             continue
         for i in set(re.findall(r"\b((?:D|Q|QA)-\d+)\b", sem_bloco_de_codigo(corpo[nota]))):
             citados.setdefault(i, set()).add(nota.relative_to(topo).as_posix())
-    fantasmas = {i: v for i, v in citados.items() if i not in definidos and not re.fullmatch(r"(D|Q|QA)-0*(0|NN)", i)}
+    fantasmas = {i: v for i, v in citados.items()
+                 if i not in definidos and i not in arquivados
+                 and not re.fullmatch(r"(D|Q|QA)-0*(0|NN)", i)}
     if fantasmas:
         detalhe = "; ".join(f"{i} (em {', '.join(sorted(v))})" for i, v in sorted(fantasmas.items())[:6])
-        falhas.append(f"ID citado que não existe em {DECISOES}: {detalhe}")
+        falhas.append(f"ID citado que não existe em {DECISOES} nem em {ARQUIVO_MORTO}: {detalhe}")
 
 # 12. "Em andamento" tem de bater entre BACKLOG e CONTEXT (regra 6, fonte única).
 # 13. Cobertura módulo <-> tarefa. Metade FORMAL do que a skill artifact-consistency faz

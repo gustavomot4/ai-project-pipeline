@@ -995,5 +995,57 @@ class TestArquivar(unittest.TestCase):
             self.assertIn("D-42", (repo / "e_qa/decisions_archive.md").read_text(encoding="utf-8"))
 
 
+class TestIdArquivado(unittest.TestCase):
+    """QA-16 — ID retirado da tabela continua sendo ID REAL: é o que "ID preservado, nada
+    revertido" significa, e é a regra que o próprio arquivamento do kit promete.
+
+    Medido antes de existir: com a correção do QA-14 sozinha, o primeiro projeto real passava
+    a acusar **22 fantasmas** — todos legitimamente arquivados — e o portão reprovaria TODO
+    commit. Correção que só funciona em projeto que nunca arquivou não é correção.
+
+    No arquivo-morto o ID vem entre crases (`| `D-05` | 2026-08-06 | …`), então aqui não se
+    procura linha de tabela: qualquer ocorrência no arquivo vale como definição."""
+
+    def arquivar(self, repo: Path, linha: str):
+        p = repo / "e_qa/decisions_archive.md"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        cabeca = "" if p.exists() else "---\ntags: [qa, arquivo]\nstatus: atual\n---\n# Registro arquivado\n\n"
+        p.write_text((p.read_text(encoding="utf-8") if p.exists() else cabeca) + linha + "\n",
+                     encoding="utf-8")
+
+    def citar(self, repo: Path, texto: str):
+        p = repo / "INDEX.md"
+        p.write_text(p.read_text(encoding="utf-8") + "\n\n" + texto + "\n", encoding="utf-8")
+
+    def test_id_arquivado_nao_e_fantasma(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.arquivar(repo, "| `D-77` | 2026-01-01 | ADOTADO | retirada da tabela | |")
+            self.citar(repo, "O módulo segue `D-77`.")
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 0, f"ID arquivado virou fantasma:\n{r.stdout}")
+
+    def test_id_que_nao_esta_em_lugar_nenhum_continua_fantasma(self):
+        """Contraprova: sem ela, este conserto poderia ter desligado a checagem 10 inteira."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.arquivar(repo, "| `D-77` | 2026-01-01 | ADOTADO | retirada da tabela | |")
+            self.citar(repo, "O módulo segue `D-78`.")
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("D-78", r.stdout)
+
+    def test_arquivado_que_ficou_na_tabela_nao_vira_duplicata(self):
+        """A convenção `ADOTADO · ARQUIVADO` deixa a linha NA tabela com a íntegra no arquivo.
+        Se a presença no arquivo contasse como definição, isso viraria ID duplicado — falha
+        falsa em cima da própria convenção do kit."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.arquivar(repo, "| `D-01` | 2026-01-01 | ADOTADO | a íntegra | |")
+            r = rodar_check(repo)
+            self.assertNotIn("ID duplicado", r.stdout)
+            self.assertEqual(r.returncode, 0, r.stdout)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
