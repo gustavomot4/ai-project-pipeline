@@ -8,6 +8,63 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.8] — 2026-08-22
+**As três melhorias implementáveis que o benchmarking apontou, e o estudo de MCP.**
+O benchmarking contra oito alternativas de mercado deixou sete recomendações. Três dependem
+do dono (segundo projeto, outro operador, podar o backlog do projeto medido); estas são as
+outras, mais a resposta à pergunta sobre MCP.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **A regra 2 vira trava de máquina: `scripts/escopo_hook.py` + `task.py escopo`.**
+  *"Escopo é o módulo desta sessão; precisa mexer em outro? pare e avise"* era **prosa no
+  prompt** — e prosa no prompt é pedido, não trava. Foi exatamente por isso que o benchmarking
+  deu nota 3 ao kit em "papéis especializados", enquanto Kiro, Claude Code e Continue
+  restringem por lista validada.
+  Agora um hook `PreToolUse` lê a tarefa em andamento no BACKLOG, pega o `**Módulo:**` dela,
+  procura o novo campo `**Pasta:**` desse módulo no PLANO, e **recusa escrita fora dela**.
+  Usa dado que o kit já tinha; só faltava alguém cobrar.
+
+- **Ela FALHA ABERTA em toda dúvida, e diz por quê.** Sem `**Pasta:**` declarada, com duas
+  tarefas em andamento, com entrada quebrada, fora do repositório: passa, e escreve o motivo
+  em stderr. Hook que bloqueia errado ensina a desligar o hook, e hook desligado é pior que
+  hook ausente — é a "checagem que emudece" vista do outro lado. A pasta de documentação é
+  sempre gravável (é nela que a sessão registra o fecho) e **leitura nunca bloqueia**: ler
+  outro módulo para entender o contrato sempre foi trabalho legítimo.
+
+- **Um defeito meu, pego pelo próprio teste, e é o pior modo de falha possível.** O texto de
+  exemplo do template trazia um `·` dentro dele; o separador partiu o placeholder ao meio, e
+  a metade sem `<` virou "pasta declarada" — o que faria a trava **bloquear tudo**. Agora a
+  checagem de placeholder é sobre a linha INTEIRA, antes de separar, e o template perdeu o `·`.
+
+- **Aviso novo: skill declarada responsável no PLANO que nunca rodou.** Medido no primeiro
+  projeto real: de 24 skills, só 10 dispararam — e quatro das que nunca rodaram tinham o
+  assunto acontecendo ali. A mais gritante: existe uma checagem neste arquivo que se declara
+  *"a checagem que a skill `guardrails-review` exige"*; a checagem rodava, a skill nunca.
+  O problema não era falta de skill, era falta de **roteamento**. É mecânico de propósito —
+  lê `**Skill responsável:**` do PLANO contra `**Skill:**` do changelog, sem julgar assunto.
+  No projeto medido dispara em `iac-docker-terraform` (M9) e `microservice-sync` (M6).
+
+- **`b_process/g_primeiros_passos.md`: o guia para quem NÃO construiu o kit.** O benchmarking
+  deu as duas piores notas a custo de adoção (2) e manutenção (1), e apontou que não existia
+  caminho de entrada para terceiros. O guia cabe em quinze minutos e a parte mais útil dele é
+  a que diz **o que ignorar** e **quando não usar este kit** — porque um guia que manda ler
+  tudo piora exatamente o problema que deveria resolver.
+
+- **O portão pegou o guia na primeira escrita.** Eu tinha posto `D-07` como exemplo de formato,
+  e a checagem 10 o leu como citação de um ID inexistente — corretamente. Virou bloco de
+  código, e a explicação disso ficou dentro do próprio guia.
+
+- **Estudo de MCP: NÃO, com confiança alta.** Íntegra em `docs/e_estudo_mcp_260822.md`.
+  Quatro pesquisas independentes convergiram, e a promotoria mediu esta máquina antes de
+  acusar. A conta que decide: os 4 scripts do kit custam **zero token** de definição (entram
+  pelo Bash, que é sempre carregado e nunca cobrado); um servidor MCP sob medida para eles
+  custaria **~495 tokens por sessão**, metade do teto inteiro que o kit defende, **sem
+  entregar capacidade nova**. Agravante que ninguém tinha nomeado: esse custo é **incobrável**
+  — não existe `check.py` capaz de reprová-lo, porque ele mora fora do repositório.
+  Sobrou uma ideia: o **Serena** (leitura semântica de código) é o único candidato que não
+  duplica nada do kit e ataca um custo que ele nunca endereçou — o que a sessão lê de
+  **código**, e não de documentação. É hipótese para medir, não recomendação.
+
 ## [kit v13.7] — 2026-08-22
 **Três mudanças e nenhuma delas engorda o kit: uma corrige um prazo, duas REMOVEM coisa.**
 Saiu da pergunta certa depois da auditoria — "o que dá para tirar?", e não "o que dá para

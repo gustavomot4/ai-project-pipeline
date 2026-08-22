@@ -93,10 +93,67 @@ def topo_do_repo(inicio: Path) -> Path | None:
     return Path(saida).resolve()
 
 
+def escopo(aqui: Path, topo: Path, remover: bool) -> int:
+    """Liga (ou desliga) a trava de escopo do Claude Code em `.claude/settings.json`.
+
+    É o único ponto do kit que fala com um agente específico, e por isso mora aqui e não
+    dentro do `check.py`: o portão de higiene continua sendo Python puro rodando em git, em
+    CI e na mão. Quem não usa Claude Code perde esta trava e mais nada.
+    """
+    import json
+    cfg = topo / ".claude" / "settings.json"
+    dados = {}
+    if cfg.exists():
+        try:
+            dados = json.loads(cfg.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            print(f"ERRO: {cfg} não é JSON válido. Revise-o à mão antes de instalar a trava.")
+            return 1
+    try:
+        rel = (aqui / "escopo_hook.py").relative_to(topo).as_posix()
+    except ValueError:
+        print(f"ERRO: escopo_hook.py está fora do repositório em {topo}.")
+        return 1
+
+    comando = f"python {rel}"
+    ganchos = dados.setdefault("hooks", {}).setdefault("PreToolUse", [])
+    # Reconhece a entrada pelo COMANDO e não por índice: o dono pode ter outros hooks, e
+    # mexer no que não é nosso é como se apaga trabalho alheio sem perceber.
+    nossos = [g for g in ganchos
+              if any(comando in (h.get("command") or "") for h in g.get("hooks", []))]
+    if remover:
+        if not nossos:
+            print("Nada a remover (a trava de escopo não está instalada).")
+            return 0
+        dados["hooks"]["PreToolUse"] = [g for g in ganchos if g not in nossos]
+        cfg.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"OK: trava de escopo removida de {cfg}.")
+        return 0
+    if nossos:
+        print(f"A trava de escopo já está instalada em {cfg}.")
+        return 0
+
+    ganchos.append({"matcher": "Edit|Write|NotebookEdit|MultiEdit",
+                    "hooks": [{"type": "command", "command": comando}]})
+    cfg.parent.mkdir(parents=True, exist_ok=True)
+    cfg.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"OK: trava de escopo instalada em {cfg}.")
+    print("   A partir de agora, escrita fora da pasta do módulo em andamento é recusada.")
+    print("   Ela só age quando há UMA tarefa em andamento, ela declara **Módulo:**, e o")
+    print("   módulo declara **Pasta:** no PLANO. Em qualquer outra situação, libera e diz por quê.")
+    print("   Desligar: python scripts/install_hook.py --escopo --remover")
+    return 0
+
+
 def main() -> int:
     aqui = Path(__file__).resolve().parent          # .../scripts
     raiz = aqui.parent                              # a pasta de documentação (ou o kit)
     topo = topo_do_repo(raiz)
+    if "--escopo" in sys.argv:
+        if topo is None:
+            print("ERRO: não é um repositório git. Rode `git init` primeiro.")
+            return 1
+        return escopo(aqui, topo, "--remover" in sys.argv)
     hooks = dir_hooks(raiz)
     if hooks is None or topo is None:
         print("ERRO: não é um repositório git (ou o git não está no PATH). Rode `git init` primeiro.")

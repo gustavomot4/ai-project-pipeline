@@ -30,7 +30,8 @@ AVISOS (não reprovam; com --avisos-reprovam, reprovam)
   sessão sem skill declarada no changelog · ocupação declarada divergindo do arquivo ·
   questão do dono ausente do CONTEXT ·
   achado vencido (7 dias p/ CRÍTICO e ALTO, 15 p/ MÉDIO, BAIXO não vence) ·
-  ID prometido no CHANGELOG e nunca registrado
+  ID prometido no CHANGELOG e nunca registrado ·
+  skill declarada responsável no PLANO que nunca rodou
 
 O README declara quantos itens de checklist existem e quantos esta máquina julga.
 Esse número é cobrado por `test_check.py` — a frase mais honesta do kit não pode
@@ -702,6 +703,36 @@ if texto_cl:
             "Sessão sem skill declarada no changelog: " + " · ".join(problemas)
             + " — sem este campo ninguém sabe qual agente rodou, e medir o kit vira "
             "arqueologia. Formato: uma linha `- **Skill:** <nome>` na entrada."
+        )
+
+# Skill que o PLANO declarou responsável por um módulo e que nunca rodou. Medido no
+# primeiro projeto real: de 24 skills, só 10 dispararam — e QUATRO das que nunca rodaram
+# tinham o assunto acontecendo no projeto. A mais gritante: existe uma checagem neste
+# arquivo que se declara "a checagem que a skill guardrails-review exige"; a checagem
+# rodava, a skill nunca. O problema não era falta de skill, era falta de ROTEAMENTO.
+# Isto é mecânico de propósito — lê `**Skill responsável:**` do PLANO contra `**Skill:**`
+# do changelog. Adivinhar por assunto seria julgar semântica, e script não julga semântica.
+texto_plano_sk = corpo.get(raiz / PLANO, "")
+texto_log_sk = corpo.get(raiz / CHANGELOG, "")
+if texto_plano_sk and texto_log_sk:
+    rodaram = {s.lower() for s in re.findall(r"\*\*Skill:\*\*\s*`?([a-z0-9][a-z0-9-]*)", texto_log_sk)}
+    orfas = {}
+    for mod, skill in re.findall(
+            r"^#{2,4}\s+(M\d+)\s*[—–:.-].*?\*\*Skill respons[áa]vel:?\*\*:?\s*(.+?)$",
+            texto_plano_sk, re.S | re.M):
+        # A declaração costuma vir como wikilink: `[[b_process/skills/testing/SKILL|testes]]`.
+        # O nome que vale é o da PASTA, que é o mesmo que o changelog escreve.
+        m = re.search(r"skills/([a-z0-9][a-z0-9-]*)/", skill) or re.search(r"`([a-z0-9-]+)`", skill)
+        if not m or skill.lstrip().startswith("<") or "…" in skill:
+            continue
+        if m.group(1).lower() not in rodaram:
+            orfas.setdefault(m.group(1), []).append(mod)
+    if orfas:
+        avisos.append(
+            "Skill declarada responsável no PLANO e que nunca rodou: "
+            + " · ".join(f"`{s}` ({', '.join(ms)})" for s, ms in sorted(orfas.items()))
+            + " — ou ela roda numa sessão, ou o PLANO passa a declarar quem realmente faz "
+            "o trabalho. Skill que ninguém alcança é peso morto vestido de cobertura."
         )
 
 # Número que um script calcula não se mantém à mão. O kit já aprendeu isto uma vez — a

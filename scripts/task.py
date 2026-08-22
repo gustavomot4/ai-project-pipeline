@@ -35,6 +35,9 @@ TAREFAS = {
                   "Igual ao check, mas avisos também reprovam.", True),
     "hook":      ([PY, str(AQUI / "install_hook.py")],
                   "Instala o pre-commit — sem isto o portão só roda quando você lembra.", False),
+    "escopo":    ([PY, str(AQUI / "install_hook.py"), "--escopo"],
+                  "Liga a trava de escopo: escrita fora da pasta do módulo em andamento é "
+                  "recusada (Claude Code). Desligar: `escopo --remover`.", False),
     "unhook":    ([PY, str(AQUI / "install_hook.py"), "--remover"],
                   "Remove o pre-commit deste kit.", False),
     "arquivar":  ([PY, str(AQUI / "arquivar.py")],

@@ -1323,5 +1323,154 @@ class TestEvidencia(unittest.TestCase):
             self.assertEqual(dados["skills"]["disponiveis"], 24)
 
 
+class TestTravaDeEscopo(unittest.TestCase):
+    """A regra 2 do CLAUDE.md — "escopo é o módulo desta sessão; precisa mexer em outro?
+    pare e avise" — era prosa no prompt, e prosa no prompt é pedido, não trava. Um
+    benchmarking do kit contra oito alternativas marcou nota 3 em "papéis especializados"
+    exatamente por isso. Estes testes guardam as duas metades: que ela PEGA, e que ela
+    FALHA ABERTA — porque hook que bloqueia errado ensina a desligar o hook."""
+
+    def montar(self, tmp, pasta="src/core", modulo="M1"):
+        kit = montar_kit(Path(tmp) / "kit")
+        projeto = Path(tmp) / "projeto"
+        r = rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        docs = next(projeto.glob("*_Project_DOCs"))
+        pl = docs / "a_context/b_plan.md"
+        pl.write_text(pl.read_text(encoding="utf-8").replace(
+            "### M1 — <nome>", f"### {modulo} — motor\n- **Pasta:** {pasta}", 1), encoding="utf-8")
+        bl = docs / "b_process/c_backlog.md"
+        bl.write_text(bl.read_text(encoding="utf-8").replace(
+            "- [ ] T-00 — <a tarefa do momento>",
+            f"- [ ] T-07 — mexer no motor · **Módulo:** {modulo} · **Portão:** verde"),
+            encoding="utf-8")
+        return projeto, docs
+
+    def bater(self, projeto, caminho, ferramenta="Edit"):
+        evento = json.dumps({"cwd": str(projeto), "tool_name": ferramenta,
+                             "tool_input": {"file_path": str(caminho)}})
+        return subprocess.run([sys.executable, str(KIT / "scripts/escopo_hook.py")],
+                              input=evento, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", env=AMBIENTE_UTF8, timeout=60)
+
+    def test_bloqueia_fora_do_modulo(self):
+        with area_temporaria() as tmp:
+            projeto, _ = self.montar(tmp)
+            r = self.bater(projeto, projeto / "src/net/index.ts")
+            self.assertEqual(r.returncode, 2, f"devia bloquear:\n{r.stdout}{r.stderr}")
+            self.assertIn("BLOQUEADO", r.stderr)
+            # A mensagem precisa oferecer SAÍDA: portão sem saída ensina --no-verify.
+            self.assertIn("PARE e avise", r.stderr)
+            self.assertIn("QA-NN", r.stderr)
+
+    def test_libera_dentro_do_modulo(self):
+        with area_temporaria() as tmp:
+            projeto, _ = self.montar(tmp)
+            self.assertEqual(self.bater(projeto, projeto / "src/core/motor.ts").returncode, 0)
+
+    def test_a_documentacao_e_sempre_gravavel(self):
+        """Travar a pasta de docs quebraria o fecho de sessão que o próprio kit exige:
+        é nela que a sessão registra decisão, achado e changelog."""
+        with area_temporaria() as tmp:
+            projeto, docs = self.montar(tmp)
+            self.assertEqual(self.bater(projeto, docs / "a_context/c_decisions.md").returncode, 0)
+
+    def test_leitura_nunca_bloqueia(self):
+        """Ler outro módulo para entender o contrato sempre foi trabalho legítimo."""
+        with area_temporaria() as tmp:
+            projeto, _ = self.montar(tmp)
+            self.assertEqual(self.bater(projeto, projeto / "src/net/x.ts", "Read").returncode, 0)
+
+    def test_falha_aberta_e_diz_por_que(self):
+        with area_temporaria() as tmp:
+            projeto, docs = self.montar(tmp)
+            casos = {}
+            # 1. módulo sem **Pasta:** declarada
+            pl = docs / "a_context/b_plan.md"
+            original = pl.read_text(encoding="utf-8")
+            pl.write_text(original.replace("- **Pasta:** src/core\n", ""), encoding="utf-8")
+            casos["sem Pasta"] = self.bater(projeto, projeto / "src/net/x.ts")
+            pl.write_text(original, encoding="utf-8")
+            # 2. duas tarefas em andamento — não dá para saber qual escopo cobrar
+            bl = docs / "b_process/c_backlog.md"
+            bl.write_text(bl.read_text(encoding="utf-8").replace(
+                "- [ ] T-07 — mexer no motor",
+                "- [ ] T-08 — outra coisa · **Módulo:** M1\n- [ ] T-07 — mexer no motor"),
+                encoding="utf-8")
+            casos["duas tarefas"] = self.bater(projeto, projeto / "src/net/x.ts")
+            for nome, r in casos.items():
+                with self.subTest(caso=nome):
+                    self.assertEqual(r.returncode, 0, f"{nome} devia LIBERAR:\n{r.stderr}")
+                    self.assertIn("[escopo] liberado:", r.stderr,
+                                  f"{nome} liberou em SILÊNCIO — liberação sem motivo não se audita")
+
+    def test_entrada_quebrada_libera(self):
+        """Hook que morre com entrada inesperada trava o trabalho por bug próprio."""
+        r = subprocess.run([sys.executable, str(KIT / "scripts/escopo_hook.py")],
+                           input="isto não é json", capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", env=AMBIENTE_UTF8, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_instalar_e_remover_nao_mexe_em_hook_alheio(self):
+        """`--escopo` escreve em `.claude/settings.json`, que pode ter hooks do dono.
+        Apagar o que não é nosso é como se perde trabalho alheio sem perceber."""
+        with area_temporaria() as tmp:
+            projeto, docs = self.montar(tmp)
+            git(projeto, "init", "-q")
+            cfg = projeto / ".claude/settings.json"
+            cfg.parent.mkdir(parents=True, exist_ok=True)
+            cfg.write_text(json.dumps({"hooks": {"PreToolUse": [
+                {"matcher": "Bash", "hooks": [{"type": "command", "command": "meu-script.sh"}]}]}}),
+                encoding="utf-8")
+            rodar_script("install_hook.py", "--escopo", cwd=docs)
+            dados = json.loads(cfg.read_text(encoding="utf-8"))
+            self.assertEqual(len(dados["hooks"]["PreToolUse"]), 2, "não acrescentou o nosso")
+            rodar_script("install_hook.py", "--escopo", "--remover", cwd=docs)
+            dados = json.loads(cfg.read_text(encoding="utf-8"))
+            self.assertEqual(len(dados["hooks"]["PreToolUse"]), 1, "removeu demais")
+            self.assertIn("meu-script.sh", json.dumps(dados), "apagou o hook do dono")
+
+
+class TestSkillOrfa(unittest.TestCase):
+    """De 24 skills, só 10 dispararam no primeiro projeto real — e quatro das que nunca
+    rodaram tinham o assunto acontecendo ali. A mais gritante: existe uma checagem no
+    `check.py` que se declara "a checagem que a skill guardrails-review exige"; a checagem
+    rodava, a skill nunca. O problema não era falta de skill, era falta de ROTEAMENTO."""
+
+    def preparar(self, tmp, skill_rodou=None):
+        repo = montar_kit(Path(tmp) / "repo")
+        pl = repo / "a_context/b_plan.md"
+        pl.write_text(pl.read_text(encoding="utf-8").replace(
+            "### M1 — <nome>",
+            "### M1 — privacidade\n- **Skill responsável:** "
+            "[[b_process/skills/privacy-personal-data/SKILL|privacidade]]", 1), encoding="utf-8")
+        log = repo / "d_history/a_changelog.md"
+        entrada = f"\n## 2026-01-01\n- **Skill:** `{skill_rodou}`\n" if skill_rodou else ""
+        log.write_text(log.read_text(encoding="utf-8") + entrada, encoding="utf-8")
+        return repo
+
+    def test_avisa_quando_a_responsavel_nunca_rodou(self):
+        with area_temporaria() as tmp:
+            saida = rodar_check(self.preparar(tmp, skill_rodou="testing")).stdout
+            self.assertIn("nunca rodou", saida)
+            self.assertIn("privacy-personal-data", saida)
+            self.assertIn("M1", saida)
+
+    def test_cala_quando_ela_rodou(self):
+        with area_temporaria() as tmp:
+            saida = rodar_check(self.preparar(tmp, skill_rodou="privacy-personal-data")).stdout
+            self.assertNotIn("nunca rodou", saida)
+
+    def test_template_por_preencher_nao_vira_aviso(self):
+        """`<ex.: …>` é plano não preenchido, não lacuna de roteamento."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            log = repo / "d_history/a_changelog.md"
+            log.write_text(log.read_text(encoding="utf-8") + "\n## 2026-01-01\n- **Skill:** `testing`\n",
+                           encoding="utf-8")
+            self.assertNotIn("nunca rodou", rodar_check(repo).stdout)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
