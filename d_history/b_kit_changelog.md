@@ -8,6 +8,60 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.7] — 2026-08-22
+**Três mudanças e nenhuma delas engorda o kit: uma corrige um prazo, duas REMOVEM coisa.**
+Saiu da pergunta certa depois da auditoria — "o que dá para tirar?", e não "o que dá para
+adicionar?", num kit onde 61,5% dos commits do projeto medido tocavam só processo.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **Prazo de achado agora é POR GRAVIDADE: 7 dias para CRÍTICO e ALTO, 15 para MÉDIO, e
+  BAIXO não vence.** Antes era 14 dias para CRÍTICO/ALTO e nada para o resto — o que cobrava
+  justamente o nível que não enrosca. Medido no primeiro projeto real: os **8 CRÍTICOS e os
+  4 ALTOS estavam TODOS fechados**, e o que apodrecia eram **5 MÉDIOS parados 13 a 15 dias**,
+  sem prazo nenhum. Os números vêm do porte a que o kit se propõe (projeto de 2 a 8 semanas):
+  nessa escala, 14 dias para um CRÍTICO é um quarto do projeto.
+  **BAIXO não vencer é decisão, não esquecimento:** metade dos achados abertos daquele
+  projeto era BAIXO, e aviso que passa a cobrar o que ninguém vai fazer vira ruído. Aviso que
+  vira ruído deixa de ser lido, e checagem que ninguém lê emudeceu do mesmo jeito.
+
+- **A checagem passa a procurar o registro de QA onde ele estiver.** Naquele projeto os
+  `QA-NN` saíram do DECISIONS para `a_context/d_qa.md`, e uma regra que só olha a casa antiga
+  não é rigorosa, é cega — relatar zero achado vencido num registro que nem foi lido é a
+  leitura mais elogiosa e mais falsa que existe.
+
+- **REMOVIDO: a tabela "Números da entrega" do caso de referência.** Ela declarava ~10 dias,
+  14 passagens, 84 achados, 20 decisões — nenhum com relatório, commit ou artefato, e o
+  próprio documento avisava disso e pedia para você não usar os números. Isso não é
+  honestidade: é uma dívida com um bilhete colado em cima. A regra 5 diz "não inventar dado;
+  lacuna declarada fica declarada", e lacuna declarada não é publicar o número com ressalva,
+  é **não publicar o número**. Ficaram as 6 armadilhas e as 4 rejeições com motivo, que
+  ensinam sem depender de número nenhum. Quem quiser número agora roda `task.py evidencia`.
+
+- **REMOVIDO: a duplicação dos números do portão na capa da apresentação.** Este é um erro
+  meu, da v13.5: eu encontrei os números declarados à mão em dois lugares, corrigi os dois e
+  **coloquei um teste vigiando a cópia**. Errado. A checagem 3 deste kit se chama FONTE ÚNICA
+  e existe contra exatamente isso; o mesmo dado em dois arquivos não vira verdade por ganhar
+  um guarda, vira verdade quando existe um lugar só. Agora a capa LÊ do `check.py` e do
+  `test_check.py`, e o teste guarda a **ausência** do número digitado.
+  **E a duplicação era maior do que eu tinha visto:** ao trocar, apareceram **13 ocorrências**
+  no mesmo arquivo — "57 testes" em três lugares, "24 agentes" em cinco, "14 falhas e 16
+  avisos", "118 itens", "30 de 284" em três. Uma delas já estava errada havia tempo ("as
+  outras **23** skills", com 24 no disco).
+
+- **Número de PROJETO, que não dá para derivar, agora vai DATADO.** "385 testes" e "98% dos
+  commits" viraram "no projeto medido **em 2026-08-13**". Não dá para mantê-los frescos, mas
+  dá para impedir que envelheçam em silêncio: número ancorado numa data não vira mentira,
+  vira registro.
+
+- **Um defeito pego no meio do caminho, da mesma família.** A primeira versão da linha nova
+  no cabeçalho trazia `(7 dias p/ CRÍTICO e ALTO · 15 p/ MÉDIO · BAIXO não vence)` — e o
+  contador de avisos separa itens por `·`. Os dois pontos dentro do parêntese viraram dois
+  avisos fantasma, e a contagem foi de 18 para 20. Separador dentro do item corrompe a
+  contagem do item. Trocado por vírgula.
+
+- **72 testes verdes** (eram 70). Os novos cobrem os três níveis de prazo em ambos os
+  sentidos, o BAIXO que não vence, e o registro que mudou de casa.
+
 ## [kit v13.6] — 2026-08-22
 **O kit media tudo, menos a si mesmo.** A primeira auditoria de campo saiu — mas custou uma
 sessão inteira de scripts descartáveis, e o que custa uma sessão acontece uma vez só.

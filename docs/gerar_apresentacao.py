@@ -1,5 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Gera o PDF de apresentação do pipeline."""
+"""Gera o PDF de apresentação do pipeline.
+
+Os números do portão são LIDOS do `check.py` e do `test_check.py`, nunca digitados aqui.
+A capa já declarou "14 falhas e 16 avisos · 57 testes" com o cabeçalho do `check.py` em
+outro lugar — a mesma doença do "188 itens, 18 julgados" que o README pagou. E o kit tem
+uma checagem chamada FONTE ÚNICA justamente contra isso: o mesmo dado em dois arquivos é
+estado duplicado, e não vira verdade por ter um teste vigiando a cópia. Vira verdade
+quando existe um lugar só.
+"""
+import re
+from pathlib import Path
+
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_JUSTIFY, TA_CENTER
 from reportlab.lib.pagesizes import A4
@@ -16,6 +27,28 @@ pdfmetrics.registerFont(TTFont("DJ-B", D + "DejaVuSans-Bold.ttf"))
 pdfmetrics.registerFont(TTFont("DJ-I", D + "DejaVuSans-Oblique.ttf"))
 pdfmetrics.registerFont(TTFont("DJ-M", D + "DejaVuSansMono.ttf"))
 pdfmetrics.registerFontFamily("DJ", normal="DJ", bold="DJ-B", italic="DJ-I")
+
+KIT = Path(__file__).resolve().parent.parent
+
+
+def numeros_do_portao():
+    """Conta no arquivo, não na memória. Mesma leitura que `test_check.py` faz do cabeçalho
+    do `check.py`: as FALHAS vêm numeradas em duas colunas na mesma linha, e os AVISOS são
+    lista separada por `·`."""
+    cab = (KIT / "scripts/check.py").read_text(encoding="utf-8").split('"""')[1]
+    bloco = cab.split("FALHAS", 1)[1].split("AVISOS", 1)[0]
+    falhas = len({int(n) for n in re.findall(r"\b(\d{1,2})\.\s+\S", bloco)})
+    avisos = len([x for x in cab.split("AVISOS", 1)[1].split("\n\n", 1)[0].split("·") if x.strip()])
+    testes = len(re.findall(r"^\s+def test_", (KIT / "scripts/test_check.py").read_text(encoding="utf-8"), re.M))
+    skills = len([d for d in (KIT / "b_process/skills").iterdir() if d.is_dir()])
+    checklist = len(re.findall(r"^- \[ \]", (KIT / "b_process/b_checklist.md").read_text(encoding="utf-8"), re.M))
+    itens_skills = sum(len(re.findall(r"^- \[ \]", p.read_text(encoding="utf-8"), re.M))
+                       for p in (KIT / "b_process/skills").glob("*/SKILL.md"))
+    return falhas, avisos, testes, skills, checklist, itens_skills
+
+
+FALHAS, AVISOS, TESTES, SKILLS, CHECKLIST, ITENS_SKILLS = numeros_do_portao()
+JULGADOS, TOTAL_ITENS = FALHAS + AVISOS, CHECKLIST + ITENS_SKILLS
 
 TINTA = colors.HexColor("#1a1a1a")
 AZUL = colors.HexColor("#1f4e79")
@@ -132,8 +165,9 @@ t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), CLARO),
                        ("BOTTOMPADDING", (0, 0), (-1, -1), 14)]))
 F.append(t)
 sp(40)
-F.append(Paragraph("Versão do kit: <b>v13.5</b> &nbsp;·&nbsp; 24 agentes &nbsp;·&nbsp; "
-                   "portão automático com 15 falhas e 18 avisos &nbsp;·&nbsp; 70 testes",
+F.append(Paragraph(f"Versão do kit: <b>v13.7</b> &nbsp;·&nbsp; {SKILLS} agentes &nbsp;·&nbsp; "
+                   f"portão automático com {FALHAS} falhas e {AVISOS} avisos "
+                   f"&nbsp;·&nbsp; {TESTES} testes",
                    S["capa_p"]))
 sp(8)
 F.append(Paragraph("Documento gerado em 13 de agosto de 2026", S["capa_p"]))
@@ -154,7 +188,7 @@ tabela(["Parte", "O que ela responde"], [
     ["5. As 7 regras", "O núcleo do método, com o motivo de cada regra"],
     ["6. O fluxo", "As sete fases, do dia 1 à entrega, com o portão de cada uma"],
     ["7. O ciclo da sessão", "O que se repete 90% do tempo"],
-    ["8. Os 24 agentes", "O que é uma skill, quais existem e como se combinam"],
+    [f"8. Os {SKILLS} agentes", "O que é uma skill, quais existem e como se combinam"],
     ["9. Economia de contexto", "O diferencial central, com os números medidos"],
     ["10. Os guardrails", "O que a máquina julga sozinha e o que ela não julga"],
     ["11. Rastreabilidade", "D-NN, Q-NN, QA-NN e a ideia da lista-morta"],
@@ -265,7 +299,7 @@ tabela(["Pasta", "Pergunta que responde", "Conteúdo principal"], [
      "domínio lidos sob demanda"],
     ["<font face='DJ-M' size='8'>b_process/</font>", "<b>Como se trabalha</b>",
      "roteiro das fases, checklist de portões, backlog de tarefas, aprendizados, e a pasta "
-     "<font face='DJ-M' size='8'>skills/</font> com os 24 agentes"],
+     f"<font face='DJ-M' size='8'>skills/</font> com os {SKILLS} agentes"],
     ["<font face='DJ-M' size='8'>c_technical_docs/</font>", "<b>Como operar</b>",
      "guia do Obsidian, caso de referência"],
     ["<font face='DJ-M' size='8'>d_history/</font>", "<b>O que aconteceu</b>",
@@ -426,7 +460,7 @@ codigo([
     "      +-->  commit citando os identificadores:  TIPO: o que mudou (D-NN/QA-NN)",
 ])
 p("Repare no que <b>não</b> entra na sessão: o repositório inteiro, o changelog, os relatórios "
-  "de revisão, as outras 23 skills. A sessão recebe três coisas e só três.")
+  f"de revisão, as outras {SKILLS - 1} skills. A sessão recebe três coisas e só três.")
 sp(3)
 caixa("O passo mais pulado, e o que se fez a respeito",
       "O fecho de sessão é onde o processo mais vaza — pular um passo é o que faz o estado "
@@ -435,7 +469,7 @@ caixa("O passo mais pulado, e o que se fez a respeito",
       "mais frágil com a menor fricção possível é uma decisão de projeto, não um detalhe.")
 
 # ============================ 8. AGENTES ============================
-h1("8. Os 24 agentes")
+h1(f"8. Os {SKILLS} agentes")
 h2("O que é, tecnicamente, um agente aqui")
 p("Cada agente é uma pasta com um arquivo <font face='DJ-M' size='8'>SKILL.md</font>. O arquivo "
   "tem um cabeçalho com <b>nome</b> e <b>descrição</b>, e um corpo com quatro seções "
@@ -606,8 +640,8 @@ tabela(["Ele reprova quando…", "Ele avisa quando…"], [
 ], [8.2, 8.2], fonte_menor=True)
 
 h2("Camada 2 — os portões humanos")
-p("O checklist tem 118 itens e as skills trazem mais 166: <b>284 no total</b>. O script julga "
-  "<b>30 deles — cerca de 11%</b>. O resto depende de o dono rodar a seção certa.")
+p(f"O checklist tem {CHECKLIST} itens e as skills trazem mais {ITENS_SKILLS}: <b>{TOTAL_ITENS} no total</b>. O script julga "
+  f"<b>{JULGADOS} deles — cerca de {round(100*JULGADOS/TOTAL_ITENS)}%</b>. O resto depende de o dono rodar a seção certa.")
 sp(3)
 caixa("Este é o argumento mais forte do projeto, e é uma limitação",
       "A frase acima está escrita no README <b>e é cobrada por um teste automatizado</b>: se "
@@ -620,10 +654,10 @@ p("Vale saber dizer isto em voz alta: <b>é um kit de disciplina com algumas tra
   "cobertura do que em quem promete cobertura total.")
 
 h2("Camada 3 — os testes do próprio processo")
-p("O portão também é testado. São <b>57 testes</b>, só com biblioteca padrão do Python, rodando "
+p(f"O portão também é testado. São <b>{TESTES} testes</b>, só com biblioteca padrão do Python, rodando "
   "em integração contínua no Linux e no Windows a cada envio. Dois deles merecem destaque:")
 sp(2)
-li("<b>Uma isca por checagem.</b> Cada uma das 14 falhas tem um caso concreto que ela "
+li(f"<b>Uma isca por checagem.</b> Cada uma das {FALHAS} falhas tem um caso concreto que ela "
    "<i>precisa</i> pegar. Se a checagem parar de checar, a isca passa e o teste reprova.")
 li("<b>O portão do portão.</b> Um teste compara a lista de iscas com a lista de falhas do "
    "script: falha nova sem isca reprova. Isso fecha a classe inteira do defeito, em vez de "
@@ -818,13 +852,13 @@ def qa(q, a):
 
 qa("“Isso não é só documentação bonita?”",
    "Não, porque uma parte é <b>cobrada por máquina</b>. Há um script que reprova o commit em 14 "
-   "situações, um hook que o roda sozinho e 57 testes que garantem que o próprio script continua "
-   "funcionando. E o kit declara o tamanho da parte automática: 30 de 284 itens, cerca de 11%. "
+   f"situações, um hook que o roda sozinho e {TESTES} testes que garantem que o próprio script continua "
+   f"funcionando. E o kit declara o tamanho da parte automática: {JULGADOS} de {TOTAL_ITENS} itens, cerca de {round(100*JULGADOS/TOTAL_ITENS)}%. "
    "Documentação bonita não reprova commit.")
 qa("“Qual é o ganho concreto?”",
    "Três, e os três têm número: economia de contexto (o registro de decisões saiu de ~7.700 para "
    "~2.000 tokens por sessão de evolução; o contexto-fonte tem teto garantido); rastreabilidade "
-   "(98% dos commits do projeto medido citam um identificador); e revisão possível (taxa de "
+   "(98% dos commits do projeto medido em 2026-08-13 citam um identificador); e revisão possível (taxa de "
    "regeneração de arquivo perto de zero, o que mantém o diff pequeno).")
 qa("“Depende de qual IA?”",
    "Não. Os agentes são arquivos Markdown que funcionam instalados na ferramenta ou colados numa "
@@ -896,8 +930,8 @@ tabela(["Item", "Qual?", "Nota", "Justificativa"], [
     ["<b>MCP</b>", "nenhum", "<b>0</b>",
      "Verificado: não há servidor MCP configurado nem menção a MCP em nenhum arquivo do kit ou do "
      "projeto. A integração é por skills e por hook de git, não por MCP."],
-    ["<b>Agent</b>", "24 agentes de papel único", "<b>4</b>",
-     "24 agentes com papel, limites e portão próprios, agrupados por fase, arquitetura, backend, "
+    ["<b>Agent</b>", f"{SKILLS} agentes de papel único", "<b>4</b>",
+     f"{SKILLS} agentes com papel, limites e portão próprios, agrupados por fase, arquitetura, backend, "
      "frontend, transversais, sistema vivo e dados. Regra de <b>uma skill por sessão</b>, e a "
      "ordem entre eles é documentada."],
     ["<b>Skill</b>", "24 <font face='DJ-M' size='8'>SKILL.md</font> instaláveis", "<b>4</b>",
@@ -927,10 +961,10 @@ h3("Guardrail")
 tabela(["Item", "Nota", "Justificativa"], [
     ["<b>Doc</b>", "<b>4</b>",
      "Contrato de leitura carregado em toda sessão; 7 regras com o motivo de cada uma; checklist "
-     "de 118 itens; seção <b>Limites</b> obrigatória nas 24 skills; templates de decisão, achado "
-     "e fecho de sessão. E a declaração de cobertura (30 de 284) é <b>cobrada por teste</b>."],
+     f"de {CHECKLIST} itens; seção <b>Limites</b> obrigatória nas {SKILLS} skills; templates de decisão, achado "
+     f"e fecho de sessão. E a declaração de cobertura ({JULGADOS} de {TOTAL_ITENS}) é <b>cobrada por teste</b>."],
     ["<b>Code</b>", "<b>4</b>",
-     "Portão em Python sem dependências, com 14 falhas e 16 avisos, instalado como hook de "
+     f"Portão em Python sem dependências, com {FALHAS} falhas e {AVISOS} avisos, instalado como hook de "
      "pre-commit; varredura de segredo na árvore <b>e no histórico</b>; integração contínua em "
      "Linux e Windows a cada envio. Verificado por sabotagem: 3 de 3 violações plantadas foram "
      "reprovadas, incluindo o bloqueio de um commit com chave de acesso."],
@@ -938,8 +972,8 @@ tabela(["Item", "Nota", "Justificativa"], [
 h3("Test")
 tabela(["Item", "Nota", "Justificativa"], [
     ["<b>Unit</b>", "<b>4</b>",
-     "57 testes no kit, só com biblioteca padrão, incluindo <b>uma isca canônica por checagem</b> "
-     "e um teste que exige que toda checagem nova tenha a sua. No projeto medido: 385 testes, com "
+     f"{TESTES} testes no kit, só com biblioteca padrão, incluindo <b>uma isca canônica por checagem</b> "
+     "e um teste que exige que toda checagem nova tenha a sua. No projeto medido em 2026-08-13: 385 testes, com "
      "invariantes verificados por sabotagem (reverter a regra à mão reprova o teste)."],
     ["<b>System</b>", "<b>3</b>",
      "O kit testa ponta a ponta os próprios fluxos (criar projeto, atualizar, instalar hook, "
@@ -966,7 +1000,7 @@ tabela(["Item", "Nota", "Justificativa"], [
      "gastando pouco contexto. Ele impõe orçamento numérico ao que a IA relê a cada sessão, exige "
      "delta em vez de reescrita, registra decisões — inclusive as rejeitadas — e cobra por "
      "máquina o que dá para cobrar por máquina, declarando com honestidade o tamanho da parte que "
-     "continua humana: 30 de 284 itens."],
+     f"continua humana: {JULGADOS} de {TOTAL_ITENS} itens."],
 ], [2.6, 1.6, 12.2], fonte_menor=True)
 
 
