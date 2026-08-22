@@ -59,4 +59,6 @@ Cada um é uma skill instalável, com regras e portão próprios. **Uma skill po
 
 Antes de entregar, `python scripts/task.py check-all`: no dia a dia a varredura de segredo olha só os 30 commits recentes, e o script diz qual alcance usou.
 
+`python scripts/task.py evidencia` mede, do git e dos arquivos, o que o kit produziu neste projeto: ocupação dos orçamentos, quantas decisões foram **rejeitadas**, quantas questões você respondeu, achados por gravidade e por passagem, quais skills dispararam, e se as sessões entregaram delta ou reescreveram arquivo inteiro. Ele fecha declarando o que **não** mede — a começar por "o kit ajudou?", que exigiria o mesmo projeto feito sem ele. Com `--json`, a saída acumula entre projetos: um projeto é relato, vários viram medida.
+
 `python scripts/task.py test` roda os testes de regressão dos próprios scripts — os mesmos que o CI roda em Linux **e Windows**, porque os dois bugs de encoding que o kit já pagou não reproduzem no Linux.

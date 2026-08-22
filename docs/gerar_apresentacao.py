@@ -133,7 +133,7 @@ t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), CLARO),
 F.append(t)
 sp(40)
 F.append(Paragraph("Versão do kit: <b>v13.5</b> &nbsp;·&nbsp; 24 agentes &nbsp;·&nbsp; "
-                   "portão automático com 15 falhas e 18 avisos &nbsp;·&nbsp; 64 testes",
+                   "portão automático com 15 falhas e 18 avisos &nbsp;·&nbsp; 70 testes",
                    S["capa_p"]))
 sp(8)
 F.append(Paragraph("Documento gerado em 13 de agosto de 2026", S["capa_p"]))

@@ -19,6 +19,7 @@ locale UTF-8 o bug do QA-01 NÃO reproduz — foi exatamente esse falso "passou"
 a auditoria original medir errado.
 """
 import ast
+import json
 import os
 import re
 import shutil
@@ -1192,6 +1193,91 @@ class TestIdPrometidoNoChangelog(unittest.TestCase):
             self.assertEqual(r.returncode, 1, r.stdout)
             self.assertIn("ID citado que não existe", r.stdout)
             self.assertNotIn("ID prometido", r.stdout, "não cobre o mesmo defeito duas vezes")
+
+
+class TestEvidencia(unittest.TestCase):
+    """`evidencia.py` existe para atacar o 35 em "evidência de que funciona". Um relatório
+    que erra número, ou que apresenta "não medido" como zero, é PIOR que nenhum relatório:
+    ele fabrica confiança. Cada teste aqui guarda um erro que já aconteceu de verdade."""
+
+    def relatar(self, repo, *extra):
+        r = rodar_script("evidencia.py", str(repo), *extra)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("Traceback", r.stderr, r.stderr[-800:])
+        return r.stdout
+
+    def test_censo_conta_skill_declarada_no_relatorio_de_e_qa(self):
+        """O defeito que motivou o censo: `artifact-consistency` rodou DUAS vezes no
+        primeiro projeto real — reprovou o plano com 3 achados críticos — e não aparecia em
+        nenhuma linha `**Skill:**` do changelog, porque o relatório dela mora em `e_qa/`.
+        O portão exige que ALGUMA skill seja declarada por sessão, não a certa; então
+        contar só o changelog subestimava o uso e chamava de peso morto a skill de melhor
+        retorno do kit."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            (repo / "e_qa/relatorio_260807_1543.md").write_text(
+                "---\ntags: [qa]\nstatus: atual\n---\n# Relatório\n"
+                "- **Skill:** `artifact-consistency`\n", encoding="utf-8")
+            saida = self.relatar(repo)
+            self.assertIn("artifact-consistency", saida,
+                          "skill declarada em e_qa/ ficou fora do censo")
+
+    def test_registro_que_mudou_de_casa_nao_vira_zero(self):
+        """No primeiro projeto real os `QA-NN` saíram do DECISIONS para arquivo próprio
+        (`a_context/d_qa.md`). Um script que assumisse a casa antiga relataria ZERO achados
+        num projeto com 36 — e zero achados é a leitura mais elogiosa possível de um
+        registro que na verdade nem foi lido."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            (repo / "a_context/d_qa.md").write_text(
+                "---\ntags: [qa]\nstatus: atual\n---\n# QA\n\n"
+                "| # | Data | Sev. | Onde | Fechado em |\n|---|---|---|---|---|\n"
+                "| QA-40 | 2026-01-02 | CRÍTICO | x | _(aberto)_ |\n"
+                "| QA-41 | 2026-01-03 | BAIXO | y | 2026-01-04 |\n", encoding="utf-8")
+            saida = self.relatar(repo)
+            self.assertIn("QA-40", saida, "achado em arquivo próprio não foi encontrado")
+            self.assertIn("CRÍTICO", saida)
+
+    def test_sem_git_diz_NAO_VERIFICADO_e_nao_zero(self):
+        """QA-03 de novo, na forma mais cara: anunciar como medido o que não foi lido.
+        Sem git, metade do relatório não existe — e tem de dizer isso com todas as letras,
+        porque '0 commits' num relatório de evidência lê-se como projeto inativo."""
+        with area_temporaria() as tmp:
+            repo = Path(tmp) / "repo"
+            shutil.copytree(KIT, repo, ignore=shutil.ignore_patterns(".git", "__pycache__"))
+            saida = self.relatar(repo)
+            self.assertIn("NÃO foi medida", saida)
+            self.assertNotIn("commits: 0", saida)
+
+    def test_declara_o_que_nao_mede(self):
+        """A seção de limites não é enfeite: é o que separa este relatório do 'relato, não
+        medição' que o caso de referência do kit já carrega. Sem contrafactual, nenhum
+        número aqui responde 'o kit ajudou' — e o relatório tem de dizer isso ele mesmo."""
+        with area_temporaria() as tmp:
+            saida = self.relatar(montar_kit(Path(tmp) / "repo"))
+            self.assertIn("NÃO mede", saida)
+            self.assertIn("AJUDOU", saida, "o relatório tem de recusar a pergunta que não pode responder")
+
+    def test_nao_escreve_nada(self):
+        """Script de medição que altera o medido é o pior defeito possível desta classe.
+        O `arquivar.py` só escreve com `--aplicar`; este não escreve nunca."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            antes = {p: p.stat().st_mtime_ns for p in repo.rglob("*.md")}
+            self.relatar(repo)
+            self.relatar(repo, "--json")
+            depois = {p: p.stat().st_mtime_ns for p in repo.rglob("*.md")}
+            self.assertEqual(antes, depois, "evidencia.py tocou em arquivo do projeto")
+            self.assertEqual(git(repo, "status", "--porcelain").stdout.strip(), "")
+
+    def test_json_sai_valido_e_com_acento(self):
+        """QA-01: o relatório é cheio de `·`, `É` e `ç`. JSON que morre no acento não
+        acumula entre projetos — e acumular é a razão de o `--json` existir."""
+        with area_temporaria() as tmp:
+            dados = json.loads(self.relatar(montar_kit(Path(tmp) / "repo"), "--json"))
+            for chave in ("orcamentos", "decisoes", "questoes", "achados", "skills", "git"):
+                self.assertIn(chave, dados)
+            self.assertEqual(dados["skills"]["disponiveis"], 24)
 
 
 if __name__ == "__main__":

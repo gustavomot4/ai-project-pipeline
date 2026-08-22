@@ -42,6 +42,9 @@ TAREFAS = {
     "arquivar-backlog": ([PY, str(AQUI / "arquivar.py"), "--backlog"],
                   "Card FECHADO vira ponteiro com ID e Módulo; íntegra vai para e_qa/. "
                   "É a saída da checagem 15 (relata; só escreve com --aplicar).", False),
+    "evidencia": ([PY, str(AQUI / "evidencia.py")],
+                  "Mede o uso do kit neste projeto a partir do git e dos arquivos "
+                  "(relata; use --json para acumular entre projetos).", False),
     "test":      ([PY, str(AQUI / "test_check.py")],
                   "Testes de regressão dos scripts (encoding, worktree, git ausente).", True),
 }

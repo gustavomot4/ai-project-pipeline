@@ -68,8 +68,9 @@ docs/             auditoria do próprio KIT — não vai para projetos novos
 LICENSE           MIT
 .github/workflows portão rodando em Linux e Windows a cada push
 scripts/
-  task.py         ponto de entrada único: check · check-all · test · hook
+  task.py         ponto de entrada único: check · check-all · evidencia · test · hook
   check.py        o portão de higiene (15 falhas · 18 avisos)
+  evidencia.py    mede o uso do kit no projeto a partir do git e dos arquivos
   test_check.py   testes de regressão dos scripts — só stdlib
   install_hook.py instala o pre-commit
   new_project.py  cria projeto novo · `--upgrade` atualiza o processo de um existente

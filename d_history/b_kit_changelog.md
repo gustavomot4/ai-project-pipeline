@@ -8,6 +8,45 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.6] — 2026-08-22
+**O kit media tudo, menos a si mesmo.** A primeira auditoria de campo saiu — mas custou uma
+sessão inteira de scripts descartáveis, e o que custa uma sessão acontece uma vez só.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **`scripts/evidencia.py` (e `task.py evidencia`).** Transforma aquela auditoria em comando.
+  Tudo do `git` e dos arquivos: ocupação dos três orçamentos contra o teto padrão, `D-NN`
+  com a **taxa de rejeitadas** e os IDs vagos, `Q-NN` abertas contra respondidas, `QA-NN` por
+  gravidade e por data, censo de skills, rastreabilidade dos commits, mistura processo x
+  produto, espalhamento de escopo, e delta x regeneração por registro. `--json` para acumular
+  entre projetos, que é o ponto: **um projeto é relato, vários viram medida.**
+
+- **O censo de skills passa a ler os cabeçalhos de `e_qa/`.** Era o furo que a auditoria pegou
+  no olho: `artifact-consistency` rodou DUAS vezes no primeiro projeto real, reprovou o plano
+  com 3 achados CRÍTICOS, e não aparecia em nenhuma linha `**Skill:**` do changelog — porque o
+  relatório dela mora em `e_qa/`. O portão exige que ALGUMA skill seja declarada por sessão,
+  não a certa. Contar só o changelog chamava de peso morto a skill de melhor retorno do kit.
+  Medido: o censo sai de 9 skills para **10**, e a de melhor retorno reaparece.
+
+- **"Passagens de revisão" deixa de ser campo escrito à mão.** Era prosa que envelhecia em
+  silêncio — um projeto declarava `1` com achados espalhados por **7 datas**. Agora é medido.
+
+- **O relatório recusa a pergunta que não pode responder.** A última seção lista o que ele NÃO
+  mede, começando por "o kit ajudou?": isso exigiria o mesmo projeto feito sem o kit, e não
+  existe. Também declara que "skill nunca disparou" não é acusação, que `--no-verify` não deixa
+  rastro, que ele mede o TAMANHO do arquivo que a regra manda ler e não o que a sessão gastou,
+  e que registro completo e dentro do teto ainda pode estar errado. Tem teste cobrando essa
+  seção: relatório de evidência sem limite declarado é o material com que se fabrica um 88
+  medido no lugar errado.
+
+- **Nunca escreve.** Tem teste comparando `mtime` de todo `.md` e o `git status` antes e
+  depois. Script de medição que altera o medido é o pior defeito desta classe.
+
+- **70 testes verdes** (eram 64). Os 6 novos guardam erros reais, não plausíveis: a skill
+  declarada em `e_qa/`, o registro que mudou de casa (os `QA-NN` saíram do DECISIONS para
+  arquivo próprio naquele projeto, e assumir a casa antiga relataria ZERO achados num projeto
+  com 36), o "sem git" que tem de dizer NÃO VERIFICADO em vez de zero, a seção de limites, o
+  não-escrever, e o JSON com acento.
+
 ## [kit v13.5] — 2026-08-22
 **O kit cobrava 32 KB de orçamento e ignorava os 191 KB que toda sessão de trabalho lia
 primeiro.** Saiu de uma avaliação de campo do kit contra o primeiro projeto real, com o
