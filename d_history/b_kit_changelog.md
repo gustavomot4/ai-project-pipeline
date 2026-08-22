@@ -8,6 +8,98 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.6] — 2026-08-22
+**O kit media tudo, menos a si mesmo.** A primeira auditoria de campo saiu — mas custou uma
+sessão inteira de scripts descartáveis, e o que custa uma sessão acontece uma vez só.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **`scripts/evidencia.py` (e `task.py evidencia`).** Transforma aquela auditoria em comando.
+  Tudo do `git` e dos arquivos: ocupação dos três orçamentos contra o teto padrão, `D-NN`
+  com a **taxa de rejeitadas** e os IDs vagos, `Q-NN` abertas contra respondidas, `QA-NN` por
+  gravidade e por data, censo de skills, rastreabilidade dos commits, mistura processo x
+  produto, espalhamento de escopo, e delta x regeneração por registro. `--json` para acumular
+  entre projetos, que é o ponto: **um projeto é relato, vários viram medida.**
+
+- **O censo de skills passa a ler os cabeçalhos de `e_qa/`.** Era o furo que a auditoria pegou
+  no olho: `artifact-consistency` rodou DUAS vezes no primeiro projeto real, reprovou o plano
+  com 3 achados CRÍTICOS, e não aparecia em nenhuma linha `**Skill:**` do changelog — porque o
+  relatório dela mora em `e_qa/`. O portão exige que ALGUMA skill seja declarada por sessão,
+  não a certa. Contar só o changelog chamava de peso morto a skill de melhor retorno do kit.
+  Medido: o censo sai de 9 skills para **10**, e a de melhor retorno reaparece.
+
+- **"Passagens de revisão" deixa de ser campo escrito à mão.** Era prosa que envelhecia em
+  silêncio — um projeto declarava `1` com achados espalhados por **7 datas**. Agora é medido.
+
+- **O relatório recusa a pergunta que não pode responder.** A última seção lista o que ele NÃO
+  mede, começando por "o kit ajudou?": isso exigiria o mesmo projeto feito sem o kit, e não
+  existe. Também declara que "skill nunca disparou" não é acusação, que `--no-verify` não deixa
+  rastro, que ele mede o TAMANHO do arquivo que a regra manda ler e não o que a sessão gastou,
+  e que registro completo e dentro do teto ainda pode estar errado. Tem teste cobrando essa
+  seção: relatório de evidência sem limite declarado é o material com que se fabrica um 88
+  medido no lugar errado.
+
+- **Nunca escreve.** Tem teste comparando `mtime` de todo `.md` e o `git status` antes e
+  depois. Script de medição que altera o medido é o pior defeito desta classe.
+
+- **70 testes verdes** (eram 64). Os 6 novos guardam erros reais, não plausíveis: a skill
+  declarada em `e_qa/`, o registro que mudou de casa (os `QA-NN` saíram do DECISIONS para
+  arquivo próprio naquele projeto, e assumir a casa antiga relataria ZERO achados num projeto
+  com 36), o "sem git" que tem de dizer NÃO VERIFICADO em vez de zero, a seção de limites, o
+  não-escrever, e o JSON com acento.
+
+## [kit v13.5] — 2026-08-22
+**O kit cobrava 32 KB de orçamento e ignorava os 191 KB que toda sessão de trabalho lia
+primeiro.** Saiu de uma avaliação de campo do kit contra o primeiro projeto real, com o
+critério de sucesso congelado por hash ANTES de abrir qualquer arquivo do projeto.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **Checagem 15 · o BACKLOG era o único registro sem teto.** O `CLAUDE.md` o põe como
+  leitura de ABERTURA de toda sessão de trabalho — mais quente que o DECISIONS, que só é
+  lido inteiro em sessão de evolução — e nada o media. Medido no projeto real:
+  **191.591 caracteres**, 48x o teto do CONTEXT, dos quais **173.818 (91%)** eram os **72
+  cards JÁ FECHADOS**; um só deles, 6.142, maior que o CONTEXT inteiro. Enquanto isso o
+  teto de 4.000 do CONTEXT era cobrado com rigor de duas casas (3.998/4.000).
+  Teto novo: 12.000 (aviso em 9.600), o mesmo do DECISIONS de propósito — este arquivo é
+  lido ao menos tão frequentemente, e um segundo número arbitrário seria mais um número a
+  defender.
+
+- **Saída junto com o portão: `arquivar.py --backlog`** (e `task.py arquivar-backlog`).
+  Card fechado vira UMA linha com o ID e o `**Módulo:**` preservados; a íntegra vai para
+  `e_qa/backlog_archive.md`. Preservar o `**Módulo:**` não é capricho: a checagem 13 lê
+  exatamente esse marcador, e engoli-lo faria o arquivamento INVENTAR a lacuna que o portão
+  acusaria em seguida. Medido no projeto real: **191.591 → 25.359 (-86,8%)**, 72 cards
+  íntegros no arquivo-morto, nenhum módulo órfão, e o card gordo recuperável na íntegra.
+
+- **LACUNA DECLARADA, e é do tamanho do teto.** Mesmo arquivando TUDO, aquele projeto para
+  em 25.359 — ainda o dobro do teto. O resto não é card: 7.586 de ponteiros (105 por card,
+  e crescem sem fim) e 13.991 de prosa de seção, que o script não poda porque é texto do
+  dono. **O teto não foi afrouxado para caber.** Afrouxar teto quando ele aperta foi
+  exatamente o que aconteceu com o DECISIONS naquele projeto — 12.000 → 16.000 → 20.000, com
+  o arquivamento declarando "Candidatas: NENHUMA" no fim — e repetir isso aqui trocaria um
+  portão por um aviso. Ponteiro que cresce sem fim fica como problema em ABERTO.
+
+- **Checagem 10 · o ponto cego que deixou um ID sumir por 8 dias.** `d_history/` estava fora
+  da checagem de existência porque "cita IDs de outros projetos" — verdade para as lições
+  herdadas, **falso para o CHANGELOG do próprio projeto**. Medido: `D-64` foi prometido numa
+  entrada do changelog, nunca entrou na tabela, e o portão imprimiu verde. Quem pegou foi
+  uma sessão seguinte, no olho — exatamente o trabalho que a checagem 10 existe para tirar
+  do olho. Entra como **AVISO** e não como falha por desenho: o changelog é append-only, e
+  reprovar num arquivo que a regra proíbe editar é portão sem saída, que ensina `--no-verify`.
+
+- **A checagem que emudece, cometida dentro do conserto da checagem que emudecia.** A
+  primeira versão da correção comparava um caminho relativo ao TOPO do repositório contra a
+  constante `CHANGELOG`, que é relativa ao VAULT. Num kit (topo == vault) passava; num
+  projeto, onde o vault mora em `<TAG>_Project_DOCs/`, o aviso **nascia mudo**. Só apareceu
+  porque a correção foi rodada contra o projeto real antes de ser chamada de pronta — a
+  lição de `v13.4`, aplicada. Tem teste no layout de projeto para guardar a regressão.
+
+- **Verificado nos dois sentidos.** Com os consertos: 64 testes verdes, e no projeto real a
+  checagem 15 reprova com o número certo e o `D-64` aparece nominalmente. Sem eles: o mesmo
+  projeto passava verde nos dois casos. O portão do kit contra si mesmo pegou **três** coisas
+  que eu teria entregado erradas — a isca faltante da falha 15, os números do README (30/14/16
+  → 33/15/18) e o card de EXEMPLO do template (`- [x] T-… — <tarefa>`), que o arquivador ia
+  levar embora, deixando um ponteiro com `?` no lugar do ID.
+
 ## [kit v13.4] — 2026-08-13
 **A correção do `QA-14` não servia para nenhum projeto que já tivesse arquivado.** Descoberto ao
 medir o merge antes de fazê-lo, não durante.

@@ -29,6 +29,13 @@ status: atual
 - **Melhoria se valida contra o dado que a motivou:** um comando de arquivamento escrito para matar 5 sessões de manutenção devolveu ZERO candidatas no projeto que pediu por ele — o critério já estava esgotado. Rode a melhoria contra o caso real antes de comemorar.
 - **Regra satisfeita pelo texto não é regra satisfeita pelo efeito:** `.gitignore` só com comentário citando os padrões passava na checagem por substring.
 - **Honestidade compõe:** reportar fraqueza gera mais confiança do que esconder — e não precisa ser desfeito depois.
+- **O que ninguém mede cresce sem limite, e o rigor vai para onde já existe medida:** o CONTEXT era cobrado com duas casas (3.998/4.000) ao lado de um BACKLOG de 191.591 sem teto nenhum. Antes de apertar um orçamento, pergunte qual arquivo a sessão realmente lê primeiro.
+- **Portão sem saída ensina `--no-verify`:** teto novo só entra junto com o comando que o faz caber, e num arquivo append-only a cobrança tem de ser aviso — reprovar o que a regra proíbe editar é armadilha, não portão.
+- **Arquivar não pode inventar a lacuna que o portão vai acusar:** ao encolher um registro, preserve os marcadores que OUTRAS checagens leem (aqui, `**Módulo:**`), senão a faxina fabrica o defeito seguinte.
+- **Auditoria que custa uma sessão acontece uma vez; auditoria que custa um comando acontece sempre:** tudo que a primeira avaliação de campo mediu saiu de `git` e dos arquivos — era mecânico desde o começo, e ficou caro só por não estar escrito.
+- **Relatório de evidência sem limite declarado fabrica confiança:** medir bem a coisa errada foi como o kit tirou 88 em economia de contexto cobrando 4.000 caracteres ao lado de um arquivo de 191.591 sem teto. Todo relatório fecha dizendo o que NÃO mediu.
+- **Registro que muda de casa vira zero no relatório de quem assumiu o endereço:** e zero achados é a leitura mais elogiosa possível de um arquivo que nem foi lido. Procure, não presuma.
+- **Exceção que o template ensina, o script tem de respeitar:** o arquivador ia levar embora o card de EXEMPLO (`- [x] T-… — <tarefa>`) por ele ser "fechado". ID que não parseia é resposta legítima, não erro a contornar.
 
 ## Deste projeto
 - <data> — <lição em 1 linha>
