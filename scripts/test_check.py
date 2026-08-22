@@ -525,6 +525,19 @@ class TestHonestidadeDeclarada(unittest.TestCase):
                          f"README diz {decl_check}+{decl_skills}; real é {checklist}+{skills}")
         self.assertEqual(decl_total, checklist + skills, "o total declarado não soma")
 
+        # A capa da apresentação repete os MESMOS números e não era cobrada por ninguém:
+        # ela dizia "14 falhas e 16 avisos · 57 testes" com o cabeçalho já em outro lugar.
+        # Uma segunda cópia da frase mais honesta do kit é uma segunda chance de envelhecer
+        # em silêncio — que é o defeito que este teste inteiro existe para impedir.
+        capa = (KIT / "docs/gerar_apresentacao.py")
+        if capa.exists():
+            texto_capa = capa.read_text(encoding="utf-8")
+            mc = re.search(r"com (\d+) falhas e (\d+) avisos", texto_capa)
+            self.assertIsNotNone(mc, "a capa da apresentação parou de declarar os números")
+            self.assertEqual((int(mc.group(1)), int(mc.group(2))), (falhas, avisos),
+                             f"a capa diz {mc.group(1)}/{mc.group(2)}; o cabeçalho lista "
+                             f"{falhas}/{avisos}")
+
         m2 = re.search(r"julga \*\*(\d+)\*\* deles \((\d+) reprovam o commit, (\d+) avisam\)", readme)
         self.assertIsNotNone(m2, "a frase de cobertura do script sumiu do README")
         decl_soma, decl_falhas, decl_avisos = (int(g) for g in m2.groups())
@@ -745,6 +758,12 @@ class TestTodaChecagemTemIsca(unittest.TestCase):
                     "---\nname: skill-sem-limites\ndescription: faz coisas. Não use para outras.\n---\n"
                     "# Sem limites\n## Contexto que você recebe\nx\n## Saída\nz\n"),
                  "## Limites"),
+            15: (lambda r: self.anexar(
+                    r, "b_process/c_backlog.md",
+                    "\n## Feito\n" + "".join(
+                        f"- [x] T-{i:02d} — tarefa {i} · **Módulo:** M1\n  {'peso ' * 40}\n"
+                        for i in range(60))),
+                 "c_backlog.md com"),
         }
 
     def test_toda_falha_numerada_tem_isca(self):
@@ -1045,6 +1064,134 @@ class TestIdArquivado(unittest.TestCase):
             r = rodar_check(repo)
             self.assertNotIn("ID duplicado", r.stdout)
             self.assertEqual(r.returncode, 0, r.stdout)
+
+
+class TestOrcamentoBacklog(unittest.TestCase):
+    """Checagem 15. O BACKLOG era o único registro sem teto E sem arquivamento, sendo a
+    leitura de ABERTURA de toda sessão de trabalho. Medido no primeiro projeto real:
+    191.591 caracteres, dos quais 173.818 (91%) em 72 cards JÁ FECHADOS."""
+
+    def encher(self, repo, n=60, fechados=True):
+        """Cards de VÁRIAS linhas de propósito: o card gordo é o caso que dominou a
+        medição (6.142 caracteres num só), e uma contagem por LINHA o subestima em 21%."""
+        bl = repo / "b_process/c_backlog.md"
+        marca = "x" if fechados else " "
+        corpo = "".join(
+            f"- [{marca}] T-{i:02d} — tarefa **número {i}** · **Módulo:** M1\n"
+            f"  detalhe que só existe para pesar: {'palavra ' * 30}\n"
+            for i in range(n))
+        bl.write_text(bl.read_text(encoding="utf-8") + "\n## Feito\n" + corpo, encoding="utf-8")
+        return bl
+
+    def test_backlog_acima_do_teto_reprova(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.encher(repo)
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, f"devia reprovar:\n{r.stdout[-600:]}")
+            self.assertIn("c_backlog.md com", r.stdout)
+            self.assertIn("card(s) fechado(s)", r.stdout)
+
+    def test_card_ABERTO_nao_e_oferecido_como_candidato(self):
+        """Card aberto é trabalho, não histórico. Se o arquivador o levasse, o kit apagaria
+        a fila do dono para caber num número — o oposto do que o teto existe para proteger."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.encher(repo, fechados=False)
+            r = rodar_script("arquivar.py", str(repo), "--backlog")
+            # "arquivável" e não "fechado": o template traz um card fechado de EXEMPLO
+            # (`- [x] T-… — <tarefa>`), sem número no ID. Ele é fechado e não é arquivável,
+            # e a primeira versão deste modo tentou levá-lo — teria apagado a linha que
+            # ensina o formato, deixando um ponteiro com `?` no lugar do ID.
+            self.assertIn("Nenhum card arquivável", r.stdout, r.stdout)
+            self.assertIn("sem ID legível", r.stdout, "o template tem de ser ignorado COM aviso")
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_arquivar_derruba_o_teto_e_preserva_ID_e_modulo(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            bl = self.encher(repo)
+            antes = len(bl.read_text(encoding="utf-8"))
+            r = rodar_script("arquivar.py", str(repo), "--backlog", "--aplicar")
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            depois = bl.read_text(encoding="utf-8")
+            self.assertLess(len(depois), antes / 2, "arquivar tem de cortar de verdade")
+            # o ID continua resolvendo e o marcador da checagem 13 sobrevive
+            self.assertIn("- [x] T-07", depois)
+            self.assertIn("**Módulo:** M1", depois)
+            self.assertIn("[[backlog_archive]]", depois)
+            # e a íntegra não se perdeu
+            morto = repo / "e_qa/backlog_archive.md"
+            self.assertTrue(morto.exists(), "arquivo-morto do backlog não foi criado")
+            self.assertIn("palavra palavra", morto.read_text(encoding="utf-8"))
+            self.assertEqual(rodar_check(repo).returncode, 0, "devia ficar verde depois de arquivar")
+
+    def test_ponteiro_nao_deixa_markdown_desbalanceado(self):
+        """O título é cortado em 60. Cortar dentro de um `**negrito**` fecha metade da
+        marcação e contamina o render do resto do arquivo — pego no caso real."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            bl = self.encher(repo, n=3)
+            rodar_script("arquivar.py", str(repo), "--backlog", "--aplicar")
+            for linha in bl.read_text(encoding="utf-8").splitlines():
+                if "[[backlog_archive]]" not in linha:
+                    continue
+                titulo = linha.split("—", 1)[1].split("·")[0] if "—" in linha else ""
+                self.assertEqual(titulo.count("*"), 0, f"asterisco solto no ponteiro: {linha}")
+                self.assertEqual(titulo.count("`") % 2, 0, f"crase ímpar no ponteiro: {linha}")
+
+
+class TestIdPrometidoNoChangelog(unittest.TestCase):
+    """Checagem 10, ponto cego. `d_history/` estava fora da checagem de existência porque
+    "cita IDs de outros projetos" — verdade para as lições herdadas, falso para o CHANGELOG
+    do próprio projeto. Medido: `D-64` foi prometido numa entrada e nunca entrou na tabela;
+    o portão imprimiu verde por 8 dias e quem pegou foi uma sessão seguinte, no olho."""
+
+    def prometer(self, vault: Path):
+        log = vault / "d_history/a_changelog.md"
+        log.write_text(log.read_text(encoding="utf-8")
+                       + "\n## 2026-01-01\n- o `[hidden]` global vira `D-64`.\n", encoding="utf-8")
+
+    def test_avisa_e_nao_reprova(self):
+        """AVISO e não falha por desenho: o changelog é append-only, e reprovar num arquivo
+        que a regra proíbe editar é portão sem saída — que ensina a usar --no-verify."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.prometer(repo)
+            r = rodar_check(repo)
+            self.assertIn("ID prometido", r.stdout)
+            self.assertIn("D-64", r.stdout)
+            self.assertEqual(r.returncode, 0, "é aviso, não falha")
+            self.assertEqual(rodar_check(repo, extra=("--avisos-reprovam",)).returncode, 1)
+
+    def test_dispara_tambem_no_layout_de_PROJETO(self):
+        """A regressão que este teste guarda é de dentro da própria correção: a primeira
+        versão comparava um caminho relativo ao TOPO do repositório contra a constante, que
+        é relativa ao VAULT. Num kit (topo == vault) passava; num projeto, onde o vault mora
+        em <TAG>_Project_DOCs/, o aviso nascia MUDO — a checagem que emudece, cometida
+        dentro do conserto da checagem que emudecia."""
+        with area_temporaria() as tmp:
+            kit = montar_kit(Path(tmp) / "kit")
+            projeto = Path(tmp) / "projeto"
+            r = rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            docs = next(projeto.glob("*_Project_DOCs"))
+            self.prometer(docs)
+            saida = rodar_check(projeto, script=docs / "scripts/check.py").stdout
+            self.assertIn("ID prometido", saida, f"aviso nasceu mudo no layout de projeto:\n{saida[-700:]}")
+
+    def test_id_citado_por_doc_vivo_continua_reprovando(self):
+        """O aviso não pode virar rebaixamento: ID fantasma em documento VIVO segue falha.
+        Sem esta guarda, a correção teria trocado um portão por um aviso."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.prometer(repo)
+            ctx = repo / "a_context/a_context_source.md"
+            ctx.write_text(ctx.read_text(encoding="utf-8") + "\n- segue `D-64`.\n", encoding="utf-8")
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("ID citado que não existe", r.stdout)
+            self.assertNotIn("ID prometido", r.stdout, "não cobre o mesmo defeito duas vezes")
 
 
 if __name__ == "__main__":

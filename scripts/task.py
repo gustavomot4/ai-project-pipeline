@@ -39,6 +39,9 @@ TAREFAS = {
                   "Remove o pre-commit deste kit.", False),
     "arquivar":  ([PY, str(AQUI / "arquivar.py")],
                   "Lista as decisões que ninguém vivo cita (relata; só escreve com --aplicar).", False),
+    "arquivar-backlog": ([PY, str(AQUI / "arquivar.py"), "--backlog"],
+                  "Card FECHADO vira ponteiro com ID e Módulo; íntegra vai para e_qa/. "
+                  "É a saída da checagem 15 (relata; só escreve com --aplicar).", False),
     "test":      ([PY, str(AQUI / "test_check.py")],
                   "Testes de regressão dos scripts (encoding, worktree, git ausente).", True),
 }

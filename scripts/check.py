@@ -18,15 +18,18 @@ FALHAS (código 1)
   6. Skill sem name/description        12. "Em andamento" divergindo entre BACKLOG e CONTEXT
                                        13. Tarefa apontando módulo que não existe no PLANO
                                        14. Skill fora do esquema (Contexto/Limites/Saída)
+                                       15. BACKLOG inchado (card fechado nunca arquivado)
 
 AVISOS (não reprovam; com --avisos-reprovam, reprovam)
   frontmatter ausente · placeholders · templates em rascunho · nota órfã ·
   arquivo grande não varrido · varredura de histórico que não rodou ·
   portão automático (pre-commit) não instalado · módulo do PLANO sem tarefa ·
   description de skill sem fronteira negativa · CONTEXT perto do teto ·
-  DECISIONS perto do teto · tema de a_context/ fora do mapa de leitura ·
+  DECISIONS perto do teto · BACKLOG perto do teto ·
+  tema de a_context/ fora do mapa de leitura ·
   sessão sem skill declarada no changelog · ocupação declarada divergindo do arquivo ·
-  questão do dono ausente do CONTEXT · achado grave aberto há mais de 14 dias
+  questão do dono ausente do CONTEXT · achado grave aberto há mais de 14 dias ·
+  ID prometido no CHANGELOG e nunca registrado
 
 O README declara quantos itens de checklist existem e quantos esta máquina julga.
 Esse número é cobrado por `test_check.py` — a frase mais honesta do kit não pode
@@ -260,6 +263,66 @@ if texto_bl:
                 f"{BACKLOG}: {len(em_andamento)} itens 'Em andamento', limite declarado é {limite} "
                 "— termine, despromova, ou suba o limite no cabeçalho se o time cresceu."
             )
+
+
+def cards_do_backlog(texto):
+    """Cards como BLOCOS, não como linhas: um card vai do seu marcador até o próximo
+    marcador ou até o fim da seção. O card de uma linha é o caso comum, mas o de várias
+    aparece assim que o dono escreve o procedimento de conferência dentro dele — e foi
+    justamente o card gordo que dominou a medição (6.142 caracteres num só).
+    Cópia deliberada em `arquivar.py`, pelo motivo já escrito lá para `sem_bloco_de_codigo`:
+    o kit não tem módulo compartilhado, e um import entre scripts avulsos quebraria o
+    `check.py` rodando de dentro de um projeto, onde o layout é outro."""
+    marcas = [m.start() for m in re.finditer(r"^- \[[ xX]\]", texto, re.M)]
+    for ini, fim in zip(marcas, marcas[1:] + [len(texto)]):
+        bloco = texto[ini:fim]
+        secao = re.search(r"^## ", bloco, re.M)
+        yield bloco[:secao.start()] if secao else bloco
+
+
+# 15. Orçamento do BACKLOG. Era o único dos registros SEM teto — e é o mais caro dos três,
+#     porque o CLAUDE.md o põe como leitura de ABERTURA de toda sessão de trabalho,
+#     enquanto o DECISIONS só é lido inteiro em sessão de evolução.
+#     Medido no primeiro projeto real construído com o kit: 191.591 caracteres, 48x o teto
+#     do CONTEXT, dos quais 173.818 (91%) eram os 72 cards JÁ FECHADOS que sessão nenhuma
+#     precisa — um deles, sozinho, maior que o CONTEXT inteiro. (O número medido por LINHA
+#     dava 143.765; a diferença de 30.053 é o corpo dos cards de várias linhas, e é por
+#     isso que `cards_do_backlog` conta bloco. Comentário que cita um número que a função
+#     ao lado não mede é a mentira mais fácil de escrever neste arquivo.)
+#     O DECISIONS arquiva, o QA
+#     arquiva; este nunca soltava nada, e ninguém percebia porque nada o media. O teto de
+#     4.000 do CONTEXT era cobrado com rigor de duas casas (3.998/4.000) ao lado deste
+#     arquivo crescendo livre: economia medida no lugar errado ainda é economia por medir.
+#     O teto é o mesmo do DECISIONS de propósito. Este arquivo é lido ao menos tão
+#     frequentemente quanto aquele, e um segundo número arbitrário seria mais um número a
+#     defender. Saída pronta antes da parede: `python scripts/arquivar.py --backlog`.
+#
+#     LACUNA DECLARADA, e ela é do tamanho do teto: arquivar TODOS os 72 cards fechados
+#     daquele projeto levou 191.591 -> 25.359, ou seja, ainda o DOBRO do teto. O resto não
+#     é card: são 7.586 de ponteiros (105 por card arquivado, e crescem sem fim) e 13.991
+#     de prosa de seção — cabeçalho, "Pedidos do dono", "Ideias". O arquivador não toca
+#     nisso e não deve tocar: é texto do dono, não item de trabalho.
+#     O teto NÃO foi afrouxado para caber. Afrouxar teto quando ele aperta é exatamente o
+#     que aconteceu com o DECISIONS naquele projeto — 12.000 -> 16.000 -> 20.000, com o
+#     arquivamento esgotado no fim — e repetir isso aqui seria trocar um portão por um
+#     aviso. Fica declarado que um projeto naquele porte precisa também podar seção, e que
+#     o ponteiro que cresce sem fim é problema em aberto, não problema resolvido.
+if texto_bl:
+    fechados = [b for b in cards_do_backlog(texto_bl) if re.match(r"^- \[[xX]\]", b)]
+    peso = sum(len(b) for b in fechados)
+    saida = ("Arquive: `python scripts/arquivar.py --backlog --aplicar` deixa o ID e o "
+             "`**Módulo:**` na linha e manda a íntegra para e_qa/backlog_archive.md.")
+    if len(texto_bl) > 12000:
+        falhas.append(
+            f"{BACKLOG} com {len(texto_bl)} caracteres (orçamento: 12.000) — "
+            f"{len(fechados)} card(s) fechado(s) ocupam {peso} deles. {saida}"
+        )
+    elif len(texto_bl) > 9600:
+        avisos.append(
+            f"{BACKLOG} com {len(texto_bl)}/12.000 caracteres ({100*len(texto_bl)//12000}%) — "
+            f"{len(fechados)} card(s) fechado(s) pesam {peso}. Arquive agora, "
+            "não na sessão em que estourar. " + saida
+        )
 
 # 5. Cruft óbvio
 cruft = [p for pat in ("*.bak", "*.tmp", "*.orig", ".fuse_hidden*") for p in visiveis(pat, topo)]
@@ -499,20 +562,53 @@ if texto_dec:
     if repetidos:
         falhas.append(f"ID duplicado em {DECISOES}: " + ", ".join(sorted(repetidos)) + " — cada ID é único e append-only.")
     citados = {}
+    citados_log = {}
     for nota in notas:
-        # d_history/, e_qa/ e as lições herdadas citam IDs de OUTROS projetos:
-        # ficam fora da checagem de existência.
+        # e_qa/, docs/ e as lições herdadas citam IDs de OUTROS projetos: ficam fora da
+        # checagem de existência. O CHANGELOG do próprio projeto NÃO é esse caso — ele
+        # cita os IDs de casa, e tratá-lo como "histórico de terceiro" abriu um buraco
+        # medido: no primeiro projeto real, `D-64` foi prometido numa entrada do changelog,
+        # nunca entrou na tabela, e o portão imprimiu verde por 8 dias. Quem pegou foi uma
+        # sessão seguinte, no olho — exatamente o trabalho que a checagem 10 existe para
+        # tirar do olho.
+        # Entra como AVISO e não como falha por uma razão de desenho, não de gosto: o
+        # changelog é append-only, então reprovar nele é reprovar num arquivo que a regra
+        # proíbe editar. Portão sem saída ensina a usar --no-verify, que é pior que o furo.
         rel_nota = nota.relative_to(topo)
-        if nota == dec or PASTAS_HISTORICAS & set(rel_nota.parts) or nota.stem == "d_agent_learnings":
+        if nota == dec or nota.stem == "d_agent_learnings":
             continue
+        historica = bool(PASTAS_HISTORICAS & set(rel_nota.parts))
+        # `raiz / CHANGELOG` e não a string: `rel_nota` é relativo ao TOPO do repositório,
+        # e num projeto o vault mora em <TAG>_Project_DOCs/ — comparar com a constante,
+        # que é relativa ao vault, nunca casava e o aviso nascia mudo. Pego rodando esta
+        # checagem contra o projeto real de onde o defeito veio; num kit, onde topo == raiz,
+        # a comparação errada teria passado no teste e ido para produção calada.
+        if historica and nota != raiz / CHANGELOG:
+            continue
+        alvo = citados_log if historica else citados
         for i in set(re.findall(r"\b((?:D|Q|QA)-\d+)\b", sem_bloco_de_codigo(corpo[nota]))):
-            citados.setdefault(i, set()).add(nota.relative_to(topo).as_posix())
-    fantasmas = {i: v for i, v in citados.items()
-                 if i not in definidos and i not in arquivados
-                 and not re.fullmatch(r"(D|Q|QA)-0*(0|NN)", i)}
+            alvo.setdefault(i, set()).add(rel_nota.as_posix())
+
+    def fantasmas_de(mapa):
+        return {i: v for i, v in mapa.items()
+                if i not in definidos and i not in arquivados
+                and not re.fullmatch(r"(D|Q|QA)-0*(0|NN)", i)}
+
+    fantasmas = fantasmas_de(citados)
     if fantasmas:
         detalhe = "; ".join(f"{i} (em {', '.join(sorted(v))})" for i, v in sorted(fantasmas.items())[:6])
         falhas.append(f"ID citado que não existe em {DECISOES} nem em {ARQUIVO_MORTO}: {detalhe}")
+    # Só o que o changelog cita e mais NINGUÉM vivo cita: o que aparece nos dois lugares já
+    # reprovou acima, e repetir seria cobrar duas vezes o mesmo defeito.
+    prometidos = {i for i in fantasmas_de(citados_log) if i not in citados}
+    if prometidos:
+        avisos.append(
+            f"ID prometido no {CHANGELOG} e nunca registrado: "
+            + ", ".join(sorted(prometidos)[:6])
+            + f" — registre a linha no {DECISOES}, ou some uma entrada nova dizendo que o "
+              "ID ficou vago de propósito. Nunca recicle o número, e nunca edite a entrada "
+              "antiga: o changelog é append-only, a correção é linha NOVA."
+        )
 
 # 12. "Em andamento" tem de bater entre BACKLOG e CONTEXT (regra 6, fonte única).
 # 13. Cobertura módulo <-> tarefa. Metade FORMAL do que a skill artifact-consistency faz
