@@ -18,6 +18,7 @@ Dados/schema → domínio/núcleo → borda (API/BFF) → UI → infra/deploy. J
 > Repita o bloco por módulo. **≤ 1 página por módulo.** Suposição é **[a confirmar]**, não fato.
 
 ### M1 — <nome>
+- **Pasta:** <ex.: src/core — a pasta que ESTE módulo pode escrever; várias, separe por vírgula>
 - **Recebe:** <entrada: dados, contrato, evento>
 - **Entrega:** <saída observável>
 - **Skill responsável:** <ex.: [[b_process/skills/backend-bff/SKILL|backend-bff]]>
@@ -25,6 +26,7 @@ Dados/schema → domínio/núcleo → borda (API/BFF) → UI → infra/deploy. J
 - **Onde a stack vai doer:** <limite conhecido antes de começar>
 
 ### M2 — <nome>
+- **Pasta:** …
 - **Recebe:** …
 - **Entrega:** …
 - **Skill responsável:** …

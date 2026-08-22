@@ -22,7 +22,9 @@ Nenhuma ferramenta serve para tudo, e o kit fica mais útil quando você sabe on
 | Multi-repo / monorepo grande | Não | o kit assume um repositório e um `CONTEXT` |
 | CI/CD, revisão por pares | Não cobre | o único automatismo é o pre-commit de `scripts/check.py` |
 
-**A limitação honesta mais importante:** o kit tem **284** itens de checklist (118 no [[b_checklist|CHECKLIST]] + 166 nos `b_process/skills/`); `scripts/check.py` julga **33** deles (15 reprovam o commit, 18 avisam) — cerca de 12%. Estes números são **cobrados por `scripts/test_check.py`**: a frase mais honesta do kit não pode ser a que envelhece em silêncio (ela já tinha envelhecido uma vez, dizendo 188/18). O resto depende de você rodar a seção certa do [[b_checklist|CHECKLIST]]. Isto é um kit de disciplina com algumas travas automáticas — não um sistema que impede erro.
+**Primeira vez aqui?** Comece por [[g_primeiros_passos|PRIMEIROS PASSOS]] — quinze minutos, e ele diz o que ignorar e quando *não* usar este kit.
+
+**A limitação honesta mais importante:** o kit tem **284** itens de checklist (118 no [[b_checklist|CHECKLIST]] + 166 nos `b_process/skills/`); `scripts/check.py` julga **34** deles (15 reprovam o commit, 19 avisam) — cerca de 12%. Estes números são **cobrados por `scripts/test_check.py`**: a frase mais honesta do kit não pode ser a que envelhece em silêncio (ela já tinha envelhecido uma vez, dizendo 188/18). O resto depende de você rodar a seção certa do [[b_checklist|CHECKLIST]]. Isto é um kit de disciplina com algumas travas automáticas — não um sistema que impede erro.
 
 **A primeira evidência de que funciona, com o custo junto:** [[c_field_evaluation_tapgo_260813|avaliação de campo]] — um projeto real de 46 commits medido por sessão isolada, com o critério de sucesso hasheado ANTES dos dados. Nove hipóteses de nove no lado positivo (98% de commits com ID, ~0% de regeneração, 3 de 3 sabotagens do portão reprovadas) e o imposto declarado: **15% das sessões** foram administrar o orçamento do próprio kit, e a medição achou uma checagem que enxergava 12% do que dizia enxergar. É **n = 1**: ataca a falta de evidência, não a resolve.
 
@@ -69,7 +71,7 @@ LICENSE           MIT
 .github/workflows portão rodando em Linux e Windows a cada push
 scripts/
   task.py         ponto de entrada único: check · check-all · evidencia · test · hook
-  check.py        o portão de higiene (15 falhas · 18 avisos)
+  check.py        o portão de higiene (15 falhas · 19 avisos)
   evidencia.py    mede o uso do kit no projeto a partir do git e dos arquivos
   test_check.py   testes de regressão dos scripts — só stdlib
   install_hook.py instala o pre-commit
