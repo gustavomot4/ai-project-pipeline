@@ -28,6 +28,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import date, timedelta
 from pathlib import Path
 
 # O filho tem de EMITIR UTF-8 para o teste poder decodificar como UTF-8. Sem isto, num
@@ -526,18 +527,19 @@ class TestHonestidadeDeclarada(unittest.TestCase):
                          f"README diz {decl_check}+{decl_skills}; real é {checklist}+{skills}")
         self.assertEqual(decl_total, checklist + skills, "o total declarado não soma")
 
-        # A capa da apresentação repete os MESMOS números e não era cobrada por ninguém:
-        # ela dizia "14 falhas e 16 avisos · 57 testes" com o cabeçalho já em outro lugar.
-        # Uma segunda cópia da frase mais honesta do kit é uma segunda chance de envelhecer
-        # em silêncio — que é o defeito que este teste inteiro existe para impedir.
-        capa = (KIT / "docs/gerar_apresentacao.py")
+        # A capa da apresentação declarava os MESMOS números à mão — "14 falhas e 16 avisos
+        # · 57 testes" — e envelhecia sozinha, como o "188 itens, 18 julgados" já tinha
+        # envelhecido. A primeira correção foi um teste VIGIANDO a cópia, e estava errada:
+        # a checagem 3 deste kit se chama FONTE ÚNICA, e o mesmo dado em dois arquivos não
+        # vira verdade por ganhar um guarda — vira verdade quando existe um lugar só.
+        # Agora a capa LÊ do check.py, e o que este teste guarda é a AUSÊNCIA do número
+        # digitado. O docstring da capa fica de fora: ele cita o erro antigo de propósito.
+        capa = KIT / "docs/gerar_apresentacao.py"
         if capa.exists():
-            texto_capa = capa.read_text(encoding="utf-8")
-            mc = re.search(r"com (\d+) falhas e (\d+) avisos", texto_capa)
-            self.assertIsNotNone(mc, "a capa da apresentação parou de declarar os números")
-            self.assertEqual((int(mc.group(1)), int(mc.group(2))), (falhas, avisos),
-                             f"a capa diz {mc.group(1)}/{mc.group(2)}; o cabeçalho lista "
-                             f"{falhas}/{avisos}")
+            corpo_capa = capa.read_text(encoding="utf-8").split('"""', 2)[-1]
+            self.assertIsNone(
+                re.search(r"\d+ falhas e \d+ avisos", corpo_capa),
+                "a capa voltou a digitar os números do portão em vez de lê-los do check.py")
 
         m2 = re.search(r"julga \*\*(\d+)\*\* deles \((\d+) reprovam o commit, (\d+) avisam\)", readme)
         self.assertIsNotNone(m2, "a frase de cobertura do script sumiu do README")
@@ -920,23 +922,64 @@ class TestAchadoVencido(unittest.TestCase):
         d.write_text(d.read_text(encoding="utf-8") + "\n" + linha_qa + "\n", encoding="utf-8")
         return repo
 
+    def dias_atras(self, n):
+        return (date.today() - timedelta(days=n)).isoformat()
+
     def test_critico_antigo_e_aberto_avisa(self):
         with area_temporaria() as tmp:
             repo = self.preparar(tmp, "| QA-42 | 2020-01-01 | Crítico | `x.py:1` | quebrava | — | _(aberto)_ |")
             saida = rodar_check(repo).stdout
-            self.assertIn("Achado grave aberto há mais de 14 dias", saida)
+            self.assertIn("Achado vencido", saida)
             self.assertIn("QA-42", saida)
 
     def test_critico_fechado_cala(self):
         with area_temporaria() as tmp:
             repo = self.preparar(tmp, "| QA-42 | 2020-01-01 | Crítico | `x.py:1` | quebrava | — | ✔ 2020-01-02 |")
-            self.assertNotIn("Achado grave aberto", rodar_check(repo).stdout)
+            self.assertNotIn("Achado vencido", rodar_check(repo).stdout)
 
-    def test_medio_antigo_nao_avisa(self):
-        """Só Crítico/Alto. Cobrar Médio antigo transformaria o aviso em ruído de fundo."""
+    def test_prazo_por_gravidade(self):
+        """Prazo por nível, e não um prazo só. Antes era 14 dias para CRÍTICO/ALTO e NADA
+        para o resto — e a medição do primeiro projeto real mostrou que isso cobrava
+        exatamente o nível que não enrosca: os 8 CRÍTICOS e os 4 ALTOS estavam todos
+        fechados, e o que apodrecia eram 5 MÉDIOS parados 13 a 15 dias, sem prazo nenhum.
+        Os números vêm do porte do kit: projeto de 2 a 8 semanas."""
+        casos = [
+            ("Crítico", 10, True,  "CRÍTICO de 10 dias passa dos 7"),
+            ("Crítico", 3,  False, "CRÍTICO de 3 dias ainda está no prazo"),
+            ("Alto",    10, True,  "ALTO segue o mesmo prazo do CRÍTICO"),
+            ("Médio",   20, True,  "MÉDIO de 20 dias passa dos 15"),
+            ("Médio",   10, False, "MÉDIO de 10 dias ainda está no prazo"),
+        ]
+        for sev, idade, deve_avisar, porque in casos:
+            with self.subTest(sev=sev, idade=idade), area_temporaria() as tmp:
+                repo = self.preparar(tmp, f"| QA-42 | {self.dias_atras(idade)} | {sev} | "
+                                          "`x.py:1` | quebrava | — | _(aberto)_ |")
+                saida = rodar_check(repo).stdout
+                self.assertEqual("Achado vencido" in saida, deve_avisar, f"{porque}:\n{saida[-400:]}")
+
+    def test_baixo_nunca_vence(self):
+        """Decisão, não esquecimento: metade dos achados abertos do projeto medido era
+        BAIXO. Um aviso que passa a cobrar o que ninguém vai fazer vira ruído — e aviso que
+        vira ruído deixa de ser lido, que é a mesma morte da checagem que emudece."""
         with area_temporaria() as tmp:
-            repo = self.preparar(tmp, "| QA-42 | 2020-01-01 | Médio | `x.py:1` | quebrava | — | _(aberto)_ |")
-            self.assertNotIn("Achado grave aberto", rodar_check(repo).stdout)
+            repo = self.preparar(tmp, "| QA-42 | 2020-01-01 | Baixo | `x.py:1` | quebrava | — | _(aberto)_ |")
+            self.assertNotIn("Achado vencido", rodar_check(repo).stdout)
+
+    def test_acha_o_registro_que_mudou_de_casa(self):
+        """No primeiro projeto real os `QA-NN` saíram do DECISIONS para `a_context/d_qa.md`.
+        Uma checagem que só olha a casa antiga não é rigorosa, é cega — e relatar zero
+        achado vencido num registro que nem foi lido é a leitura mais elogiosa e mais falsa
+        que existe. Procure, não presuma."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            (repo / "a_context/d_qa.md").write_text(
+                "---\ntags: [qa]\nstatus: atual\n---\n# QA\n\n"
+                "| # | Data | Sev. | Onde | O que quebrava | Correção | Fechado em |\n"
+                "|---|---|---|---|---|---|---|\n"
+                "| QA-77 | 2020-01-01 | Crítico | `x.py:1` | quebrava | — | _(aberto)_ |\n",
+                encoding="utf-8")
+            saida = rodar_check(repo).stdout
+            self.assertIn("QA-77", saida, f"registro em arquivo próprio não foi lido:\n{saida[-500:]}")
 
     def test_tabela_sem_a_coluna_diz_que_nao_julgou(self):
         """A doença do QA-14 é emudecer. Sem a coluna, a checagem fala em voz alta."""

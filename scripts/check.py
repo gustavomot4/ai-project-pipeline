@@ -28,7 +28,8 @@ AVISOS (não reprovam; com --avisos-reprovam, reprovam)
   DECISIONS perto do teto · BACKLOG perto do teto ·
   tema de a_context/ fora do mapa de leitura ·
   sessão sem skill declarada no changelog · ocupação declarada divergindo do arquivo ·
-  questão do dono ausente do CONTEXT · achado grave aberto há mais de 14 dias ·
+  questão do dono ausente do CONTEXT ·
+  achado vencido (7 dias p/ CRÍTICO e ALTO, 15 p/ MÉDIO, BAIXO não vence) ·
   ID prometido no CHANGELOG e nunca registrado
 
 O README declara quantos itens de checklist existem e quantos esta máquina julga.
@@ -748,32 +749,63 @@ if texto_dec and texto_ctx:
 # EXPIRAÇÃO: no projeto medido, o único QA crítico aberto descrevia uma condição já resolvida.
 # Só julga se a tabela tiver a coluna — e, quando não tiver, DIZ que não julgou, em vez de
 # emudecer (a doença do QA-14).
-if texto_dec and re.search(r"^\|\s*#\s*\|.*Fechado", texto_dec, re.M | re.I):
+def prazo_de(sev):
+    """Prazo POR GRAVIDADE, e não um prazo só. Antes era 14 dias para CRÍTICO/ALTO e nada
+    para o resto — e a medição do primeiro projeto real mostrou que isso cobrava justamente
+    o nível que não enrosca: os 8 CRÍTICOS e os 4 ALTOS estavam TODOS fechados, e o que
+    apodrecia eram 5 MÉDIOS parados 13-15 dias, sem prazo nenhum.
+    Os números vêm do porte a que o kit se propõe — projeto curto ou médio, de 2 a 8
+    semanas. Nessa escala, 14 dias para um CRÍTICO é um quarto do projeto.
+    BAIXO não vence, e isso é decisão, não esquecimento: metade dos achados abertos daquele
+    projeto era BAIXO, e um aviso que passa a cobrar o que ninguém vai fazer vira ruído —
+    o gêmeo da doença que este arquivo já persegue, porque aviso que vira ruído deixa de
+    ser lido, e checagem que ninguém lê emudeceu do mesmo jeito."""
+    s = sev.upper()
+    if "CRÍT" in s or "CRIT" in s or "ALTO" in s:
+        return 7
+    if "MÉD" in s or "MED" in s:
+        return 15
+    return None
+
+
+# O registro de QA pode ter saído do DECISIONS para arquivo próprio — o primeiro projeto
+# real fez isso, e uma checagem que só olha a casa antiga não é rigorosa, é cega. Procure,
+# não presuma: relatar zero achado vencido num registro que nem foi lido é a leitura mais
+# elogiosa possível, e a mais falsa.
+fontes_qa = [t for t in [texto_dec] + [corpo[p] for p in notas
+                                       if p.parent == raiz / "a_context"
+                                       and re.search(r"qa", p.stem, re.I)] if t]
+com_coluna = [t for t in fontes_qa if re.search(r"^\|\s*#\s*\|.*Fechado", t, re.M | re.I)]
+if com_coluna:
     velhos = []
-    for linha in texto_dec.splitlines():
-        if not re.match(r"^\|\s*QA-\d+\s*\|", linha):
-            continue
-        celulas = [c.strip() for c in linha.strip().strip("|").split("|")]
-        if len(celulas) < 5:
-            continue
-        ident, quando_txt, sev, fechado = celulas[0], celulas[1], celulas[2].upper(), celulas[-1]
-        if fechado and "ABERTO" not in fechado.upper():
-            continue
-        if not any(g in sev for g in ("CRÍTICO", "CRITICO", "ALTO")):
-            continue
-        try:
-            idade = (date.today() - date.fromisoformat(quando_txt[:10])).days
-        except ValueError:
-            continue
-        if idade > 14:
-            velhos.append(f"{ident} ({celulas[2].strip()}, {idade} dias)")
+    for texto_fonte in com_coluna:
+        for linha in texto_fonte.splitlines():
+            if not re.match(r"^\|\s*`?QA-\d+`?\s*\|", linha):
+                continue
+            celulas = [c.strip().strip("`") for c in linha.strip().strip("|").split("|")]
+            if len(celulas) < 5:
+                continue
+            ident, quando_txt, sev, fechado = celulas[0], celulas[1], celulas[2], celulas[-1]
+            if fechado and "ABERTO" not in fechado.upper():
+                continue
+            prazo = prazo_de(sev)
+            if prazo is None:
+                continue
+            try:
+                idade = (date.today() - date.fromisoformat(quando_txt[:10])).days
+            except ValueError:
+                continue
+            if idade > prazo:
+                velhos.append(f"{ident} ({sev}, {idade} dias, prazo {prazo})")
     if velhos:
         avisos.append(
-            "Achado grave aberto há mais de 14 dias: " + ", ".join(velhos)
-            + " — ou fecha com data, ou vira card no BACKLOG. Registro append-only precisa "
-            "de disciplina de expiração, senão a linha descreve um mundo que já acabou."
+            "Achado vencido: " + ", ".join(velhos)
+            + " — o prazo é 7 dias para CRÍTICO/ALTO e 15 para MÉDIO (BAIXO não vence). "
+            "Ou fecha com data, ou vira card no BACKLOG, ou o dono rebaixa a gravidade. "
+            "Registro append-only precisa de disciplina de expiração, senão a linha "
+            "descreve um mundo que já acabou."
         )
-elif texto_dec:
+elif fontes_qa:
     avisos.append(
         "Tabela de QA sem a coluna 'Fechado em' — a checagem de achado vencido NÃO rodou. "
         "Dito em voz alta de propósito: checagem que emudece é pior que checagem que não existe."
