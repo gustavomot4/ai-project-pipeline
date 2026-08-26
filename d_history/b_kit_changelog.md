@@ -8,6 +8,59 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.9] — 2026-08-24
+**As duas travas que a segunda rodada do benchmarking cobrou — e as duas doem.**
+A rodada nova refez os critérios para que o kit pudesse perder: saiu "honestidade sobre
+limites" (auto-retrato: descrevia a doutrina do próprio kit e não separava os concorrentes
+entre si), entrou "segurança e isolamento", e "prova de eficácia" passou a exigir medição
+INDEPENDENTE. Com a régua assim, o kit caiu de 1º (33 pontos entre 9) para penúltimo
+(23 pontos entre 13). O kit não piorou; a régua parou de ser um retrato dele. As duas
+mudanças abaixo atacam as duas notas que a medição do PRÓPRIO kit falseou.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **FALHA 16: teto elevado sem registro.** A tese central do kit é "orçamento cobrado por
+  script" — e ela estava falseada pelo próprio kit no único projeto real medido: backlog em
+  **191.591 caracteres (1.596% do teto)**, registro de decisões em 157% **depois** de o teto
+  dele ter sido elevado de 12.000 para 20.000 dentro do projeto. O portão continuava verde
+  porque cobrava o número que a própria vítima acabara de escolher, e a edição não deixava
+  rastro nenhum. Agora deixa: `TETOS_PADRAO` é o kit e não se mexe, `TETOS` é o projeto e
+  pode subir — subir **sem uma linha D-NN que registre a elevação** reprova o commit.
+  Um limite que sobe em silêncio não é limite, é lembrete.
+
+- **A checagem NÃO proíbe subir, e o teste que mais importa é esse.** Proibir quebraria todo
+  projeto grande e ensinaria o `--no-verify` — a doença que o kit condena, vista do outro
+  lado. `test_teto_elevado_COM_registro_passa` é a contraprova: com a linha registrada, passa.
+  A isca da 16 sabota o **próprio check.py** (é o caso real: alguém editar o portão para
+  caber), e leva quatro espaços na âncora de propósito — sem eles ela casaria primeiro com o
+  `TETOS_PADRAO`, mudaria os dois juntos e passaria sem sabotar nada.
+
+- **Trava do pulo (`scripts/portao_hook.py`, `task.py portao`).** O relatório de evidência
+  tinha uma linha constrangedora na seção "o que este relatório NÃO mede": *"se um commit
+  passou com --no-verify. Não fica rastro no histórico."* Era o contorno invisível do
+  mecanismo que o kit mais vende. Agora um hook `PreToolUse` sobre o Bash recusa
+  `git commit --no-verify` (e o atalho `-n`, e `-nm`) quando a mensagem não traz
+  `SEM-PORTAO: <motivo>`. **Pular continua permitido; pular calado, não.**
+
+- **E o item saiu de "não medido" para uma linha do relatório.** `evidencia.py` passa a contar
+  os commits com `SEM-PORTAO:` e imprime "pelo menos N" — nunca um total, porque pulo feito
+  fora do agente segue invisível. Zero ali significa "nenhum pulo declarado", não "nenhum
+  pulo", e o relatório escreve isso com todas as letras.
+
+- **Limite declarado, não fechado (regra 5).** `git -c core.hooksPath=…`, `HUSKY=0`,
+  desinstalar o hook ou rodar o git fora do agente continuam burlando sem rastro. A trava
+  cobre o caminho de quem tem pressa, não o de quem quer fraudar — e o docstring do hook diz
+  isso antes que alguém descubra sozinho.
+
+- **A checagem trabalha sobre palavras, não sobre substring.** `git commit -m "docs: explica
+  por que --no-verify deixa rastro"` não desliga nada e não pode ser bloqueado: alarme falso é
+  como o kit ensina a ignorar alarme. Tem teste.
+
+- **O que o benchmarking cobrou e NÃO foi feito aqui** (fica no BACKLOG, declarado): o grupo
+  de controle (Claude Code + MADR + `pre-commit` clássico + ADR na CI, para medir quanto do
+  diferencial se replica numa tarde), o corte do catálogo de 24 skills para as 10 que
+  dispararam, e o instalador de um comando que tornaria possível existir uma **segunda
+  pessoa** — sem a qual toda nota do kit continua sendo auto-relato.
+
 ## [kit v13.8] — 2026-08-22
 **As três melhorias implementáveis que o benchmarking apontou, e o estudo de MCP.**
 O benchmarking contra oito alternativas de mercado deixou sete recomendações. Três dependem

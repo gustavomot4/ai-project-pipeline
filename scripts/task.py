@@ -38,6 +38,9 @@ TAREFAS = {
     "escopo":    ([PY, str(AQUI / "install_hook.py"), "--escopo"],
                   "Liga a trava de escopo: escrita fora da pasta do módulo em andamento é "
                   "recusada (Claude Code). Desligar: `escopo --remover`.", False),
+    "portao":    ([PY, str(AQUI / "install_hook.py"), "--portao"],
+                  "Liga a trava do pulo: `git commit --no-verify` sem 'SEM-PORTAO: <motivo>' "
+                  "é recusado (Claude Code). Desligar: `portao --remover`.", False),
     "unhook":    ([PY, str(AQUI / "install_hook.py"), "--remover"],
                   "Remove o pre-commit deste kit.", False),
     "arquivar":  ([PY, str(AQUI / "arquivar.py")],

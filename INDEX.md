@@ -64,4 +64,6 @@ Antes de entregar, `python scripts/task.py check-all`: no dia a dia a varredura 
 
 `python scripts/task.py escopo` liga a **trava de escopo**: com uma tarefa em andamento que declara `**Módulo:**`, e o módulo declarando `**Pasta:**` no PLANO, escrita fora dessa pasta é recusada pelo agente. É a regra 2 do [[CLAUDE]] deixando de ser prosa. Falha aberta em toda dúvida, e diz por quê. Desligar: `escopo --remover`.
 
+`python scripts/task.py portao` liga a **trava do pulo**: `git commit --no-verify` sem `SEM-PORTAO: <motivo>` na mensagem é recusado. Pular o portão continua permitido — pular em silêncio, não, porque era o único contorno que não deixava rastro nem para a medição do próprio kit. Com o marcador, o motivo fica no histórico e o `evidencia` conta os pulos. Desligar: `portao --remover`.
+
 `python scripts/task.py test` roda os testes de regressão dos próprios scripts — os mesmos que o CI roda em Linux **e Windows**, porque os dois bugs de encoding que o kit já pagou não reproduzem no Linux.

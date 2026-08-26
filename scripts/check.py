@@ -19,6 +19,7 @@ FALHAS (código 1)
                                        13. Tarefa apontando módulo que não existe no PLANO
                                        14. Skill fora do esquema (Contexto/Limites/Saída)
                                        15. BACKLOG inchado (card fechado nunca arquivado)
+                                       16. Teto de orçamento elevado sem registro no DECISIONS
 
 AVISOS (não reprovam; com --avisos-reprovam, reprovam)
   frontmatter ausente · placeholders · templates em rascunho · nota órfã ·
@@ -139,6 +140,34 @@ PASTAS_VAULT = {"a_context", "b_process", "c_technical_docs", "d_history", "e_qa
 # `docs/` entra aqui porque é onde mora a auditoria do PRÓPRIO kit (ver e_qa/README.md):
 # ela cita D-NN e QA-NN dos projetos-cobaia, que nunca existirão no DECISIONS deste repo.
 PASTAS_HISTORICAS = {"d_history", "e_qa", "docs"}
+
+# --- Orçamentos ---------------------------------------------------------------------
+# A tese central do kit é "orçamento cobrado por script". Ela foi FALSEADA pelo próprio
+# kit no primeiro projeto real: o backlog chegou a 191.591 caracteres (1.596% do teto) e
+# o registro de decisões a 157%, DEPOIS de o teto dele ter sido elevado de 12.000 para
+# 20.000 dentro do projeto. O portão não impediu nada — porque o teto que aperta é
+# editável por quem está sendo apertado, e a edição não deixava rastro nenhum.
+#
+# Agora deixa. `TETOS_PADRAO` é o kit e não se mexe; `TETOS` é o projeto e pode subir —
+# só que subir sem registrar reprova (FALHA 16). Um limite que sobe em silêncio não é
+# limite, é lembrete.
+TETOS_PADRAO = {CONTEXTO: 4000, DECISOES: 12000, BACKLOG: 12000}
+TETOS = {
+    CONTEXTO: 4000,     # <- o projeto sobe AQUI, e registra a elevação com um D-NN
+    DECISOES: 12000,
+    BACKLOG: 12000,
+}
+# Avisar a 90% do teto em vez de só reprovar a 100%: quando o teto estoura, quem escreve
+# está no meio de uma sessão de trabalho e corta o que estiver à mão — não o que devia sair.
+PERTO = 0.90
+
+
+def mil(n: int) -> str:
+    """12000 -> '12.000'. O texto do portão sempre imprimiu assim; com o teto virando
+    variável, a formatação precisou virar função em vez de literal escrito à mão."""
+    return f"{n:,}".replace(",", ".")
+
+
 # ----------------------------------------------------------------------------------
 
 # `.pytest_cache` e `.mypy_cache` entram porque um `README.md` gerado por ferramenta dentro
@@ -204,29 +233,28 @@ ctx = raiz / CONTEXTO
 texto_ctx = corpo.get(ctx, "")
 if not ctx.exists():
     falhas.append(f"{CONTEXTO} não encontrado — é onde o padrão do repositório põe o contexto-fonte.")
-elif len(texto_ctx) > 4000:
+elif len(texto_ctx) > TETOS[CONTEXTO]:
     falhas.append(
-        f"{CONTEXTO} com {len(texto_ctx)} caracteres (orçamento: 4.000). "
+        f"{CONTEXTO} com {len(texto_ctx)} caracteres (orçamento: {mil(TETOS[CONTEXTO])}). "
         f"Corte: detalhe -> a_context/<tema>.md, decisão -> {DECISOES}, datado -> d_history/a_changelog.md."
     )
-elif len(texto_ctx) > 3600:
-    # Avisar a 90% em vez de só reprovar a 100%: quando o teto estoura, quem escreve
-    # está no meio de uma sessão de trabalho e vai cortar o que estiver à mão — não o
-    # que devia sair. O aviso dá a chance de mover um tema com calma, antes da parede.
+elif len(texto_ctx) > TETOS[CONTEXTO] * PERTO:
+    # O aviso dá a chance de mover um tema com calma, antes da parede (ver PERTO).
     avisos.append(
-        f"{CONTEXTO} com {len(texto_ctx)}/4.000 caracteres ({100*len(texto_ctx)//4000}%) — "
+        f"{CONTEXTO} com {len(texto_ctx)}/{mil(TETOS[CONTEXTO])} caracteres "
+        f"({100*len(texto_ctx)//TETOS[CONTEXTO]}%) — "
         "mova um tema para a_context/<tema>.md agora, não na sessão em que estourar."
     )
 
 # 2. Registro de decisões inchado (projeto longo)
 dec = raiz / DECISOES
 texto_dec = corpo.get(dec, "")
-if texto_dec and len(texto_dec) > 12000:
+if texto_dec and len(texto_dec) > TETOS[DECISOES]:
     falhas.append(
-        f"{DECISOES} acima de 12.000 caracteres — arquive SUPERSEDIDAS/rejeitadas antigas "
-        "em e_qa/decisions_archive.md (IDs preservados) e deixe um ponteiro."
+        f"{DECISOES} acima de {mil(TETOS[DECISOES])} caracteres — arquive SUPERSEDIDAS/rejeitadas "
+        "antigas em e_qa/decisions_archive.md (IDs preservados) e deixe um ponteiro."
     )
-elif texto_dec and len(texto_dec) > 9600:
+elif texto_dec and len(texto_dec) > TETOS[DECISOES] * PERTO:
     # O README declarava esta fraqueza com todas as letras: "o arquivamento é manual e
     # ninguém lembra". Portão que só roda quando alguém lembra não é portão — foi o
     # argumento do QA-04, e valia contra o próprio kit. O script não arquiva (a decisão
@@ -234,7 +262,8 @@ elif texto_dec and len(texto_dec) > 9600:
     velhas = re.findall(r"^\|\s*(D-\d+)\s*\|[^|]*\|\s*(?:ADOTADO|REJEITADO)", texto_dec, re.M)
     amostra = ", ".join(velhas[:5]) if velhas else "as mais antigas"
     avisos.append(
-        f"{DECISOES} com {len(texto_dec)}/12.000 caracteres ({100*len(texto_dec)//12000}%) — "
+        f"{DECISOES} com {len(texto_dec)}/{mil(TETOS[DECISOES])} caracteres "
+        f"({100*len(texto_dec)//TETOS[DECISOES]}%) — "
         f"arquive as antigas em e_qa/decisions_archive.md, preservando os IDs. Candidatas: {amostra}."
     )
 
@@ -314,14 +343,15 @@ if texto_bl:
     peso = sum(len(b) for b in fechados)
     saida = ("Arquive: `python scripts/arquivar.py --backlog --aplicar` deixa o ID e o "
              "`**Módulo:**` na linha e manda a íntegra para e_qa/backlog_archive.md.")
-    if len(texto_bl) > 12000:
+    if len(texto_bl) > TETOS[BACKLOG]:
         falhas.append(
-            f"{BACKLOG} com {len(texto_bl)} caracteres (orçamento: 12.000) — "
+            f"{BACKLOG} com {len(texto_bl)} caracteres (orçamento: {mil(TETOS[BACKLOG])}) — "
             f"{len(fechados)} card(s) fechado(s) ocupam {peso} deles. {saida}"
         )
-    elif len(texto_bl) > 9600:
+    elif len(texto_bl) > TETOS[BACKLOG] * PERTO:
         avisos.append(
-            f"{BACKLOG} com {len(texto_bl)}/12.000 caracteres ({100*len(texto_bl)//12000}%) — "
+            f"{BACKLOG} com {len(texto_bl)}/{mil(TETOS[BACKLOG])} caracteres "
+            f"({100*len(texto_bl)//TETOS[BACKLOG]}%) — "
             f"{len(fechados)} card(s) fechado(s) pesam {peso}. Arquive agora, "
             "não na sessão em que estourar. " + saida
         )
@@ -739,7 +769,32 @@ if texto_plano_sk and texto_log_sk:
 # frase de cobertura do README dizia 188/18 quando o real era 277/23 — e a correção valeu
 # só para AQUELE número. Aqui a lição vira classe: ocupação declarada no CONTEXT sobre um
 # arquivo que este script mede é conferida contra o arquivo.
-ORCAMENTOS = {4000: (CONTEXTO, texto_ctx), 12000: (DECISOES, texto_dec)}
+# 16. Teto elevado sem registro — a tese do kit, cobrada contra o próprio kit.
+# Medido no primeiro projeto real: o teto do DECISIONS subiu de 12.000 para 20.000 dentro
+# do projeto, o arquivo bateu em 91% do teto NOVO, e não há uma linha em lugar nenhum
+# dizendo quem subiu, quando ou por quê. O portão continuava verde: ele cobrava o número
+# que a própria vítima tinha acabado de escolher.
+# O script NÃO proíbe subir — a decisão é do dono, e projeto grande às vezes precisa. Ele
+# proíbe subir CALADO: a elevação vira uma linha no DECISIONS, com data e motivo, que a
+# sessão de evolução vai encontrar quando perguntar "por que este arquivo está enorme?".
+for _alvo, _padrao in TETOS_PADRAO.items():
+    _novo = TETOS.get(_alvo, _padrao)
+    if _novo <= _padrao:
+        continue
+    _registrado = any(
+        re.search(r"D-\d+", _linha) and "teto" in _linha.lower()
+        and (str(_novo) in _linha.replace(".", "") or mil(_novo) in _linha)
+        for _linha in texto_dec.splitlines()
+    )
+    if not _registrado:
+        falhas.append(
+            f"teto de {_alvo} elevado para {mil(_novo)} (padrão do kit: {mil(_padrao)}) sem "
+            f"registro no {DECISOES} — teto que sobe em silêncio não é teto, é lembrete. "
+            f"Registre a elevação: `| D-NN | {date.today().isoformat()} | ADOTADO | "
+            f"teto de {_alvo} para {mil(_novo)} | <o que não coube e por que arquivar não resolveu> |`."
+        )
+
+ORCAMENTOS = {TETOS[CONTEXTO]: (CONTEXTO, texto_ctx), TETOS[DECISOES]: (DECISOES, texto_dec)}
 if texto_ctx:
     divergentes = []
     for bruto_n, bruto_teto in re.findall(r"(\d[\d.]*)\s*/\s*(\d[\d.]*)", texto_ctx):

@@ -51,7 +51,8 @@ D-NN / QA-NN / Q-NN registrados em a_context/c_decisions.md
 ```
 
 Antes de commitar: `python scripts/check.py`. Antes de entregar (Fase 6):
-`python scripts/check.py --historico-completo`.
+`python scripts/check.py --historico-completo`. Precisou pular o portão? A mensagem do commit
+leva `SEM-PORTAO: <motivo>` — pular é permitido, pular calado não.
 
 ## Limites deste kit (não os contorne em silêncio)
 

@@ -194,6 +194,11 @@ if tem_git:
         commits.append(atual)
 
     cita = sum(1 for c in commits if re.search(r"\b(D|QA|Q)-\d+", c["s"]))
+    # Pulos DECLARADOS do portão (ver scripts/portao_hook.py). Este número mede o que a
+    # trava consegue ver: o pulo que passou pelo agente com o marcador. Pulo feito fora do
+    # agente, ou antes de a trava existir, continua invisível — e por isso o relatório
+    # imprime "pelo menos", nunca um total.
+    pulos = [c for c in commits if "SEM-PORTAO" in c["s"].upper()]
     tipos = Counter()
     modulos = Counter()
     for c in commits:
@@ -210,6 +215,8 @@ if tem_git:
     R["git"].update({
         "commits": len(commits),
         "citam_id": cita,
+        "pulos_declarados": len(pulos),
+        "pulos_detalhe": [f"{c['h']} {c['d']} {c['s'][:80]}" for c in pulos[:5]],
         "pct_citam_id": round(100 * cita / len(commits), 1) if commits else 0.0,
         "mistura": dict(tipos),
         "pct_so_processo": round(100 * tipos["so_processo"] / len(commits), 1) if commits else 0.0,
@@ -313,6 +320,13 @@ else:
     g = R["git"]
     print(f"  commits: {g['commits']}   em {g['dias_com_commit']} dias distintos")
     print(f"  citam um ID no assunto: {g['citam_id']} ({g['pct_citam_id']}%)")
+    print(f"  pulos do portão declarados: pelo menos {g['pulos_declarados']} "
+          f"(commits com 'SEM-PORTAO:')")
+    for linha in g.get("pulos_detalhe", []):
+        print(f"    {linha}")
+    if not g["pulos_declarados"]:
+        print("    Zero AQUI significa 'nenhum pulo declarado', não 'nenhum pulo'. A trava")
+        print("    do pulo (task.py portao) só cobre o commit feito pelo agente.")
     if prefixo:
         print(f"  processo x produto: " + " · ".join(f"{k} {v}" for k, v in g["mistura"].items()))
         print(f"  commits que só tocam processo: {g['pct_so_processo']}%")
@@ -333,7 +347,8 @@ print("  1. Se o kit AJUDOU. Isso exigiria o mesmo projeto feito sem ele, e não
 print("     Todo número aqui descreve o que aconteceu COM o kit, nunca o que teria")
 print("     acontecido sem — e a diferença entre as duas coisas é a pergunta inteira.")
 print("  2. Se uma skill era aplicável. 'Nunca disparou' não é acusação.")
-print("  3. Se um commit passou com --no-verify. Não fica rastro no histórico.")
+print("  3. Quantos commits pularam o portão SEM declarar. O pulo declarado agora é contado")
+print("     acima; o pulo feito fora do agente, ou com o hook desligado, segue invisível.")
 print("  4. Quanto de contexto uma sessão gastou de fato. Ele mede o TAMANHO do arquivo")
 print("     que a regra manda ler; quanto o agente carregou é comportamento, não arquivo.")
 print("  5. Qualidade. Um registro pode estar completo, datado, dentro do teto — e errado.")

@@ -767,6 +767,16 @@ class TestTodaChecagemTemIsca(unittest.TestCase):
                         f"- [x] T-{i:02d} — tarefa {i} · **Módulo:** M1\n  {'peso ' * 40}\n"
                         for i in range(60))),
                  "c_backlog.md com"),
+            # A isca da 16 sabota o PRÓPRIO check.py: é a única checagem cujo caso real é
+            # alguém editar o portão para caber. Foi o que aconteceu no primeiro projeto
+            # medido (teto do DECISIONS de 12.000 para 20.000, sem uma linha em lugar
+            # nenhum), e por isso a sabotagem precisa ser essa e não outra.
+            # A âncora leva os quatro espaços de propósito: sem eles o `replace` casaria
+            # PRIMEIRO com a linha do TETOS_PADRAO (que é o kit, e não se mexe), a isca
+            # mudaria o padrão junto com o teto, os dois continuariam iguais e ela passaria.
+            16: (lambda r: self.trocar(r, "scripts/check.py",
+                                       "    DECISOES: 12000,", "    DECISOES: 20000,"),
+                 "sobe em silêncio"),
         }
 
     def test_toda_falha_numerada_tem_isca(self):
@@ -789,6 +799,21 @@ class TestTodaChecagemTemIsca(unittest.TestCase):
                                  f"FALHA {numero}: a isca passou — a checagem emudeceu.\n{r.stdout}")
                 self.assertIn(trecho, r.stdout,
                               f"FALHA {numero}: reprovou, mas por outro motivo.\n{r.stdout}")
+
+    def test_teto_elevado_COM_registro_passa(self):
+        """A contraprova da 16, e ela importa mais que a isca: a checagem não proíbe subir
+        o teto — proíbe subir calado. Sem este teste, a forma mais fácil de "passar" na 16
+        seria proibir a elevação, o que quebraria todo projeto grande e ensinaria o dono a
+        rodar o portão com --no-verify (a checagem que emudece, vista do outro lado)."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.trocar(repo, "scripts/check.py", "    DECISOES: 12000,", "    DECISOES: 20000,")
+            self.anexar(repo, "a_context/c_decisions.md",
+                        "| D-44 | 2026-08-24 | ADOTADO | teto de a_context/c_decisions.md "
+                        "para 20.000 | arquivamento esgotado: todo D-NN vivo é citado |\n")
+            r = rodar_check(repo)
+            self.assertNotIn("sobe em silêncio", r.stdout,
+                             f"a elevação estava registrada e mesmo assim reprovou:\n{r.stdout}")
 
     def test_kit_entregue_passa_sem_isca(self):
         """Contraprova: sem sabotagem, o portão não pode reprovar. Sem isto, uma isca que
@@ -1470,6 +1495,74 @@ class TestSkillOrfa(unittest.TestCase):
             log.write_text(log.read_text(encoding="utf-8") + "\n## 2026-01-01\n- **Skill:** `testing`\n",
                            encoding="utf-8")
             self.assertNotIn("nunca rodou", rodar_check(repo).stdout)
+
+
+class TestTravaDoPulo(unittest.TestCase):
+    """`git commit --no-verify` era o buraco declarado do próprio relatório de evidência:
+    "não fica rastro no histórico". A trava não proíbe o pulo — exige que ele se declare,
+    para que o número de contornos deixe de ser desconhecido. Como a trava de escopo, ela
+    FALHA ABERTA: bloquear demais ensina a desinstalar o hook."""
+
+    def bater(self, comando, ferramenta="Bash"):
+        evento = json.dumps({"cwd": str(KIT), "tool_name": ferramenta,
+                             "tool_input": {"command": comando}})
+        return subprocess.run([sys.executable, str(KIT / "scripts/portao_hook.py")],
+                              input=evento, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", env=AMBIENTE_UTF8, timeout=60)
+
+    def test_bloqueia_pulo_mudo(self):
+        r = self.bater('git commit --no-verify -m "fix: sobe rapido"')
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("BLOQUEADO", r.stderr)
+
+    def test_bloqueia_o_atalho_de_uma_letra(self):
+        """`-n` é `--no-verify` no git commit, e é a forma que quem tem pressa digita."""
+        for comando in ('git commit -n -m "x"', 'git commit -nm "x"'):
+            with self.subTest(comando=comando):
+                self.assertEqual(self.bater(comando).returncode, 2, comando)
+
+    def test_libera_pulo_declarado(self):
+        r = self.bater('git commit --no-verify -m "fix: hotfix  SEM-PORTAO: CI fora do ar"')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_commit_normal_passa(self):
+        self.assertEqual(self.bater('git commit -m "FEAT: coisa (D-01)"').returncode, 0)
+
+    def test_falar_do_assunto_nao_e_pular(self):
+        """A checagem trabalha sobre palavras separadas, não sobre substring: um commit que
+        MENCIONA --no-verify na mensagem não desliga nada, e bloqueá-lo seria aviso falso —
+        que é como o kit ensina a ignorar avisos."""
+        r = self.bater('git commit -m "docs: explica por que --no-verify deixa rastro"')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_falha_aberta_com_entrada_quebrada(self):
+        for entrada in ("", "{isto nao e json", '{"tool_name": "Bash"}'):
+            with self.subTest(entrada=entrada):
+                r = subprocess.run([sys.executable, str(KIT / "scripts/portao_hook.py")],
+                                   input=entrada, capture_output=True, text=True,
+                                   encoding="utf-8", errors="replace", env=AMBIENTE_UTF8, timeout=60)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_outra_ferramenta_nao_e_assunto(self):
+        self.assertEqual(self.bater("git commit --no-verify -m x", ferramenta="Edit").returncode, 0)
+
+    def test_instalar_e_remover_nao_mexe_em_hook_alheio(self):
+        """Mesmo contrato da trava de escopo: `.claude/settings.json` pode ter hooks do dono."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            cfg = repo / ".claude/settings.json"
+            cfg.parent.mkdir(parents=True, exist_ok=True)
+            alheio = {"hooks": {"PreToolUse": [
+                {"matcher": "Bash", "hooks": [{"type": "command", "command": "echo do dono"}]}]}}
+            cfg.write_text(json.dumps(alheio), encoding="utf-8")
+            self.assertEqual(rodar_script("install_hook.py", "--portao", cwd=repo).returncode, 0)
+            depois = json.loads(cfg.read_text(encoding="utf-8"))
+            self.assertEqual(len(depois["hooks"]["PreToolUse"]), 2)
+            self.assertEqual(rodar_script("install_hook.py", "--portao", "--remover",
+                                          cwd=repo).returncode, 0)
+            final = json.loads(cfg.read_text(encoding="utf-8"))
+            self.assertEqual(final["hooks"]["PreToolUse"], alheio["hooks"]["PreToolUse"],
+                             "a remoção levou junto o hook do dono")
 
 
 if __name__ == "__main__":
