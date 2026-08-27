@@ -8,6 +8,57 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.12] — 2026-08-27
+**A configuração ganhou as três regras que um projeto real tinha no fork — e a chave
+desconhecida deixou de sumir calada.** O v13.10 devolveu ao TAP GO o portão do kit e
+declarou os tetos em `.kit-config.json`. Mas o fork daquele projeto não tinha só tetos:
+tinha **três regras** que o kit não oferecia. Elas foram embora no `--upgrade` **sem uma
+linha de aviso**, e o projeto passou a medir a si mesmo com uma régua que não era mais a
+régua — exatamente o defeito que o v13.10 existia para curar, cometido pela cura.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **`medir_sem_padding`** — mede o CONTEÚDO das tabelas, sem o padding de alinhamento.
+  Medido naquele projeto em 12/08: um formatador de Markdown alinhou as colunas do
+  registro e somou **2.048 caracteres de padding puro**, 17% do arquivo, sem uma palavra
+  nova; o portão reprovou um commit que só respondia uma questão. Sem a chave, o mesmo
+  registro pulou de **18.858 para 19.422** medidos no dia do `--upgrade` — 578 de folga
+  num teto de 20.000, com o formatador a um "salvar" de distância. **Padrão continua
+  `len()`**: quem não usa tabela em registro não paga nada por ela.
+
+- **`linha_max` {limite, isentas}** — a linha de registro acima do limite reprova. O teto
+  do ARQUIVO só morde quando já é tarde, e quem está no meio de uma sessão corta o que
+  estiver à mão, não o que devia sair. Medido: 141, 175 e 238 quando a linha delega a
+  evidência a uma nota; 922 e 978 quando não delega. `isentas` é lista **congelada**, no
+  dado versionado: registro append-only tem linha que ninguém PODE reescrever, e checagem
+  vermelha em linha inconsertável ensina a ignorar o script inteiro.
+
+- **`candidatas`: "mais_antigas" (padrão) | "nao_citadas"** — o critério do que o aviso
+  aponta para arquivar. Num projeto que preserva as REJEITADAS de propósito, o padrão
+  aponta **justamente para elas**: a lista-morta que a fase de evolução varre sem abrir o
+  arquivo. Medido no TAP GO no dia do upgrade: o aviso mandava arquivar 5 das 10
+  rejeitadas vivas. Aviso que manda apagar a memória de rejeição ensina a re-propor o que
+  já morreu — o oposto do que o registro existe para fazer.
+
+- **A correção que vale mais que as três: CHAVE DESCONHECIDA REPROVA.** Antes, `_cfg.get`
+  descartava em silêncio o que não reconhecia. Um erro de digitação em `linha_max` — ou
+  uma chave de um kit mais novo — produzia um arquivo bonito no diff, uma regra que o dono
+  acreditava ter, e verde por cima dela. **Falso verde é pior que vermelho e pior que
+  portão nenhum, porque mente com autoridade**, e é a mesma espécie do `QA-14`. Valor
+  inválido dentro de uma chave conhecida (`linha_max.limite: "400"`) também reprova, em
+  vez de desligar a regra.
+
+- **A régua passou a ser UMA.** `medida()` cobre os quatro orçamentos (CONTEXT, DECISIONS,
+  BACKLOG e os registros declarados), o peso dos cards fechados **e** a conferência da
+  ocupação escrita à mão no CONTEXT. Duas réguas no mesmo arquivo fariam a linha caber e o
+  arquivo estourar sem que nenhum número explicasse — e o aviso da ocupação declarada
+  acusaria divergência onde não há.
+
+- **13 testes novos** (112 no total, eram 99), e cada chave tem a contraprova junto da
+  isca: `medir_sem_padding` **não** é desconto geral (texto de verdade acima do teto segue
+  reprovando), `linha_max` isenta por ID e **não** perdoa a vizinha, `nao_citadas` **não**
+  vira "nunca aponta nada". Sem a contraprova, a forma mais fácil de passar em cada uma
+  seria desligá-la. FALHA **18** no cabeçalho, com isca própria; README a 38 julgadas.
+
 ## [kit v13.11] — 2026-08-27
 **Quatro defeitos que só apareceram ao migrar um projeto real — e três deles eram meus, de
 ontem.** A migração do TAP GO (v13.1 -> v13.10) não terminou com o portão verde: terminou

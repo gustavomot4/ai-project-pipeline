@@ -21,6 +21,7 @@ FALHAS (código 1)
                                        15. BACKLOG inchado (card fechado nunca arquivado)
                                        16. Teto de orçamento elevado sem registro no DECISIONS
                                        17. Registro declarado em .kit-config.json acima do teto
+                                       18. Linha de registro acima do limite declarado
 
 AVISOS (não reprovam; com --avisos-reprovam, reprovam)
   frontmatter ausente · placeholders · templates em rascunho · nota órfã ·
@@ -166,14 +167,34 @@ TETOS_PADRAO = {CONTEXTO: 4000, DECISOES: 12000, BACKLOG: 12000}
 # régua que não era mais a régua. Customização por edição de script é dívida com juros.
 #
 #   {"tetos": {"a_context/c_decisions.md": 20000, "a_context/d_qa.md": 8000},
-#    "registros": ["a_context/d_qa.md"]}
+#    "registros": ["a_context/d_qa.md"],
+#    "medir_sem_padding": true,
+#    "linha_max": {"limite": 400, "isentas": ["D-75", "D-76"]},
+#    "candidatas": "nao_citadas"}
 #
 # `tetos`      — teto em caracteres, por caminho (relativo ao vault).
 # `registros`  — arquivos que também DEFINEM IDs D-/Q-/QA-, além do DECISIONS.
+# `medir_sem_padding` — mede o CONTEÚDO das tabelas, sem o padding de alinhamento.
+# `linha_max`  — {"limite": N, "isentas": [ID, ...]}: linha de registro acima de N reprova.
+# `candidatas` — "mais_antigas" (padrão) | "nao_citadas": critério do que arquivar.
 #
 # Subir teto continua exigindo um D-NN (FALHA 16). O que muda é onde a elevação mora: num
 # dado versionado, e não numa linha de código que ninguém consegue atualizar depois.
+#
+# As três últimas chaves nasceram do MESMO projeto e do MESMO custo que as duas primeiras.
+# Ele havia escrito no fork três regras que o kit não tinha; o `--upgrade` do v13.10 devolveu
+# o portão do kit e as três sumiram SEM UMA LINHA DE AVISO. Duas delas seguravam hipótese de
+# auditoria: sem `medir_sem_padding` o registro passou de 18.858 para 19.422 medidos sem uma
+# palavra nova (um formatador de Markdown já somou 2.048 de padding puro naquele arquivo, e
+# o teto é 20.000); sem `candidatas` o aviso voltou a apontar as REJEITADAS, que são a
+# lista-morta que a fase de evolução varre. Regra que o projeto precisa e o kit não tem vira
+# fork; fork vira régua que não é mais a régua. Configuração é a saída, e é por isso que
+# CHAVE DESCONHECIDA REPROVA (abaixo): a chave que some calada é a doença, não o remédio.
 CONFIG = ".kit-config.json"
+
+# O contrato inteiro num lugar só. Chave fora daqui não é ignorada: reprova.
+CHAVES_CONFIG = {"tetos", "registros", "medir_sem_padding", "linha_max", "candidatas"}
+CANDIDATAS_VALIDAS = {"mais_antigas", "nao_citadas"}
 
 
 def _config_do_projeto() -> dict:
@@ -205,6 +226,90 @@ for _arq, _valor in (_cfg.get("tetos") or {}).items():
 # para arquivo próprio vê todos eles virarem "ID fantasma" — e a saída que sobrava era
 # editar o portão, que é exatamente o que esta configuração existe para evitar.
 REGISTROS_EXTRAS = [r for r in (_cfg.get("registros") or []) if isinstance(r, str)]
+
+# Chave desconhecida REPROVA, pelo mesmo motivo que JSON quebrado reprova: o dono acha que
+# declarou, o script ignora, e o verde continua saindo por cima de uma regra que nao existe.
+# Um erro de digitacao em `linha_max` custa exatamente o que custou o `--upgrade` que apagou
+# a regra sem avisar. Falso verde e o pior estado do portao: pior que vermelho, e pior que
+# portao nenhum, porque este mente com autoridade.
+_desconhecidas = sorted(set(_cfg) - CHAVES_CONFIG)
+if _desconhecidas:
+    falhas.append(
+        f"{CONFIG}: chave(s) que este kit nao conhece: {', '.join(_desconhecidas)} - "
+        f"as validas sao {', '.join(sorted(CHAVES_CONFIG))}. Chave ignorada em silencio "
+        "vira regra que o dono acha que tem e nao tem; corrija o nome ou remova a chave."
+    )
+
+# `medir_sem_padding` (o CONTEUDO, sem o alinhamento das tabelas). Medido no primeiro
+# projeto real em 2026-08-12: ao salvar o registro de decisoes, um formatador de Markdown
+# alinhou as colunas e somou 2.048 caracteres de padding PURO - 17% do arquivo, sem uma
+# palavra nova. O portao passou a reprovar num commit que so respondia uma questao, e foi
+# preciso desalinhar tudo a mao para voltar. Orcamento que conta espaco de alinhamento mede
+# o FORMATADOR do editor, nao o texto, e some ou volta conforme quem salvou por ultimo.
+# Fica OPCIONAL, e o padrao continua `len()`: a regua que conta tudo e a mais facil de
+# explicar, e projeto sem tabela em registro nao paga nada por ela. Quem usa, declara.
+SEM_PADDING = bool(_cfg.get("medir_sem_padding"))
+
+
+def medida(texto: str) -> int:
+    """Regua dos orcamentos. Com `medir_sem_padding`, as celulas viram `a|b|c` antes de
+    contar - o mesmo conteudo mede igual em qualquer editor. So mede; NUNCA reescreve o
+    arquivo: o alinhamento continua livre para quem edita."""
+    if not SEM_PADDING:
+        return len(texto)
+    linhas = []
+    for linha in texto.split("\n"):
+        if linha.lstrip().startswith("|"):
+            linha = re.sub(r" *\| *", "|", linha.strip())
+        linhas.append(linha)
+    return len("\n".join(linhas))
+
+
+# `linha_max`: o teto do ARQUIVO so morde quando ja e tarde, e quem esta no meio de uma
+# sessao corta o que estiver a mao - nao o que devia sair. O custo real esta na linha que
+# carrega a INTEGRA da evidencia em vez de delega-la a uma nota. Medido no mesmo projeto:
+# 141, 175 e 238 quando a linha delega; 922 e 978 quando nao delega.
+# `isentas` e lista CONGELADA, nao janela movel: linha que ja estava viva quando o limite
+# foi adotado nao pode ser reescrita num registro append-only, e checagem que nasce vermelha
+# em linha que ninguem PODE consertar ensina a ignorar o script. A lista mora no dado
+# versionado e aparece no diff - ID novo ali e decisao do dono, nao descuido.
+LINHA_MAX = None
+ISENTAS_LINHA = ()
+_lm = _cfg.get("linha_max")
+if isinstance(_lm, dict):
+    _limite = _lm.get("limite")
+    if isinstance(_limite, int) and _limite > 0:
+        LINHA_MAX = _limite
+    else:
+        falhas.append(
+            f"{CONFIG}: linha_max.limite precisa ser um inteiro positivo (veio {_limite!r})."
+        )
+    _isentas = _lm.get("isentas") or []
+    if isinstance(_isentas, list) and all(isinstance(i, str) for i in _isentas):
+        ISENTAS_LINHA = tuple(_isentas)
+    else:
+        falhas.append(
+            f"{CONFIG}: linha_max.isentas precisa ser uma lista de IDs (veio {_isentas!r})."
+        )
+elif _lm is not None:
+    falhas.append(
+        f'{CONFIG}: linha_max precisa ser um objeto {{"limite": N, "isentas": [...]}} '
+        f"(veio {_lm!r})."
+    )
+
+# `candidatas`: qual criterio o aviso do DECISIONS usa para apontar o que arquivar.
+# "mais_antigas" e o padrao do kit. "nao_citadas" sai do criterio do projeto que decidiu
+# que deixa a tabela quem NENHUM `.md` vivo cita - e existe porque o padrao, num projeto que
+# preserva as REJEITADAS de proposito, aponta justamente para elas: a lista-morta que a fase
+# de evolucao varre sem abrir o arquivo. Aviso que manda apagar a memoria de rejeicao ensina
+# a re-propor o que ja morreu, que e o oposto do que o registro existe para fazer.
+CANDIDATAS = _cfg.get("candidatas", "mais_antigas")
+if CANDIDATAS not in CANDIDATAS_VALIDAS:
+    falhas.append(
+        f"{CONFIG}: candidatas precisa ser "
+        f"{' ou '.join(sorted(CANDIDATAS_VALIDAS))} (veio {CANDIDATAS!r})."
+    )
+    CANDIDATAS = "mais_antigas"
 # Avisar a 90% do teto em vez de só reprovar a 100%: quando o teto estoura, quem escreve
 # está no meio de uma sessão de trabalho e corta o que estiver à mão — não o que devia sair.
 PERTO = 0.90
@@ -281,39 +386,82 @@ ctx = raiz / CONTEXTO
 texto_ctx = corpo.get(ctx, "")
 if not ctx.exists():
     falhas.append(f"{CONTEXTO} não encontrado — é onde o padrão do repositório põe o contexto-fonte.")
-elif len(texto_ctx) > TETOS[CONTEXTO]:
+elif medida(texto_ctx) > TETOS[CONTEXTO]:
     falhas.append(
-        f"{CONTEXTO} com {len(texto_ctx)} caracteres (orçamento: {mil(TETOS[CONTEXTO])}). "
+        f"{CONTEXTO} com {medida(texto_ctx)} caracteres (orçamento: {mil(TETOS[CONTEXTO])}). "
         f"Corte: detalhe -> a_context/<tema>.md, decisão -> {DECISOES}, datado -> d_history/a_changelog.md."
     )
-elif len(texto_ctx) > TETOS[CONTEXTO] * PERTO:
+elif medida(texto_ctx) > TETOS[CONTEXTO] * PERTO:
     # O aviso dá a chance de mover um tema com calma, antes da parede (ver PERTO).
     avisos.append(
-        f"{CONTEXTO} com {len(texto_ctx)}/{mil(TETOS[CONTEXTO])} caracteres "
-        f"({100*len(texto_ctx)//TETOS[CONTEXTO]}%) — "
+        f"{CONTEXTO} com {medida(texto_ctx)}/{mil(TETOS[CONTEXTO])} caracteres "
+        f"({100*medida(texto_ctx)//TETOS[CONTEXTO]}%) — "
         "mova um tema para a_context/<tema>.md agora, não na sessão em que estourar."
     )
 
 # 2. Registro de decisões inchado (projeto longo)
 dec = raiz / DECISOES
 texto_dec = corpo.get(dec, "")
-if texto_dec and len(texto_dec) > TETOS[DECISOES]:
+if texto_dec and medida(texto_dec) > TETOS[DECISOES]:
     falhas.append(
         f"{DECISOES} acima de {mil(TETOS[DECISOES])} caracteres — arquive SUPERSEDIDAS/rejeitadas "
         "antigas em e_qa/decisions_archive.md (IDs preservados) e deixe um ponteiro."
     )
-elif texto_dec and len(texto_dec) > TETOS[DECISOES] * PERTO:
+elif texto_dec and medida(texto_dec) > TETOS[DECISOES] * PERTO:
     # O README declarava esta fraqueza com todas as letras: "o arquivamento é manual e
     # ninguém lembra". Portão que só roda quando alguém lembra não é portão — foi o
     # argumento do QA-04, e valia contra o próprio kit. O script não arquiva (a decisão
     # é do dono); ele avisa antes da parede e já aponta os candidatos.
-    velhas = re.findall(r"^\|\s*(D-\d+)\s*\|[^|]*\|\s*(?:ADOTADO|REJEITADO)", texto_dec, re.M)
-    amostra = ", ".join(velhas[:5]) if velhas else "as mais antigas"
+    if CANDIDATAS == "nao_citadas":
+        # Sai da tabela quem NENHUM `.md` vivo cita. Recorte de "vivo": tudo menos o
+        # proprio registro, o arquivo morto e o historico datado - os tres citam por
+        # oficio, e contá-los faria todo ID parecer vivo para sempre.
+        _vivos = "\n".join(
+            txt for cam, txt in corpo.items()
+            if cam.name not in (Path(DECISOES).name, Path(ARQUIVO_MORTO).name)
+            and "d_history" not in cam.parts
+        )
+        velhas = [i for i in re.findall(r"^\|\s*(D-\d+)\s*\|", texto_dec, re.M)
+                  if not re.search(rf"\b{i}\b", _vivos)]
+        # Pool vazio e informacao, nao ausencia de informacao: dizer "as mais antigas"
+        # aqui mandaria arquivar linha que o proprio criterio proibe retirar.
+        amostra = ", ".join(velhas[:5]) if velhas else (
+            "NENHUMA — todo D-NN vivo e citado por algum .md, entao este corte esta "
+            "esgotado e o peso nao esta mais em linha morta")
+    else:
+        velhas = re.findall(r"^\|\s*(D-\d+)\s*\|[^|]*\|\s*(?:ADOTADO|REJEITADO)", texto_dec, re.M)
+        amostra = ", ".join(velhas[:5]) if velhas else "as mais antigas"
     avisos.append(
-        f"{DECISOES} com {len(texto_dec)}/{mil(TETOS[DECISOES])} caracteres "
-        f"({100*len(texto_dec)//TETOS[DECISOES]}%) — "
+        f"{DECISOES} com {medida(texto_dec)}/{mil(TETOS[DECISOES])} caracteres "
+        f"({100*medida(texto_dec)//TETOS[DECISOES]}%) — "
         f"arquive as antigas em e_qa/decisions_archive.md, preservando os IDs. Candidatas: {amostra}."
     )
+
+# 18. Linha de registro acima do limite declarado (`linha_max` na CONFIG).
+#     Inerte em projeto que nao declara a chave - o kit nao tem opiniao sobre o tamanho da
+#     linha de ninguem. Quem declara, declara junto a lista CONGELADA de isentas, porque
+#     registro append-only tem linhas que ninguem PODE consertar e checagem que nasce
+#     vermelha nelas ensina a ignorar o script.
+#     A regua e a MESMA dos orcamentos (`medida`): duas reguas no mesmo arquivo fariam a
+#     linha caber e o arquivo estourar, ou o contrario, sem que nenhum numero explicasse.
+if LINHA_MAX:
+    longas = []
+    for _nome_reg in (DECISOES, *REGISTROS_EXTRAS):
+        for linha in corpo.get(raiz / _nome_reg, "").split("\n"):
+            achado = re.match(r"\|\s*((?:QA|Q|D)-\d+)\s*\|", linha.strip())
+            if not achado or achado.group(1) in ISENTAS_LINHA:
+                continue
+            n_linha = medida(linha)
+            if n_linha > LINHA_MAX:
+                longas.append(f"{achado.group(1)} ({n_linha}) em {_nome_reg}")
+    if longas:
+        falhas.append(
+            f"Linha de registro acima de {LINHA_MAX} caracteres medidos "
+            f"(`linha_max` em {CONFIG}): {', '.join(longas)}. Mova a evidencia para uma nota "
+            "e deixe o PONTEIRO na linha. Nada de prosa comprimida: o que sai da linha entra "
+            "na nota, inteiro. Linha que ninguem pode reescrever entra em `linha_max.isentas`, "
+            "com o motivo no D-NN que a isentou."
+        )
 
 # 3. Fonte única (regra 6) — o mesmo nome em dois lugares é estado duplicado
 # Registro extra declarado em `.kit-config.json` entra aqui: se ele é fonte de ID,
@@ -390,7 +538,7 @@ def cards_do_backlog(texto):
 #     o ponteiro que cresce sem fim é problema em aberto, não problema resolvido.
 if texto_bl:
     fechados = [b for b in cards_do_backlog(texto_bl) if re.match(r"^- \[[xX]\]", b)]
-    peso = sum(len(b) for b in fechados)
+    peso = sum(medida(b) for b in fechados)
     # A saída tem de ser VERDADEIRA. Medido no primeiro projeto real: depois de arquivar
     # 86% do backlog, o portão continuava mandando "arquive" e o arquivador respondia
     # "nenhum card arquivável" — o peso tinha passado para ponteiro, card aberto e prosa,
@@ -402,15 +550,15 @@ if texto_bl:
              "está em card aberto (é trabalho — entregue ou despromova), em prosa de seção "
              "(texto seu) ou nos ponteiros já arquivados. Aí as saídas são podar à mão ou "
              "subir o teto em `.kit-config.json` com o D-NN que a FALHA 16 cobra.")
-    if len(texto_bl) > TETOS[BACKLOG]:
+    if medida(texto_bl) > TETOS[BACKLOG]:
         falhas.append(
-            f"{BACKLOG} com {len(texto_bl)} caracteres (orçamento: {mil(TETOS[BACKLOG])}) — "
+            f"{BACKLOG} com {medida(texto_bl)} caracteres (orçamento: {mil(TETOS[BACKLOG])}) — "
             f"{len(fechados)} card(s) fechado(s) ocupam {peso} deles. {saida}"
         )
-    elif len(texto_bl) > TETOS[BACKLOG] * PERTO:
+    elif medida(texto_bl) > TETOS[BACKLOG] * PERTO:
         avisos.append(
-            f"{BACKLOG} com {len(texto_bl)}/{mil(TETOS[BACKLOG])} caracteres "
-            f"({100*len(texto_bl)//TETOS[BACKLOG]}%) — "
+            f"{BACKLOG} com {medida(texto_bl)}/{mil(TETOS[BACKLOG])} caracteres "
+            f"({100*medida(texto_bl)//TETOS[BACKLOG]}%) — "
             f"{len(fechados)} card(s) fechado(s) pesam {peso}. Arquive agora, "
             "não na sessão em que estourar. " + saida
         )
@@ -894,15 +1042,15 @@ for _arq, _teto in TETOS.items():
     _texto_extra = corpo.get(raiz / _arq, "")
     if not _texto_extra:
         continue
-    if len(_texto_extra) > _teto:
+    if medida(_texto_extra) > _teto:
         falhas.append(
-            f"{_arq} com {len(_texto_extra)} caracteres (orçamento declarado: {mil(_teto)}) — "
+            f"{_arq} com {medida(_texto_extra)} caracteres (orçamento declarado: {mil(_teto)}) — "
             "feche, arquive ou promova a ponteiro o que já não é trabalho vivo."
         )
-    elif len(_texto_extra) > _teto * PERTO:
+    elif medida(_texto_extra) > _teto * PERTO:
         avisos.append(
-            f"{_arq} com {len(_texto_extra)}/{mil(_teto)} caracteres "
-            f"({100*len(_texto_extra)//_teto}%) — arquive agora, não na sessão em que estourar."
+            f"{_arq} com {medida(_texto_extra)}/{mil(_teto)} caracteres "
+            f"({100*medida(_texto_extra)//_teto}%) — arquive agora, não na sessão em que estourar."
         )
 
 # Todo arquivo com teto entra aqui, inclusive os declarados pelo projeto: a ocupação
@@ -928,10 +1076,10 @@ if texto_ctx:
             continue
         # Basta bater com UM arquivo daquele teto: "2.164/12.000" pode ser o DECISIONS ou o
         # BACKLOG, e o CONTEXT não diz qual. Acusar sem saber é aviso falso.
-        if any(declarado == len(x) for _, x in candidatos):
+        if any(declarado == medida(x) for _, x in candidatos):
             continue
         nome = " ou ".join(n for n, _ in candidatos)
-        tamanhos = " ou ".join(str(len(x)) for _, x in candidatos)
+        tamanhos = " ou ".join(str(medida(x)) for _, x in candidatos)
         divergentes.append(f"diz {nome} em {declarado}/{teto}, o arquivo tem {tamanhos}")
     if divergentes:
         avisos.append(

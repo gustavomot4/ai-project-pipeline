@@ -824,6 +824,16 @@ class TestTodaChecagemTemIsca(unittest.TestCase):
                                 "| D-50 | 2026-08-27 | ADOTADO | d_qa.md como registro "
                                 "proprio dos achados | tabela estourava o DECISIONS |\n")),
                  "orçamento declarado"),
+            # A 18 é inerte sem a chave, então a isca declara a chave E a viola. Só
+            # `linha_max` na CONFIG: acrescentar um teto aqui reprovaria pela 16 e o
+            # `assertIn` passaria pelo motivo errado.
+            18: (lambda r: (
+                    (r / ".kit-config.json").write_text(
+                        '{"linha_max": {"limite": 120}}', encoding="utf-8"),
+                    self.anexar(r, "a_context/c_decisions.md",
+                                "| D-60 | 2026-08-27 | ADOTADO | decisao curta | "
+                                + "evidencia " * 30 + "|\n")),
+                 "Linha de registro acima de"),
         }
 
     def test_toda_falha_numerada_tem_isca(self):
@@ -870,6 +880,173 @@ class TestTodaChecagemTemIsca(unittest.TestCase):
             repo = montar_kit(Path(tmp) / "repo")
             r = rodar_check(repo)
             self.assertEqual(r.returncode, 0, f"o kit entregue reprova sozinho:\n{r.stdout}")
+
+
+class TestChavesDaConfig(unittest.TestCase):
+    """As três chaves que o v13.12 acrescentou à CONFIG, e a razão de existirem.
+
+    Um projeto real tinha escrito as três regras no PRÓPRIO `check.py`, porque o kit não
+    as oferecia. O `--upgrade` do v13.10 devolveu o portão do kit e as três sumiram sem
+    uma linha de aviso — o projeto passou a medir a si mesmo com uma régua que não era
+    mais a régua, e não havia como saber. O que estes testes protegem não é a feature: é
+    a propriedade de que regra declarada é regra cobrada, e chave que o kit não entende
+    reprova em vez de sumir.
+    """
+
+    def config(self, repo: Path, texto: str):
+        (repo / ".kit-config.json").write_text(texto, encoding="utf-8")
+
+    def anexar(self, repo: Path, rel: str, texto: str):
+        p = repo / rel
+        p.write_text(p.read_text(encoding="utf-8") + texto, encoding="utf-8")
+
+    # ---- chave desconhecida -------------------------------------------------
+    def test_chave_desconhecida_reprova(self):
+        """O defeito que originou as três: a chave que some calada."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"linha_maxima": {"limite": 400}}')
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, f"chave errada passou calada:\n{r.stdout}")
+            self.assertIn("linha_maxima", r.stdout)
+
+    def test_config_so_com_chaves_validas_nao_reclama(self):
+        """Contraprova: a checagem não pode reprovar quem escreveu certo."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"medir_sem_padding": true, "candidatas": "nao_citadas"}')
+            self.assertNotIn("nao conhece", rodar_check(repo).stdout)
+
+    # ---- medir_sem_padding --------------------------------------------------
+    def tabela_alinhada(self, colunas=2, linhas=40, largura=90):
+        """Tabela cujo conteúdo é curto e cujo PADDING é grande — é a forma que um
+        formatador de Markdown produz ao alinhar colunas."""
+        return "".join(
+            "| " + " | ".join("x".ljust(largura) for _ in range(colunas)) + " |\n"
+            for _ in range(linhas))
+
+    def test_sem_a_chave_o_padding_conta(self):
+        """O padrão do kit não muda: quem não declara continua medido por `len()`."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.anexar(repo, "a_context/c_decisions.md", self.tabela_alinhada(linhas=80))
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, f"o padding não contou sem a chave:\n{r.stdout}")
+            self.assertIn("acima de 12.000", r.stdout)
+
+    def test_com_a_chave_o_mesmo_arquivo_cabe(self):
+        """O mesmo conteúdo, o mesmo teto: só o alinhamento sai da conta. É a prova de
+        que a régua mede o texto e não o formatador de quem salvou por último."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.anexar(repo, "a_context/c_decisions.md", self.tabela_alinhada(linhas=80))
+            self.config(repo, '{"medir_sem_padding": true}')
+            r = rodar_check(repo)
+            self.assertNotIn("acima de 12.000", r.stdout)
+
+    def test_a_chave_nao_e_desconto_geral(self):
+        """Ela tira o padding, não o conteúdo: texto de verdade acima do teto reprova
+        com a chave ligada. Sem este teste, `medir_sem_padding` poderia virar a forma
+        legal de fugir do orçamento — que é o oposto do que ela existe para fazer."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"medir_sem_padding": true}')
+            self.anexar(repo, "a_context/c_decisions.md", "\n" + "y" * 12100)
+            self.assertIn("acima de 12.000", rodar_check(repo).stdout)
+
+    # ---- linha_max ----------------------------------------------------------
+    def linha(self, ident, tamanho):
+        return f"| {ident} | 2026-08-27 | ADOTADO | curta | " + "z" * tamanho + " |\n"
+
+    def test_sem_a_chave_linha_longa_passa(self):
+        """Inerte por padrão: o kit não tem opinião sobre o tamanho da linha de ninguém."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.anexar(repo, "a_context/c_decisions.md", self.linha("D-60", 900))
+            self.assertNotIn("Linha de registro acima de", rodar_check(repo).stdout)
+
+    def test_isenta_congelada_nao_reprova(self):
+        """A contraprova que importa mais que a isca: registro append-only tem linhas que
+        ninguém PODE reescrever, e checagem vermelha em linha inconsertável ensina a
+        ignorar o script inteiro."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"linha_max": {"limite": 120, "isentas": ["D-60"]}}')
+            self.anexar(repo, "a_context/c_decisions.md", self.linha("D-60", 900))
+            r = rodar_check(repo)
+            self.assertNotIn("Linha de registro acima de", r.stdout)
+
+    def test_isencao_e_por_ID_e_nao_perdoa_a_vizinha(self):
+        """Isenção que virasse janela móvel apagaria a regra em silêncio."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"linha_max": {"limite": 120, "isentas": ["D-60"]}}')
+            self.anexar(repo, "a_context/c_decisions.md",
+                        self.linha("D-60", 900) + self.linha("D-61", 900))
+            saida = rodar_check(repo).stdout
+            self.assertIn("D-61", saida)
+            self.assertNotIn("D-60 (", saida)
+
+    def test_limite_invalido_reprova_em_vez_de_desligar(self):
+        """Valor errado não pode virar "regra desligada": é o falso verde de novo."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"linha_max": {"limite": "400"}}')
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("linha_max.limite", r.stdout)
+
+    # ---- candidatas ---------------------------------------------------------
+    def encher(self, repo: Path, ate=0.95):
+        """Leva o DECISIONS ao aviso de 90% sem estourar o teto — é lá que a lista de
+        candidatas é impressa."""
+        alvo = int(12000 * ate)
+        p = repo / "a_context/c_decisions.md"
+        atual = p.read_text(encoding="utf-8")
+        p.write_text(atual + "\n" + "w" * max(0, alvo - len(atual)), encoding="utf-8")
+
+    def test_padrao_continua_apontando_as_mais_antigas(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.anexar(repo, "a_context/c_decisions.md",
+                        "| D-60 | 2026-08-27 | ADOTADO | uma decisao | evidencia |\n")
+            self.encher(repo)
+            self.assertIn("D-60", rodar_check(repo).stdout)
+
+    def test_nao_citadas_ignora_o_ID_que_algum_md_vivo_cita(self):
+        """O caso que motivou a chave: num projeto que preserva as REJEITADAS de
+        propósito, o critério antigo apontava justamente para elas — a lista-morta que a
+        fase de evolução varre sem abrir o arquivo."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"candidatas": "nao_citadas"}')
+            self.anexar(repo, "a_context/c_decisions.md",
+                        "| D-60 | 2026-08-27 | REJEITADO | nao repetir isto | o numero que matou |\n")
+            self.anexar(repo, "INDEX.md", "\n\nA razao esta em `D-60`.\n")
+            self.encher(repo)
+            saida = rodar_check(repo).stdout
+            # O que se prova e a AUSENCIA: o ID citado sai da lista. Que o template tenha
+            # outros IDs nao citados e ruido do fixture, nao do criterio.
+            self.assertIn("Candidatas:", saida)
+            self.assertNotIn("D-60", saida)
+
+    def test_nao_citadas_ainda_aponta_o_ID_que_ninguem_cita(self):
+        """Contraprova: a chave não pode virar "nunca aponta nada"."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"candidatas": "nao_citadas"}')
+            self.anexar(repo, "a_context/c_decisions.md",
+                        "| D-60 | 2026-08-27 | ADOTADO | ninguem me cita | x |\n")
+            self.encher(repo)
+            self.assertIn("D-60", rodar_check(repo).stdout)
+
+    def test_valor_invalido_de_candidatas_reprova(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"candidatas": "as_feias"}')
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("candidatas", r.stdout)
 
 
 class TestInstrumentacaoDaSessao(unittest.TestCase):
