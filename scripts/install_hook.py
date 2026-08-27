@@ -143,12 +143,36 @@ def trava_de_agente(aqui: Path, topo: Path, remover: bool, flag: str) -> int:
         print(f"ERRO: {trava['script']} está fora do repositório em {topo}.")
         return 1
 
-    comando = f"python {rel}"
+    # O comando NÃO pode ser um caminho relativo. Ele é resolvido contra o diretório de
+    # trabalho do agente, não contra o repositório — e no momento em que a sessão passa a
+    # trabalhar em OUTRA pasta, o caminho aponta para um arquivo que não existe, o hook
+    # morre, e o Claude Code trata a morte do hook como BLOQUEIO. Medido em uso: com a
+    # trava do pulo instalada assim, uma sessão que mudou de projeto ficou sem executar
+    # nenhum comando. Hook que bloqueia por bug próprio é o pior caso do kit, e estava aqui.
+    #
+    # Três exigências, e a linha abaixo atende as três:
+    #   1. achar o script com o cwd em qualquer lugar -> CLAUDE_PROJECT_DIR, e o caminho
+    #      absoluto da instalação como reserva;
+    #   2. FALHAR ABERTO se o script não estiver lá (outra máquina, outro clone, arquivo
+    #      removido) -> sai 0 em silêncio, em vez de travar o trabalho;
+    #   3. viajar no git — por isso a variável de ambiente vem PRIMEIRO: quem clonar em
+    #      outra máquina continua protegido sem reinstalar nada.
+    base = topo.as_posix()
+    comando = (
+        'python -c "import os,sys,runpy;'
+        + "b=os.environ.get('CLAUDE_PROJECT_DIR') or r'" + base + "';"
+        + "p=os.path.join(b,'" + rel + "');"
+        + "sys.exit(0) if not os.path.exists(p) else runpy.run_path(p,run_name='__main__')\""
+    )
+    # A entrada é reconhecida pelo NOME DO SCRIPT, não pelo comando inteiro: o comando
+    # carrega um caminho absoluto que muda de máquina para máquina, e comparar o comando
+    # inteiro faria `--remover` não achar a própria instalação num clone.
+    assinatura = trava["script"]
     ganchos = dados.setdefault("hooks", {}).setdefault("PreToolUse", [])
     # Reconhece a entrada pelo COMANDO e não por índice: o dono pode ter outros hooks, e
     # mexer no que não é nosso é como se apaga trabalho alheio sem perceber.
     nossos = [g for g in ganchos
-              if any(comando in (h.get("command") or "") for h in g.get("hooks", []))]
+              if any(assinatura in (h.get("command") or "") for h in g.get("hooks", []))]
     if remover:
         if not nossos:
             print(f"Nada a remover (a {trava['nome']} não está instalada).")

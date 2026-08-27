@@ -391,8 +391,17 @@ def cards_do_backlog(texto):
 if texto_bl:
     fechados = [b for b in cards_do_backlog(texto_bl) if re.match(r"^- \[[xX]\]", b)]
     peso = sum(len(b) for b in fechados)
+    # A saída tem de ser VERDADEIRA. Medido no primeiro projeto real: depois de arquivar
+    # 86% do backlog, o portão continuava mandando "arquive" e o arquivador respondia
+    # "nenhum card arquivável" — o peso tinha passado para ponteiro, card aberto e prosa,
+    # que ele não poda. Portão que manda fazer o que não funciona é portão sem saída, e
+    # portão sem saída ensina --no-verify: é a doença que este kit persegue, cometida aqui.
     saida = ("Arquive: `python scripts/arquivar.py --backlog --aplicar` deixa o ID e o "
-             "`**Módulo:**` na linha e manda a íntegra para e_qa/backlog_archive.md.")
+             "`**Módulo:**` na linha e manda a íntegra para e_qa/backlog_archive.md. "
+             "Se ele responder 'nenhum card arquivável', o peso NÃO está em card fechado: "
+             "está em card aberto (é trabalho — entregue ou despromova), em prosa de seção "
+             "(texto seu) ou nos ponteiros já arquivados. Aí as saídas são podar à mão ou "
+             "subir o teto em `.kit-config.json` com o D-NN que a FALHA 16 cobra.")
     if len(texto_bl) > TETOS[BACKLOG]:
         falhas.append(
             f"{BACKLOG} com {len(texto_bl)} caracteres (orçamento: {mil(TETOS[BACKLOG])}) — "
@@ -857,7 +866,11 @@ for _alvo, _novo in TETOS.items():
     if _padrao is None:
         # Registro que o kit não previu (o terceiro caderno). Nasce da mesma decisão que
         # eleva um teto — o desenho de dois não coube — e por isso paga o mesmo pedágio.
-        if not _registrado_no_decisions(Path(_alvo).name):
+        # Pelo TALO (`d_qa`), não pelo nome com extensão: a casa cita registro por wikilink
+        # — `[[d_qa|QA]]` —, e foi exatamente assim que a decisão real apareceu no primeiro
+        # projeto. Exigir "d_qa.md" reprovava um projeto que TINHA registrado a decisão.
+        # Mesma lição do QA-14: a checagem casa com o jeito que a casa escreve, ou é cega.
+        if not _registrado_no_decisions(Path(_alvo).stem):
             falhas.append(
                 f"{CONFIG} declara orçamento para {_alvo}, que não é registro do kit, e nenhum "
                 f"D-NN menciona esse arquivo — registro novo é decisão de projeto, não detalhe "

@@ -1,12 +1,13 @@
 ---
 tags: [auditoria, kit, medicao, criterio]
-status: RASCUNHO — não congelado
+status: CONGELADO
 data: 2026-08-27
 ---
 # Critério de conclusão do TAP GO — o que decide se o kit fica ou morre
 
-**Estado: RASCUNHO.** Ele só vale depois de você revisar os limiares e o documento ser
-hasheado (comando no fim). Enquanto não houver hash, isto é opinião — não critério.
+**Estado: CONGELADO em 2026-08-27.** Os limiares abaixo foram revisados e aceitos pelo
+dono antes de qualquer dado do fim do projeto existir. A partir daqui eles são fatos: a
+regra 3 da seção 0 vale inclusive contra quem escreveu isto.
 
 **Para que serve.** No fim do TAP GO você vai olhar um monte de número e decidir se o kit
 valeu. Se o critério for escrito naquele momento, você vai escolher — sem má-fé, todo mundo
@@ -58,7 +59,7 @@ Cada uma tem o sinal de que **funcionou** e o de que **não funcionou**. Fonte: 
 |---|---|---|---|
 | **H1** | A lista-morta impede re-proposta | ≥ 12 `D-NN` REJEITADOS **e** nenhum rejeitado reaparecendo depois como adotado sem `SUPERSEDE` | rejeitadas < 8% das decisões, ou um rejeitado voltando sem registro |
 | **H2** | O portão pega o que o humano não pegaria | ≥ 5 `QA-NN` com **origem = portão** (campo novo, seção 4) | 0 achados de origem "portão" — nesse caso o portão só cobra formato |
-| **H3** | O orçamento segura | no máximo **1** elevação de teto até o fim, registrada em `D-NN`, e nenhum registro acima do teto no último commit | 2+ elevações, ou registro estourado no fim — orçamento que cede sob pressão é lembrete |
+| **H3** | O orçamento segura | **zero** elevações de teto a partir de 27/08/2026 (`D-93`, o teto do backlog em 20.000, é o marco zero e já está gasto), e nenhum registro acima do teto no último commit | 2+ elevações, ou registro estourado no fim — orçamento que cede sob pressão é lembrete |
 | **H4** | A pergunta sobe em vez de ser chutada | ≥ 20 `Q-NN` com ≥ 70% respondidas, e nenhuma aberta há mais de 30 dias no encerramento | < 50% respondidas — fila que o dono não atende não é fila, é depósito |
 | **H5** | Delta, não regeneração | 0 reescritas integrais dos arquivos de estado | qualquer reescrita integral não justificada |
 | **H6** | Commit rastreável | ≥ 80% dos commits citam um ID | < 65% |
@@ -77,7 +78,7 @@ Sem isto, o resto é "o kit foi usado", não "o kit ajudou".
 
 **Desenho, a ser fixado ANTES de executar:**
 - escolha **6 tarefas** de tamanho parecido (mesma ordem de grandeza de arquivos tocados),
-  ainda não iniciadas, e liste os IDs aqui embaixo antes de começar qualquer uma;
+  ainda não iniciadas, e liste os IDs no arquivo do recorte antes de começar qualquer uma;
 - **3 com o kit inteiro**, **3 sem nada dele**: agente sem `CLAUDE.md` do kit, sem skills,
   sem registro, sem portão — só o repositório e o pedido;
 - alterne (A-B-A-B-A-B) para não concentrar as fáceis de um lado;
@@ -92,16 +93,7 @@ Sem isto, o resto é "o kit foi usado", não "o kit ajudou".
 | tempo de sessão | do primeiro ao último commit da tarefa |
 | custo em tokens | o que a ferramenta reportar por sessão |
 
-**Tarefas escolhidas (preencher antes de executar):**
-
-| Tarefa | Braço | Iniciada em |
-|---|---|---|
-| T-__ | com kit | |
-| T-__ | sem kit | |
-| T-__ | com kit | |
-| T-__ | sem kit | |
-| T-__ | com kit | |
-| T-__ | sem kit | |
+**As 6 tarefas escolhidas vão em `f_criterio_conclusao_tapgo_260827_recorte.md`**, ao lado deste arquivo — e não aqui dentro, porque o que se preenche depois não pode morar dentro do que está congelado. Esse arquivo tem hash próprio, gerado no dia em que a lista for fechada e **antes** de a primeira das seis começar. Enquanto ele não existir com hash, a seção 3 não foi executada.
 
 **Limiar:** o braço "com kit" precisa mostrar **menos retrabalho ou menos defeito
 posterior** em pelo menos 2 das 3 comparações pareadas. Empate conta como derrota do kit —
@@ -116,14 +108,17 @@ porque o kit tem custo, e custo empatado é custo perdido.
 
 Sem estes quatro, metade da tabela acima não pode ser respondida:
 
-1. **Kit atualizado no projeto** (v13.1 → v13.10) — sem isso não há `evidencia`, nem contagem
-   de pulos, nem prazo por gravidade, e o portão continua com a cegueira do `QA-14`.
+1. **Kit atualizado no projeto** — feito em 27/08/2026 (v13.1 → v13.11), com o portão
+   voltando a ser idêntico ao do kit e os tetos declarados em `.kit-config.json`. Sem
+   isso não haveria `evidencia`, nem contagem de pulos, nem prazo por gravidade, e o
+   portão seguiria com a cegueira do `QA-14`.
 2. **Campo `origem` em cada `QA-NN` novo**: `portão` · `revisão` · `dono` · `usuário`.
    É o que torna H2 respondível — e é o número menos circular que este projeto pode produzir.
 3. **Série temporal, não foto**: a cada marco,
    `python scripts/task.py evidencia --json > e_qa/evidencia_AAMMDD.json`, commitado.
    H7 depende de ver a tendência, não o número final.
-4. **O recorte de controle registrado antes de rodar** (tabela da seção 3 preenchida).
+4. **O recorte de controle registrado antes de rodar** — o arquivo `_recorte.md` fechado
+   e com hash antes de a primeira das seis tarefas começar.
 
 ---
 
@@ -156,16 +151,16 @@ do núcleo ou não é.
 
 ---
 
-## Para congelar
+## Como verificar que este arquivo não mudou
 
-Revise os limiares (são meus, não seus — mexa à vontade **agora**). Depois:
+O hash **não** mora aqui dentro: um arquivo não pode conter o hash de si mesmo. Ele foi
+registrado no commit que congelou este documento e no `d_history/b_kit_changelog.md` do kit.
+Para conferir a qualquer momento:
 
 ```
-python -c "import hashlib,pathlib;p=pathlib.Path('docs/f_criterio_conclusao_tapgo_260827.md');print(hashlib.sha256(p.read_bytes()).hexdigest())"
+python -c "import hashlib,pathlib;print(hashlib.sha256(pathlib.Path('docs/f_criterio_conclusao_tapgo_260827.md').read_bytes()).hexdigest())"
 ```
 
-Troque `status: RASCUNHO — não congelado` por `status: CONGELADO`, cole o hash e a data/hora
-UTC aqui embaixo, e commite. A partir daí, os limiares são fatos.
-
-- **SHA-256:** _(preencher ao congelar)_
-- **Congelado em:** _(preencher ao congelar)_
+Se o número não bater com o do changelog, este arquivo foi editado depois do congelamento —
+e, pela regra 3 da seção 0, isso não é correção: é documento novo, datado, dizendo o que
+mudou e por quê.

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python scripts/portao_hook.py"
+            "command": "python -c \"import os,sys,runpy;b=os.environ.get('CLAUDE_PROJECT_DIR') or r'C:/Users/maquina/Desktop/pipeline-projetos-IA';p=os.path.join(b,'scripts/portao_hook.py');sys.exit(0) if not os.path.exists(p) else runpy.run_path(p,run_name='__main__')\""
           }
         ]
       }

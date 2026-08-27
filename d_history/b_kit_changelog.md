@@ -8,6 +8,73 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.11] — 2026-08-27
+**Quatro defeitos que só apareceram ao migrar um projeto real — e três deles eram meus, de
+ontem.** A migração do TAP GO (v13.1 -> v13.10) não terminou com o portão verde: terminou
+com quatro coisas quebradas que nenhum teste tinha visto, porque nenhum teste roda numa
+sessão que muda de projeto no meio.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **A trava do pulo estava BLOQUEANDO todo comando.** O `settings.json` guardava
+  `python scripts/portao_hook.py` — caminho relativo, resolvido contra o diretório de
+  TRABALHO do agente. Bastou a sessão passar a trabalhar noutro projeto para o caminho
+  apontar para o vazio; o hook morreu, e o Claude Code trata hook morto como bloqueio.
+  Uma sessão inteira ficou sem executar comando nenhum. **Hook que bloqueia por bug
+  próprio é o pior caso do kit**, e o kit inteiro existe para condenar isso — em duas
+  skills, com todas as letras — enquanto o cometia na versão anterior.
+  Agora o comando resolve por `CLAUDE_PROJECT_DIR`, com o caminho absoluto da instalação
+  como reserva, e **sai 0 em silêncio se o script não estiver lá** (outro clone, outra
+  máquina): a trava some, nunca trava. Dois testes novos, um rodando o comando instalado
+  de OUTRO diretório e outro com o script apagado.
+
+- **`g_primeiros_passos.md` nunca entrou na lista `DO_KIT`.** Nasceu no v13.8, foi para os
+  projetos NOVOS (a cópia leva tudo o que não está excluído) e ficou invisível para o
+  `--upgrade`, que trabalha por lista. Como o `INDEX.md` É atualizado e aponta para ele,
+  **todo projeto que atualizasse ganhava um wikilink quebrado e um portão vermelho** —
+  causado pela atualização. Medido no TAP GO, na primeira tentativa.
+
+- **A guarda genérica, que é o conserto de verdade:** `TestNadaFicaForaDaAtualizacao`
+  exige que todo arquivo entregue a projeto novo esteja OU em `DO_KIT` (processo, o kit
+  atualiza) OU em `NUNCA` (verdade do projeto). Não existe terceira gaveta, e ficar fora
+  das duas é como o arquivo some na atualização. Ela achou mais quatro casos além do
+  conhecido: `.claude/`, `.obsidian/` e `LICENSE` foram para `NUNCA`, `.gitattributes`
+  para `DO_KIT`, e `.claude/settings.local.json` para as exclusões — configuração pessoal
+  de uma máquina não viaja para o repositório de outra pessoa.
+
+- **A FALHA 16 reprovava um projeto que TINHA registrado a decisão.** Ela exigia o nome do
+  arquivo com extensão (`d_qa.md`) e a casa cita registro por wikilink: `[[d_qa|QA]]`. É a
+  terceira ocorrência da espécie do `QA-14` — a checagem que não casa com o jeito que a
+  casa escreve é uma checagem cega. Agora casa pelo talo (`d_qa`).
+
+- **O portão mandava arquivar quando não havia mais nada a arquivar.** Depois de o TAP GO
+  arquivar 86% do backlog, a mensagem continuava dizendo "rode `arquivar.py`" e o
+  arquivador respondia "nenhum card arquivável" — o peso tinha passado para ponteiro, card
+  aberto e prosa, que ele não poda. **Portão sem saída ensina `--no-verify`**: a mensagem
+  agora diz o que fazer quando o arquivador está esgotado.
+
+- **O critério de conclusão do TAP GO foi CONGELADO** — `docs/f_criterio_conclusao_tapgo_260827.md`,
+  9.706 bytes, em 2026-08-27 14:01 UTC:
+
+      SHA-256  a9f129bd84af97c0f845a7b9c6c96ff0f6b5251386a0edbffb462832fddc8de7
+
+  Confira a qualquer momento com
+  `python -c "import hashlib,pathlib;print(hashlib.sha256(pathlib.Path('docs/f_criterio_conclusao_tapgo_260827.md').read_bytes()).hexdigest())"`.
+  Número diferente = arquivo editado depois do congelamento, e a regra 3 dele diz o que
+  fazer: arquivo novo, datado, dizendo o que mudou — nunca edição silenciosa.
+  Dois defeitos do rascunho foram consertados ANTES de congelar: ele mandava colar o hash
+  dentro do próprio arquivo (o que invalida o hash no ato) e guardava a tabela das 6 tarefas
+  do recorte, que só se preenche depois — o que se preenche depois não mora dentro do que
+  está congelado, e por isso o recorte ganhou arquivo e hash próprios.
+  E o `H3` ganhou marco zero explícito: a elevação de teto de hoje (`D-93`) **já está
+  gasta**, então qualquer outra até o fim do projeto reprova a hipótese. Sem essa data, a
+  contagem seria ambígua a favor do kit.
+
+- **O que a migração provou sobre a lista-morta.** A decisão que bifurcou o portão do TAP
+  GO (`D-50`, 12/08) já declarava o custo: *"o `check.py` sai do sha do kit e não recebe
+  mais correção por upgrade"*. Quinze dias depois, o custo chegou exatamente como escrito.
+  Não foi preciso descobrir o problema — ele estava registrado. É a tese do kit
+  funcionando, e é a evidência menos circular desta semana.
+
 ## [kit v13.10] — 2026-08-27
 **O projeto para de editar o portão — e isso nasceu de um fork medido, não de uma ideia.**
 Ao preparar a atualização do primeiro projeto real (TAP GO, parado no `kit v13.1`), o

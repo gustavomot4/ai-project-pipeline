@@ -47,6 +47,9 @@ EXCLUIR_PASTAS = {".git", ".github", "__pycache__", ".pytest_cache", ".venv", "v
                   "node_modules", "docs"}
 EXCLUIR_ARQUIVOS = {
     ".obsidian/workspace.json",
+    # Configuração PESSOAL da máquina (permissões que o dono aprovou no Claude Code).
+    # Copiada para um projeto, ela leva decisões de UMA pessoa para o repositório de outra.
+    ".claude/settings.local.json",
     "scripts/new_project.py",
     # Testa os scripts DO KIT (inclusive o `new_project.py`, que nem vai junto). Copiado
     # para um projeto, ele reprova no primeiro `task.py test` — e suíte que nasce vermelha
@@ -263,9 +266,10 @@ DO_KIT = (
     "CLAUDE.md", "INDEX.md",
     "b_process/a_roadmap.md", "b_process/b_checklist.md",
     "b_process/e_repository_standard.md", "b_process/f_glossary_and_primer.md",
+    "b_process/g_primeiros_passos.md",
     "b_process/skills/", "b_process/profiles/", "b_process/templates/",
     "c_technical_docs/a_obsidian_guide.md",
-    "scripts/",
+    "scripts/", ".gitattributes",
 )
 # Verdade do projeto: NUNCA tocar. Cada item aqui já foi (ou seria) perda de trabalho.
 #   a_context/          -> contexto, plano, decisões: é o projeto
@@ -273,8 +277,12 @@ DO_KIT = (
 #   d_agent_learnings   -> o kit semeia, o projeto acrescenta as próprias lições
 #   d_history/, e_qa/   -> histórico e evidência do projeto
 #   README, .gitignore  -> gerados/editados por projeto
+#   .claude/, .obsidian/ -> configuração da ferramenta e do editor NAQUELA máquina;
+#                           as travas se instalam por `task.py`, não por sobrescrita
+#   LICENSE             -> o projeto pode ter outra licença que a do kit
 NUNCA = ("a_context/", "b_process/c_backlog.md", "b_process/d_agent_learnings.md",
-         "d_history/", "e_qa/", "README.md", ".gitignore")
+         "d_history/", "e_qa/", "README.md", ".gitignore",
+         ".claude/", ".obsidian/", "LICENSE")
 
 MARCA_VERSAO = ".kit-version"
 MANIFESTO = ".kit-manifest"

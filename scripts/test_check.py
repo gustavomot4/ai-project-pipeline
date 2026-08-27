@@ -350,6 +350,43 @@ class TestAtualizacao(unittest.TestCase):
             self.assertIn("não commitadas", r2.stdout)
 
 
+class TestNadaFicaForaDaAtualizacao(unittest.TestCase):
+    """`DO_KIT` é uma lista mantida à mão, e lista mantida à mão sai de sincronia.
+
+    Aconteceu: `b_process/g_primeiros_passos.md` nasceu no v13.8, entrou na cópia de projeto
+    NOVO (que copia tudo o que não está excluído) e nunca entrou no `DO_KIT`, que é o que a
+    ATUALIZAÇÃO usa. Resultado medido no primeiro projeto real: o `INDEX.md` — esse sim
+    atualizado — passou a apontar para um arquivo que o projeto nunca receberia, e o portão
+    do projeto ficou vermelho com "wikilink sem destino" logo depois de atualizar.
+
+    Este teste fecha a classe: todo arquivo que o kit entrega a um projeto novo tem de ser
+    OU processo (o kit atualiza, `DO_KIT`) OU verdade do projeto (`NUNCA`). Não existe
+    terceira gaveta, e ficar fora das duas é como o arquivo desaparece na atualização."""
+
+    def test_todo_arquivo_entregue_e_processo_ou_verdade_do_projeto(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("np", KIT / "scripts/new_project.py")
+        np = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(np)
+
+        orfaos = []
+        for origem in sorted(KIT.rglob("*")):
+            if origem.is_dir():
+                continue
+            rel = origem.relative_to(KIT).as_posix()
+            if any(p in np.EXCLUIR_PASTAS for p in Path(rel).parts):
+                continue
+            if rel in np.EXCLUIR_ARQUIVOS or origem.name.endswith(np.EXCLUIR_SUFIXOS):
+                continue
+            coberto = any(rel == d or rel.startswith(d) for d in np.DO_KIT + np.NUNCA)
+            if not coberto:
+                orfaos.append(rel)
+        self.assertEqual(orfaos, [],
+                         "arquivo entregue a projeto novo e invisível para o --upgrade "
+                         "(acrescente a DO_KIT se é processo, ou a NUNCA se é do projeto): "
+                         + ", ".join(orfaos))
+
+
 class TestCustomizacaoPreservada(unittest.TestCase):
     """A atualização NÃO pode sobrescrever arquivo do kit que o dono editou.
 
@@ -1641,6 +1678,51 @@ class TestTravaDoPulo(unittest.TestCase):
 
     def test_outra_ferramenta_nao_e_assunto(self):
         self.assertEqual(self.bater("git commit --no-verify -m x", ferramenta="Edit").returncode, 0)
+
+    def comando_instalado(self, repo: Path) -> str:
+        self.assertEqual(rodar_script("install_hook.py", "--portao", cwd=repo).returncode, 0)
+        cfg = json.loads((repo / ".claude/settings.json").read_text(encoding="utf-8"))
+        return cfg["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+
+    def test_o_comando_instalado_funciona_de_outro_diretorio(self):
+        """O defeito que isto guarda aconteceu em uso, não em teoria: o comando instalado
+        era `python scripts/portao_hook.py`, resolvido contra o diretório de TRABALHO do
+        agente. Bastou a sessão passar a trabalhar em outro projeto para o caminho apontar
+        para o vazio; o hook morreu, e o Claude Code trata hook morto como BLOQUEIO — a
+        sessão ficou sem executar nenhum comando. Hook que bloqueia por bug próprio é
+        exatamente o que este kit chama de pior que hook nenhum."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            comando = self.comando_instalado(repo)
+            outro = Path(tmp) / "outro_lugar"
+            outro.mkdir()
+            evento = json.dumps({"cwd": str(repo), "tool_name": "Bash",
+                                 "tool_input": {"command": 'git commit --no-verify -m "x"'}})
+            # CLAUDE_PROJECT_DIR apontando para ESTE repo: é o que o Claude Code faz, e
+            # sem fixá-lo o teste herdaria a variável da sessão que o está rodando —
+            # resolvendo para outro kit e passando pelo motivo errado.
+            ambiente = dict(AMBIENTE_UTF8, CLAUDE_PROJECT_DIR=str(repo))
+            r = subprocess.run(comando, shell=True, input=evento, capture_output=True,
+                               text=True, encoding="utf-8", errors="replace",
+                               cwd=str(outro), env=ambiente, timeout=60)
+            self.assertEqual(r.returncode, 2,
+                             f"rodando de {outro}, a trava deveria bloquear:\n{r.stdout}{r.stderr}")
+
+    def test_o_comando_instalado_falha_aberto_se_o_script_sumir(self):
+        """Outro clone, outra máquina, arquivo removido: a trava desaparece em silêncio.
+        Nunca trava o trabalho — é o que separa 'proteção' de 'armadilha'."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            comando = self.comando_instalado(repo)
+            (repo / "scripts/portao_hook.py").unlink()
+            evento = json.dumps({"cwd": str(repo), "tool_name": "Bash",
+                                 "tool_input": {"command": 'git commit --no-verify -m "x"'}})
+            ambiente = dict(AMBIENTE_UTF8, CLAUDE_PROJECT_DIR=str(repo))
+            r = subprocess.run(comando, shell=True, input=evento, capture_output=True,
+                               text=True, encoding="utf-8", errors="replace",
+                               cwd=str(repo), env=ambiente, timeout=60)
+            self.assertEqual(r.returncode, 0,
+                             f"sem o script, a trava tem de sumir e não travar:\n{r.stdout}{r.stderr}")
 
     def test_instalar_e_remover_nao_mexe_em_hook_alheio(self):
         """Mesmo contrato da trava de escopo: `.claude/settings.json` pode ter hooks do dono."""
