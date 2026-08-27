@@ -396,6 +396,20 @@ def atualizar(projeto: Path, simular: bool, forcar: bool) -> int:
         print("   Ele NÃO será tocado. Para trazer a versão do kit por cima (perdendo a sua),")
         print("   rode de novo com --forcar — e revise o diff antes de commitar.")
 
+    # O caso caro tem nome e endereço: o portão editado. Ele congela o projeto na versão em
+    # que a edição foi feita — inclusive nas cegueiras já corrigidas aqui — e o projeto passa
+    # a medir a si mesmo com uma régua que não é mais a régua. Desde o v13.10 há saída.
+    if any(rel == "scripts/check.py" for rel, *_ in protegidos) and not forcar:
+        print("\n   ATENÇÃO: o PORTÃO está protegido, ou seja, editado neste projeto.")
+        print("   Enquanto ele estiver editado, este projeto não recebe correção nenhuma do")
+        print("   portão — e as checagens que o kit conserta continuam quebradas aqui.")
+        print("   Desde o kit v13.10 o que se costumava editar (teto maior, registro extra")
+        print("   de IDs) se declara em .kit-config.json, no vault:")
+        print('     {"tetos": {"a_context/c_decisions.md": 20000, "a_context/d_qa.md": 8000},')
+        print('      "registros": ["a_context/d_qa.md"]}')
+        print("   Migre para a config e traga o portão do kit com --forcar; aí o check.py")
+        print("   volta a ser idêntico ao do kit e a atualização nunca mais conflita.")
+
     if simular:
         print("\n(--dry-run: nada foi escrito.)")
         return 0

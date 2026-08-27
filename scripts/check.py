@@ -20,13 +20,14 @@ FALHAS (código 1)
                                        14. Skill fora do esquema (Contexto/Limites/Saída)
                                        15. BACKLOG inchado (card fechado nunca arquivado)
                                        16. Teto de orçamento elevado sem registro no DECISIONS
+                                       17. Registro declarado em .kit-config.json acima do teto
 
 AVISOS (não reprovam; com --avisos-reprovam, reprovam)
   frontmatter ausente · placeholders · templates em rascunho · nota órfã ·
   arquivo grande não varrido · varredura de histórico que não rodou ·
   portão automático (pre-commit) não instalado · módulo do PLANO sem tarefa ·
   description de skill sem fronteira negativa · CONTEXT perto do teto ·
-  DECISIONS perto do teto · BACKLOG perto do teto ·
+  DECISIONS perto do teto · BACKLOG perto do teto · registro declarado perto do teto ·
   tema de a_context/ fora do mapa de leitura ·
   sessão sem skill declarada no changelog · ocupação declarada divergindo do arquivo ·
   questão do dono ausente do CONTEXT ·
@@ -44,6 +45,7 @@ Marque uma linha com `checar:ignore` para isentá-la da varredura de segredo
 import re
 import subprocess
 import sys
+from collections import Counter
 from datetime import date
 from pathlib import Path
 
@@ -152,11 +154,57 @@ PASTAS_HISTORICAS = {"d_history", "e_qa", "docs"}
 # só que subir sem registrar reprova (FALHA 16). Um limite que sobe em silêncio não é
 # limite, é lembrete.
 TETOS_PADRAO = {CONTEXTO: 4000, DECISOES: 12000, BACKLOG: 12000}
-TETOS = {
-    CONTEXTO: 4000,     # <- o projeto sobe AQUI, e registra a elevação com um D-NN
-    DECISOES: 12000,
-    BACKLOG: 12000,
-}
+
+# O projeto NÃO sobe o teto editando este arquivo. Ele declara em `.kit-config.json`, no
+# vault, e o `check.py` continua byte a byte igual ao do kit.
+#
+# Isto nasceu de um custo medido, não de gosto: o primeiro projeto real precisou de um teto
+# maior e de um TERCEIRO registro (os `QA-NN` saíram do DECISIONS para `a_context/d_qa.md`),
+# e a única saída que o kit oferecia era editar o `check.py`. Resultado: o portão do projeto
+# virou um FORK do portão do kit — 8 versões atrasado, com uma cegueira já corrigida aqui e
+# marcado como "PROTEGIDO" em toda atualização. O projeto passou a medir a si mesmo com uma
+# régua que não era mais a régua. Customização por edição de script é dívida com juros.
+#
+#   {"tetos": {"a_context/c_decisions.md": 20000, "a_context/d_qa.md": 8000},
+#    "registros": ["a_context/d_qa.md"]}
+#
+# `tetos`      — teto em caracteres, por caminho (relativo ao vault).
+# `registros`  — arquivos que também DEFINEM IDs D-/Q-/QA-, além do DECISIONS.
+#
+# Subir teto continua exigindo um D-NN (FALHA 16). O que muda é onde a elevação mora: num
+# dado versionado, e não numa linha de código que ninguém consegue atualizar depois.
+CONFIG = ".kit-config.json"
+
+
+def _config_do_projeto() -> dict:
+    alvo = raiz / CONFIG
+    if not alvo.exists():
+        return {}
+    import json as _json
+    try:
+        dados = _json.loads(alvo.read_text(encoding="utf-8"))
+    except (ValueError, OSError) as erro:
+        # Config quebrada REPROVA, e não "vale o padrão em silêncio": teto que o dono acha
+        # que declarou e o script ignorou é pior que teto nenhum.
+        falhas.append(f"{CONFIG} não é JSON válido ({erro}) — corrija antes de commitar.")
+        return {}
+    if not isinstance(dados, dict):
+        falhas.append(f"{CONFIG} precisa ser um objeto JSON.")
+        return {}
+    return dados
+
+
+_cfg = _config_do_projeto()
+TETOS = dict(TETOS_PADRAO)
+for _arq, _valor in (_cfg.get("tetos") or {}).items():
+    if isinstance(_valor, int) and _valor > 0:
+        TETOS[_arq] = _valor
+    else:
+        falhas.append(f"{CONFIG}: teto de {_arq} precisa ser um inteiro positivo (veio {_valor!r}).")
+# Registros extras: onde mais um ID pode NASCER. Sem isto, um projeto que move os `QA-NN`
+# para arquivo próprio vê todos eles virarem "ID fantasma" — e a saída que sobrava era
+# editar o portão, que é exatamente o que esta configuração existe para evitar.
+REGISTROS_EXTRAS = [r for r in (_cfg.get("registros") or []) if isinstance(r, str)]
 # Avisar a 90% do teto em vez de só reprovar a 100%: quando o teto estoura, quem escreve
 # está no meio de uma sessão de trabalho e corta o que estiver à mão — não o que devia sair.
 PERTO = 0.90
@@ -268,7 +316,9 @@ elif texto_dec and len(texto_dec) > TETOS[DECISOES] * PERTO:
     )
 
 # 3. Fonte única (regra 6) — o mesmo nome em dois lugares é estado duplicado
-for nome in (Path(BACKLOG).name, Path(CONTEXTO).name, Path(DECISOES).name):
+# Registro extra declarado em `.kit-config.json` entra aqui: se ele é fonte de ID,
+# duas cópias dele são duas verdades — o mesmo motivo dos três de casa.
+for nome in {Path(a).name for a in (BACKLOG, CONTEXTO, DECISOES, *REGISTROS_EXTRAS)}:
     achados = visiveis(nome)
     if len(achados) > 1:
         caminhos = ", ".join(str(p.relative_to(raiz)) for p in achados)
@@ -578,7 +628,14 @@ else:
 
 # 10 e 11. Integridade dos IDs rastreáveis (regra 4).
 if texto_dec:
-    definidos = set(re.findall(r"^\|\s*((?:D|Q|QA)-\d+)\s*\|", texto_dec, re.M))
+    # `.kit-config.json` pode declarar registros extras: num projeto real os `QA-NN` saíram
+    # do DECISIONS para `a_context/d_qa.md`, e sem isto TODOS eles viravam "ID fantasma" —
+    # o que empurrava o dono a editar este script, criando o fork que a configuração existe
+    # para acabar. Um ID nasce em QUALQUER registro declarado.
+    tabelas = {DECISOES: texto_dec}
+    tabelas.update({r: corpo.get(raiz / r, "") for r in REGISTROS_EXTRAS})
+    definidos = {i for t in tabelas.values()
+                 for i in re.findall(r"^\|\s*((?:D|Q|QA)-\d+)\s*\|", t, re.M)}
     # QA-16: ID arquivado continua sendo ID REAL — é o que "ID preservado, nada revertido"
     # significa. Sem isto, a correção do QA-14 é inutilizável em qualquer projeto que já
     # tenha arquivado: medido no primeiro projeto real, 22 IDs legitimamente retirados da
@@ -590,9 +647,14 @@ if texto_dec:
     # FICA na tabela com a íntegra lá — viraria duplicata falsa.
     morto = raiz / ARQUIVO_MORTO
     arquivados = set(re.findall(r"\b((?:D|Q|QA)-\d+)\b", corpo.get(morto, ""))) if morto.exists() else set()
-    repetidos = [i for i in definidos if len(re.findall(rf"^\|\s*{re.escape(i)}\s*\|", texto_dec, re.M)) > 1]
+    # Duplicata é por REGISTRO e também ENTRE registros: o mesmo QA-07 em dois cadernos é
+    # o pior caso, porque as duas linhas divergem e nenhuma das duas se sabe cópia.
+    ocorrencias = Counter(i for t in tabelas.values()
+                          for i in re.findall(r"^\|\s*((?:D|Q|QA)-\d+)\s*\|", t, re.M))
+    repetidos = [i for i, n in ocorrencias.items() if n > 1]
     if repetidos:
-        falhas.append(f"ID duplicado em {DECISOES}: " + ", ".join(sorted(repetidos)) + " — cada ID é único e append-only.")
+        onde = ", ".join(sorted(tabelas))
+        falhas.append(f"ID duplicado em {onde}: " + ", ".join(sorted(repetidos)) + " — cada ID é único e append-only.")
     citados = {}
     citados_log = {}
     for nota in notas:
@@ -607,7 +669,8 @@ if texto_dec:
         # changelog é append-only, então reprovar nele é reprovar num arquivo que a regra
         # proíbe editar. Portão sem saída ensina a usar --no-verify, que é pior que o furo.
         rel_nota = nota.relative_to(topo)
-        if nota == dec or nota.stem == "d_agent_learnings":
+        registros_de_id = {dec} | {raiz / r for r in REGISTROS_EXTRAS}
+        if nota in registros_de_id or nota.stem == "d_agent_learnings":
             continue
         historica = bool(PASTAS_HISTORICAS & set(rel_nota.parts))
         # `raiz / CHANGELOG` e não a string: `rel_nota` é relativo ao TOPO do repositório,
@@ -777,16 +840,32 @@ if texto_plano_sk and texto_log_sk:
 # O script NÃO proíbe subir — a decisão é do dono, e projeto grande às vezes precisa. Ele
 # proíbe subir CALADO: a elevação vira uma linha no DECISIONS, com data e motivo, que a
 # sessão de evolução vai encontrar quando perguntar "por que este arquivo está enorme?".
-for _alvo, _padrao in TETOS_PADRAO.items():
-    _novo = TETOS.get(_alvo, _padrao)
-    if _novo <= _padrao:
-        continue
-    _registrado = any(
-        re.search(r"D-\d+", _linha) and "teto" in _linha.lower()
-        and (str(_novo) in _linha.replace(".", "") or mil(_novo) in _linha)
-        for _linha in texto_dec.splitlines()
+def _registrado_no_decisions(*termos) -> bool:
+    """Uma linha de D-NN que cite todos os termos. Procura no DECISIONS e nos registros
+    extras, porque num projeto que moveu as tabelas de casa a decisão mora com elas."""
+    fontes = [texto_dec] + [corpo.get(raiz / r, "") for r in REGISTROS_EXTRAS]
+    return any(
+        re.search(r"D-\d+", linha) and all(t.lower() in linha.lower() for t in termos)
+        for fonte in fontes for linha in fonte.splitlines()
     )
-    if not _registrado:
+
+
+for _alvo, _novo in TETOS.items():
+    _padrao = TETOS_PADRAO.get(_alvo)
+    if _padrao is not None and _novo <= _padrao:
+        continue
+    if _padrao is None:
+        # Registro que o kit não previu (o terceiro caderno). Nasce da mesma decisão que
+        # eleva um teto — o desenho de dois não coube — e por isso paga o mesmo pedágio.
+        if not _registrado_no_decisions(Path(_alvo).name):
+            falhas.append(
+                f"{CONFIG} declara orçamento para {_alvo}, que não é registro do kit, e nenhum "
+                f"D-NN menciona esse arquivo — registro novo é decisão de projeto, não detalhe "
+                f"de configuração. Registre: `| D-NN | {date.today().isoformat()} | ADOTADO | "
+                f"{Path(_alvo).name} como registro próprio, teto {mil(_novo)} | <o que não coube> |`."
+            )
+        continue
+    if not _registrado_no_decisions("teto", str(_novo)) and not _registrado_no_decisions("teto", mil(_novo)):
         falhas.append(
             f"teto de {_alvo} elevado para {mil(_novo)} (padrão do kit: {mil(_padrao)}) sem "
             f"registro no {DECISOES} — teto que sobe em silêncio não é teto, é lembrete. "
@@ -794,7 +873,36 @@ for _alvo, _padrao in TETOS_PADRAO.items():
             f"teto de {_alvo} para {mil(_novo)} | <o que não coube e por que arquivar não resolveu> |`."
         )
 
-ORCAMENTOS = {TETOS[CONTEXTO]: (CONTEXTO, texto_ctx), TETOS[DECISOES]: (DECISOES, texto_dec)}
+# Orçamento dos registros que o kit não conhece: mesma régua dos três de casa (reprova no
+# teto, avisa em 90%), aplicada a qualquer caminho declarado em `tetos`.
+for _arq, _teto in TETOS.items():
+    if _arq in TETOS_PADRAO:
+        continue
+    _texto_extra = corpo.get(raiz / _arq, "")
+    if not _texto_extra:
+        continue
+    if len(_texto_extra) > _teto:
+        falhas.append(
+            f"{_arq} com {len(_texto_extra)} caracteres (orçamento declarado: {mil(_teto)}) — "
+            "feche, arquive ou promova a ponteiro o que já não é trabalho vivo."
+        )
+    elif len(_texto_extra) > _teto * PERTO:
+        avisos.append(
+            f"{_arq} com {len(_texto_extra)}/{mil(_teto)} caracteres "
+            f"({100*len(_texto_extra)//_teto}%) — arquive agora, não na sessão em que estourar."
+        )
+
+# Todo arquivo com teto entra aqui, inclusive os declarados pelo projeto: a ocupação
+# escrita à mão no CONTEXT é conferida contra o arquivo, seja qual for o registro.
+#
+# LISTA por teto, não par: DECISIONS e BACKLOG têm o MESMO teto padrão (12.000), e um dicionário
+# indexado pelo número fazia um sobrescrever o outro em silêncio — o aviso então comparava o
+# número declarado com o arquivo errado e acusava divergência onde não havia. Pego pelo teste
+# `test_ocupacao_declarada_certa_cala`; é a espécie do QA-14 (checagem que fala sobre outra
+# coisa) na sua forma mais fácil de cometer: generalizar um dicionário sem olhar as colisões.
+ORCAMENTOS = {}
+for arq, teto in TETOS.items():
+    ORCAMENTOS.setdefault(teto, []).append((arq, corpo.get(raiz / arq, "")))
 if texto_ctx:
     divergentes = []
     for bruto_n, bruto_teto in re.findall(r"(\d[\d.]*)\s*/\s*(\d[\d.]*)", texto_ctx):
@@ -802,11 +910,16 @@ if texto_ctx:
             declarado, teto = int(bruto_n.replace(".", "")), int(bruto_teto.replace(".", ""))
         except ValueError:
             continue
-        if teto not in ORCAMENTOS:
+        candidatos = [(n, x) for n, x in ORCAMENTOS.get(teto, []) if x]
+        if not candidatos:
             continue
-        nome, texto_alvo = ORCAMENTOS[teto]
-        if texto_alvo and declarado != len(texto_alvo):
-            divergentes.append(f"diz {nome} em {declarado}/{teto}, o arquivo tem {len(texto_alvo)}")
+        # Basta bater com UM arquivo daquele teto: "2.164/12.000" pode ser o DECISIONS ou o
+        # BACKLOG, e o CONTEXT não diz qual. Acusar sem saber é aviso falso.
+        if any(declarado == len(x) for _, x in candidatos):
+            continue
+        nome = " ou ".join(n for n, _ in candidatos)
+        tamanhos = " ou ".join(str(len(x)) for _, x in candidatos)
+        divergentes.append(f"diz {nome} em {declarado}/{teto}, o arquivo tem {tamanhos}")
     if divergentes:
         avisos.append(
             f"{CONTEXTO} " + " · ".join(divergentes)

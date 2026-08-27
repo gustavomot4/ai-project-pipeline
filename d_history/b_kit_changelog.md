@@ -8,6 +8,47 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.10] — 2026-08-27
+**O projeto para de editar o portão — e isso nasceu de um fork medido, não de uma ideia.**
+Ao preparar a atualização do primeiro projeto real (TAP GO, parado no `kit v13.1`), o
+`--upgrade` marcou `scripts/check.py` como PROTEGIDO: o projeto tinha editado o portão para
+subir o teto do DECISIONS para 20.000 e para criar um terceiro registro (`a_context/d_qa.md`,
+os `QA-NN` que não cabiam mais). Consequência medida: **o portão daquele projeto é um fork
+oito versões atrasado**, com a cegueira do `QA-14` — a checagem de ID que enxergava 12% —
+ainda dentro dele, e sem receber nenhuma correção posterior. O projeto passou a medir a si
+mesmo com uma régua que não é mais a régua.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **`.kit-config.json`: o que se editava agora se declara.** No vault, versionado:
+  `{"tetos": {"a_context/c_decisions.md": 20000, "a_context/d_qa.md": 8000},
+  "registros": ["a_context/d_qa.md"]}`. `tetos` é orçamento por caminho; `registros` são os
+  arquivos onde um ID D-/Q-/QA- também pode NASCER. O `check.py` volta a ser byte a byte
+  igual ao do kit em qualquer projeto, e a atualização deixa de conflitar.
+
+- **Sem isso, a única saída era editar o script.** Um projeto que move os `QA-NN` para
+  arquivo próprio via o kit tratar TODOS eles como "ID fantasma" — o portão reprovava todo
+  commit. Diante disso, editar o `check.py` não era desleixo: era a única porta aberta. O
+  kit agora abre a terceira.
+
+- **Registro extra paga o mesmo pedágio do teto (FALHA 16).** Criar o terceiro caderno nasce
+  da mesma decisão que eleva um teto — "o desenho de dois não coube" — e por isso também
+  exige um `D-NN` que o mencione. Configuração não é lugar de decisão silenciosa.
+
+- **Config quebrada REPROVA, não vale o padrão em silêncio.** Teto que o dono acha que
+  declarou e o script ignorou é pior que teto nenhum.
+
+- **A isca da FALHA 16 mudou de alvo.** Antes sabotava o `check.py`; agora escreve a config,
+  que é o caminho real. A checagem é a mesma; o caso que ela imita é que passou a ser outro.
+
+- **`evidencia.py` lê a config e mostra os DOIS números.** Ocupação contra o teto que vale no
+  projeto, e uma seção nova listando "tetos afrouxados em relação ao padrão do kit". Medir
+  com a régua que o medido escolheu seria circular; esconder a distância entre as duas
+  réguas seria pior.
+
+- **O `--upgrade` passou a gritar quando o portão está editado**, com o formato da config na
+  tela e o caminho de migração — porque o dono só descobria o problema quando já tinha oito
+  versões de atraso.
+
 ## [kit v13.9] — 2026-08-24
 **As duas travas que a segunda rodada do benchmarking cobrou — e as duas doem.**
 A rodada nova refez os critérios para que o kit pudesse perder: saiu "honestidade sobre

@@ -767,16 +767,26 @@ class TestTodaChecagemTemIsca(unittest.TestCase):
                         f"- [x] T-{i:02d} — tarefa {i} · **Módulo:** M1\n  {'peso ' * 40}\n"
                         for i in range(60))),
                  "c_backlog.md com"),
-            # A isca da 16 sabota o PRÓPRIO check.py: é a única checagem cujo caso real é
-            # alguém editar o portão para caber. Foi o que aconteceu no primeiro projeto
-            # medido (teto do DECISIONS de 12.000 para 20.000, sem uma linha em lugar
-            # nenhum), e por isso a sabotagem precisa ser essa e não outra.
-            # A âncora leva os quatro espaços de propósito: sem eles o `replace` casaria
-            # PRIMEIRO com a linha do TETOS_PADRAO (que é o kit, e não se mexe), a isca
-            # mudaria o padrão junto com o teto, os dois continuariam iguais e ela passaria.
-            16: (lambda r: self.trocar(r, "scripts/check.py",
-                                       "    DECISOES: 12000,", "    DECISOES: 20000,"),
+            # A isca da 16 escreve a CONFIG, que é o caminho real desde o v13.10: o projeto
+            # declara o teto num dado versionado em vez de editar o portão. Sabotar o
+            # `check.py` provaria a mesma coisa por um caminho que o kit desencoraja.
+            16: (lambda r: (r / ".kit-config.json").write_text(
+                    '{"tetos": {"a_context/c_decisions.md": 20000}}', encoding="utf-8"),
                  "sobe em silêncio"),
+            # A 17 é a 1/2/15 aplicada a um registro que o KIT não conhece: quem o declarou
+            # paga orçamento por ele. Sem isto, mover uma tabela para arquivo próprio seria
+            # a forma legal de fugir de todo teto — e foi assim que um projeto real chegou
+            # a um backlog de 191 mil caracteres.
+            17: (lambda r: (
+                    (r / ".kit-config.json").write_text(
+                        '{"registros": ["a_context/d_qa.md"], "tetos": {"a_context/d_qa.md": 500}}',
+                        encoding="utf-8"),
+                    (r / "a_context/d_qa.md").write_text(
+                        "---\ntags: [qa]\n---\n# QA\n" + "z" * 600, encoding="utf-8"),
+                    self.anexar(r, "a_context/c_decisions.md",
+                                "| D-50 | 2026-08-27 | ADOTADO | d_qa.md como registro "
+                                "proprio dos achados | tabela estourava o DECISIONS |\n")),
+                 "orçamento declarado"),
         }
 
     def test_toda_falha_numerada_tem_isca(self):
@@ -800,14 +810,15 @@ class TestTodaChecagemTemIsca(unittest.TestCase):
                 self.assertIn(trecho, r.stdout,
                               f"FALHA {numero}: reprovou, mas por outro motivo.\n{r.stdout}")
 
-    def test_teto_elevado_COM_registro_passa(self):
+    def test_teto_elevado_pela_config_COM_registro_passa(self):
         """A contraprova da 16, e ela importa mais que a isca: a checagem não proíbe subir
         o teto — proíbe subir calado. Sem este teste, a forma mais fácil de "passar" na 16
         seria proibir a elevação, o que quebraria todo projeto grande e ensinaria o dono a
         rodar o portão com --no-verify (a checagem que emudece, vista do outro lado)."""
         with area_temporaria() as tmp:
             repo = montar_kit(Path(tmp) / "repo")
-            self.trocar(repo, "scripts/check.py", "    DECISOES: 12000,", "    DECISOES: 20000,")
+            (repo / ".kit-config.json").write_text(
+                '{"tetos": {"a_context/c_decisions.md": 20000}}', encoding="utf-8")
             self.anexar(repo, "a_context/c_decisions.md",
                         "| D-44 | 2026-08-24 | ADOTADO | teto de a_context/c_decisions.md "
                         "para 20.000 | arquivamento esgotado: todo D-NN vivo é citado |\n")
@@ -895,6 +906,23 @@ class TestNumeroDeclarado(unittest.TestCase):
             p.write_text(p.read_text(encoding="utf-8") + f"\n- **Registro:** {real}/12.000\n",
                          encoding="utf-8")
             self.assertNotIn("não se mantém à mão", rodar_check(repo).stdout)
+
+    def test_dois_arquivos_com_o_mesmo_teto_nao_se_atropelam(self):
+        """DECISIONS e BACKLOG têm o mesmo teto padrão (12.000). Enquanto a tabela interna
+        era indexada pelo NÚMERO do teto, um sobrescrevia o outro e o aviso comparava a
+        ocupação declarada com o arquivo errado — acusando divergência onde não havia.
+        Defeito cometido ao generalizar a tabela para tetos de projeto, pego por
+        `test_ocupacao_declarada_certa_cala`. Este teste fixa a lição na forma geral:
+        bater com QUALQUER arquivo daquele teto basta para calar."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            tamanho_backlog = len((repo / "b_process/c_backlog.md").read_text(encoding="utf-8"))
+            p = repo / "a_context/a_context_source.md"
+            p.write_text(p.read_text(encoding="utf-8") + f"\n- **Backlog:** {tamanho_backlog}/12.000\n",
+                         encoding="utf-8")
+            saida = rodar_check(repo).stdout
+            self.assertNotIn("não se mantém à mão", saida,
+                             f"o número bate com o BACKLOG e mesmo assim avisou:\n{saida}")
 
     def test_numero_alheio_ao_orcamento_nao_dispara(self):
         """`385/385` é suíte de teste, não orçamento. Aviso falso ensina a ignorar aviso."""
@@ -1495,6 +1523,74 @@ class TestSkillOrfa(unittest.TestCase):
             log.write_text(log.read_text(encoding="utf-8") + "\n## 2026-01-01\n- **Skill:** `testing`\n",
                            encoding="utf-8")
             self.assertNotIn("nunca rodou", rodar_check(repo).stdout)
+
+
+class TestConfigDoProjeto(unittest.TestCase):
+    """`.kit-config.json` existe por um custo medido: o primeiro projeto real precisou de um
+    teto maior e de um terceiro registro (`QA-NN` fora do DECISIONS), e a única saída que o
+    kit oferecia era EDITAR o `check.py`. O portão do projeto virou um fork oito versões
+    atrasado — com uma cegueira já corrigida no kit — e toda atualização o marcava como
+    'PROTEGIDO'. O projeto passou a medir a si mesmo com uma régua que não era mais a régua.
+
+    Estes testes guardam as duas metades: que a configuração FUNCIONA (o projeto não precisa
+    editar o script) e que ela não abre buraco (subir teto continua exigindo D-NN)."""
+
+    def montar(self, tmp, config: str, extras=()):
+        repo = montar_kit(Path(tmp) / "repo")
+        (repo / ".kit-config.json").write_text(config, encoding="utf-8")
+        for rel, texto in extras:
+            (repo / rel).write_text(texto, encoding="utf-8")
+        return repo
+
+    def test_registro_extra_faz_o_ID_existir(self):
+        """O caso que criou o fork: com os `QA-NN` em arquivo próprio, o kit os via como
+        fantasmas e reprovava todo commit. Declarar o registro resolve sem tocar no script."""
+        with area_temporaria() as tmp:
+            tabela = ("---\ntags: [qa]\n---\n# QA\n\n| # | Data | Sev. | O que | Fechado em |\n"
+                      "|---|---|---|---|---|\n| QA-42 | 2026-08-24 | BAIXO | algo | 2026-08-24 |\n")
+            repo = self.montar(tmp, '{"registros": ["a_context/d_qa.md"], '
+                                    '"tetos": {"a_context/d_qa.md": 8000}}',
+                               [("a_context/d_qa.md", tabela)])
+            self.anexar_texto(repo, "INDEX.md", "\n\nVer `QA-42` para o detalhe.\n")
+            # O registro extra é decisão: sem o D-NN que o declare, a FALHA 16 reprova.
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("não é registro do kit", r.stdout)
+            self.anexar_texto(repo, "a_context/c_decisions.md",
+                              "| D-50 | 2026-08-24 | ADOTADO | d_qa.md como registro próprio "
+                              "dos achados, teto 8.000 | tabela de QA estourava o DECISIONS |\n")
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 0, f"QA-42 devia existir pelo registro declarado:\n{r.stdout}")
+
+    def test_teto_extra_estourado_reprova(self):
+        with area_temporaria() as tmp:
+            repo = self.montar(tmp, '{"registros": ["a_context/d_qa.md"], '
+                                    '"tetos": {"a_context/d_qa.md": 500}}',
+                               [("a_context/d_qa.md", "---\ntags: [qa]\n---\n# QA\n" + "z" * 600)])
+            self.anexar_texto(repo, "a_context/c_decisions.md",
+                              "| D-50 | 2026-08-24 | ADOTADO | d_qa.md como registro próprio | x |\n")
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("orçamento declarado", r.stdout)
+
+    def test_config_quebrada_reprova_em_vez_de_valer_o_padrao(self):
+        """Teto que o dono acha que declarou e o script ignorou é pior que teto nenhum."""
+        with area_temporaria() as tmp:
+            repo = self.montar(tmp, '{"tetos": {"a_context/c_decisions.md": ')
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("não é JSON válido", r.stdout)
+
+    def test_sem_config_o_kit_entregue_continua_verde(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.assertFalse((repo / ".kit-config.json").exists(),
+                             "o kit não deve nascer com config: o padrão é o padrão")
+            self.assertEqual(rodar_check(repo).returncode, 0)
+
+    def anexar_texto(self, repo: Path, rel: str, texto: str):
+        p = repo / rel
+        p.write_text(p.read_text(encoding="utf-8") + texto, encoding="utf-8")
 
 
 class TestTravaDoPulo(unittest.TestCase):

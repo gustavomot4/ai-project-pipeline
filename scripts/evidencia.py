@@ -39,9 +39,12 @@ BACKLOG = "b_process/c_backlog.md"
 CHANGELOG = "d_history/a_changelog.md"
 ARQUIVO_MORTO = "e_qa/decisions_archive.md"
 SKILLS = "b_process/skills"
-# Tetos cobrados pelo check.py. Um projeto pode ter customizado o dele; por isso o
-# relatório imprime a ocupação E o teto, nunca só a porcentagem.
-TETOS = {CONTEXTO: 4000, DECISOES: 12000, BACKLOG: 12000}
+# Tetos cobrados pelo check.py. O projeto declara os dele em `.kit-config.json`, e o
+# relatório imprime OS DOIS números quando eles diferem: a ocupação contra o teto que
+# vale ali, e o padrão do kit ao lado. A distância entre eles é informação — mostra
+# quanto o teto foi afrouxado — e escondê-la seria medir com a régua que o medido escolheu.
+TETOS_PADRAO = {CONTEXTO: 4000, DECISOES: 12000, BACKLOG: 12000}
+CONFIG = ".kit-config.json"
 JSON = "--json" in sys.argv
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 
@@ -107,11 +110,22 @@ universo = "\n".join(list(texto.values()) + [ler(p) for p in extras])
 R = {"projeto": raiz.name, "medido_em": date.today().isoformat()}
 
 # --- orçamentos
+TETOS = dict(TETOS_PADRAO)
+cfg = raiz / CONFIG
+if cfg.exists():
+    try:
+        declarados = (json.loads(cfg.read_text(encoding="utf-8")) or {}).get("tetos") or {}
+    except (ValueError, OSError):
+        declarados = {}
+    TETOS.update({a: v for a, v in declarados.items() if isinstance(v, int) and v > 0})
+
 R["orcamentos"] = {}
 for arq, teto in TETOS.items():
-    if texto[arq]:
-        R["orcamentos"][arq] = {"chars": len(texto[arq]), "teto": teto,
-                                "pct": round(100 * len(texto[arq]) / teto, 1)}
+    corpo_arq = texto.get(arq) or ler(raiz / arq)
+    if corpo_arq:
+        R["orcamentos"][arq] = {"chars": len(corpo_arq), "teto": teto,
+                                "padrao": TETOS_PADRAO.get(arq),
+                                "pct": round(100 * len(corpo_arq) / teto, 1)}
 
 # --- D-NN
 dec = {}
@@ -258,15 +272,26 @@ print(f"EVIDÊNCIA MECÂNICA — {R['projeto']} — medido em {R['medido_em']}")
 print("Tudo abaixo saiu do git e dos arquivos. Nada saiu do que um documento diz de si.")
 
 titulo("Orçamentos")
+afrouxados = []
 for arq, o in R["orcamentos"].items():
     aviso = "  <== ESTOURADO" if o["pct"] > 100 else ("  <== perto do teto" if o["pct"] >= 80 else "")
     print(f"  {arq:<32} {o['chars']:>7} / {o['teto']:<6} {o['pct']:>5}%{aviso}")
+    if o.get("padrao") and o["teto"] > o["padrao"]:
+        afrouxados.append(f"{arq} ({o['padrao']} -> {o['teto']})")
+    elif o.get("padrao") is None:
+        afrouxados.append(f"{arq} (registro que o kit não prevê)")
 if not R["orcamentos"]:
     print("  nenhum registro encontrado.")
 else:
-    print("  (teto = o PADRÃO do kit. Projeto que subiu o próprio teto aparece aqui como")
-    print("   estourado e verde no portão dele — e a diferença entre os dois números é")
-    print("   informação, não erro: ela mostra quanto o teto foi afrouxado, e quando.)")
+    print("  (teto = o que vale NESTE projeto: o padrão do kit, ou o que ele declarou em")
+    print("   .kit-config.json. O portão cobra a elevação com um D-NN — teto que sobe em")
+    print("   silêncio não é teto, é lembrete.)")
+    if afrouxados:
+        print("  tetos afrouxados em relação ao padrão do kit:")
+        for linha in afrouxados:
+            print(f"    {linha}")
+        print("   A distância entre o teto do projeto e o do kit é informação, não erro:")
+        print("   ela mostra quanto o desenho original não coube.")
 
 d = R["decisoes"]
 titulo("Decisões (D-NN) — a lista-morta é a tese central do kit")
