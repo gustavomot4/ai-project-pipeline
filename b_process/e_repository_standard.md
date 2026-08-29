@@ -15,39 +15,72 @@ aliases: ["Padrão do repositório", "Convenções"]
 
 ## 1. As 3 regras que sustentam o padrão
 
-1. **Duas pastas, uma raiz limpa.** Toda documentação em `77777777_<TAG>_Project_DOCs/`; todo
-   código em uma única pasta. Na raiz ficam só o `README.md`, o `CLAUDE.md` e a configuração
-   do repositório.
+1. **A árvore da equipe, com prefixo alfabético.** Sete pastas de topo em ordem fixa
+   (`a_backend` `b_middleware` `c_frontend` `d_test` `e_doc` `f_infra` `z_mis`): o prefixo
+   existe para que a ordenação seja a mesma em qualquer explorador de arquivos, e para que a
+   documentação e a infraestrutura não se percam no meio do código. Na raiz ficam só o
+   `README.md`, o `CLAUDE.md` e a configuração do repositório.
 2. **Uma verdade por assunto.** Cada informação tem **um** dono. Nenhum arquivo repete o que
    outro já diz — ele **aponta**. Duplicata é dívida: envelhece em silêncio e depois mente.
 3. **O que não tem dono, não entra.** Arquivo sem papel definido (rascunho vazio, sonda
    descartável, cache, duplicata "por garantia") não é versionado. Se já entrou, sai — o
    histórico do git guarda.
 
-O prefixo `77777777_` não é enfeite: é o que mantém a documentação **sempre no topo** da
-árvore, acima de qualquer pasta de código, em qualquer explorador de arquivos.
+**Onde o kit mora nessa árvore:** o vault inteiro (contexto, processo, histórico, QA e
+scripts) é instalado em **`e_doc/0_Context/`** — a pasta que o padrão define como "contexto e
+planejamento". Projetos criados antes do `kit v13.14` têm o vault em
+`77777777_<TAG>_Project_DOCs/`, e **todos os scripts continuam reconhecendo as duas casas**:
+atualização que deixa de achar o projeto que ela mesma criou não é atualização, é abandono.
 
 ---
 
 ## 2. Estrutura
 
 ```
-<PROJETO>/
-├── 77777777_<TAG>_Project_DOCs/   # documentação
-│   ├── INDEX.md                   # nota-casa: mapa de navegação do vault
-│   ├── a_context/                 # a VERDADE do projeto
-│   ├── b_process/                 # como se TRABALHA (inclui skills/)
-│   ├── c_technical_docs/          # runbooks, guias, evidências de operação
-│   ├── d_history/                 # changelog datado
-│   ├── e_qa/                      # relatórios de QA, com timestamp no nome
-│   └── scripts/                   # check.py · install_hook.py
-├── <pasta_de_codigo>/             # todo o código + seu README técnico
-│   ├── <pacote>/ · tests/ · scripts/
-├── CLAUDE.md                      # contrato de leitura do agente
-├── .gitattributes                 # fim de linha LF
-├── .gitignore
-└── README.md                      # porta de entrada
+stf_pss_<ms|ap|cd>_<nome>/
+├── a_backend/
+│   ├── a_code/                    # código-fonte do backend
+│   └── d_doc/                     # DDL e documentação técnica
+├── b_middleware/                  # camada intermediária (opcional)
+├── c_frontend/
+│   ├── a_code/                    # código-fonte
+│   └── d_doc/                     # documentação técnica
+├── d_test/
+│   ├── a_data_dictionary/  b_test_unit/  c_test_integration/  c_test_system/
+│   └── d_test_load/  e_test_capacity/  f_test_performance/  g_test_security/
+├── e_doc/
+│   ├── 0_Context/                 # ← O VAULT DO KIT mora aqui, inteiro
+│   │   ├── INDEX.md               # nota-casa: mapa de navegação
+│   │   ├── a_context/             # a VERDADE do projeto
+│   │   ├── b_process/             # como se TRABALHA (inclui skills/)
+│   │   ├── c_technical_docs/      # runbooks, guias, evidências de operação
+│   │   ├── d_history/             # changelog datado
+│   │   ├── e_qa/                  # relatórios e arquivo-morto
+│   │   └── scripts/               # o portão e as ferramentas
+│   ├── 1_SPC/                     # especificação funcional e técnica
+│   ├── 2_BPM/                     # fluxos de processo
+│   ├── 3_MER/                     # modelo de dados
+│   └── 4_Class/                   # diagrama de classes
+├── f_infra/
+│   ├── a_docker/                  # Docker e Docker Compose
+│   └── b_terraform/               # Terraform (IaC)
+├── z_mis/                         # miscelânea, rascunho
+├── CLAUDE.md                      # contrato de leitura (a ferramenta carrega da raiz)
+├── README.md  .gitignore  .gitattributes
 ```
+
+Cada pasta nasce com um `LEIA-ME.md` de uma linha dizendo o que vai nela. Não é enfeite: o git
+não versiona pasta vazia, então sem ele a árvore chega pela metade no clone — e a regra 3
+("o que não tem dono, não entra") fica sem como ser aplicada a uma pasta que ninguém explicou.
+
+**Nomenclatura de artefato**, dentro de `e_doc/`:
+`stf_pss_<tipo>_<nome>_<papel>_<tópico>_<yymmdd_hhMM>.<ext>` — o timestamp é calculado **uma
+vez por execução** e repetido em todos os arquivos do mesmo conjunto, para que a leva inteira
+seja reconhecível de relance. Por fase: `1_SPC` traz `a_CHAT_functional` · `b_SPC_functional` ·
+`c_CHAT_technical` · `d_SPC_technical`; `2_BPM` traz `bpm_a_CHAT_<Op>` · `bpm_b_PRD_<Op>` ·
+`bpm_c_BPM_<Op>.drawio`; `3_MER` traz `mer_a_CHAT` · `mer_b_PRD` · `mer_c_MER.mermaid`;
+`4_Class` traz `class_a_CHAT` · `class_b_PRD` · `class_c_Class.mermaid`.
+
 
 **Neste kit** a documentação **é** a raiz: o repositório do kit é o molde da pasta de docs, e
 `new_project.py` a instala num projeto com o nome já trocado. É por isso que `check.py`
@@ -139,8 +172,35 @@ valia". `check.py` avisa quando falta.
 
 ## 6. Git
 
-- **Mensagem de commit:** `TIPO: o que mudou (por quê)`. Tipos em uso: `ADD`, `FIX`, `DOCS`,
-  `REFACTOR`, `CHORE`.
+- **Mensagem de commit — padrão da equipe (STF PSS), cobrado por hook `commit-msg`:**
+
+  ```
+  <STATUS>: <Tipo>: <Descrição>
+  ```
+
+  `STATUS` é `OK` (completo, funcional e revisado) ou `NOK` (em progresso). `Tipo` é um da
+  lista fechada: `Feat` · `Fix` · `Doc` · `Infra` · `Config` · `Chore` · `Deploy` · `Test` ·
+  `Style` · `Merge`. Um commit = uma unidade lógica de trabalho, e o detalhe adicional vai no
+  **segundo `-m`**, nunca na primeira linha:
+
+  ```
+  git commit -m "OK: Fix: Corrigir parser do relatório (QA-07)"              -m "A causa era o padding das tabelas; teste de regressão junto."
+  ```
+
+  Instale a trava com `python scripts/install_hook.py` — ela recusa a mensagem fora do
+  formato e diz **qual** é o erro (status minúsculo, tipo fora da lista, tipo não
+  capitalizado). Merge, revert, fixup e squash gerados pelo git passam sem discussão.
+- **Nome da branch:** `<u|v>_<nome>_<ss>` — `u_` para membro veterano, `v_` para membro novo;
+  primeira letra do nome mais as iniciais do sobrenome (`u_ezequiel_fc`, `v_ana_ps`).
+- **Nome do repositório:** `stf_pss_<tipo>_<nome>`, com `ms` (microserviço), `ap` (aplicação)
+  ou `cd` (cross-domain: infra, segurança, mock). Exemplos: `stf_pss_ms_graph`,
+  `stf_pss_ap_sat`, `stf_pss_cd_cloud`.
+- Os três acima entram como **AVISO** no `check.py`, não como falha — o histórico é imutável
+  e renomear repositório é decisão do dono. Projeto legitimamente fora do padrão declara
+  `"padrao_equipe": false` em `.kit-config.json`, e os três silenciam.
+- **Banco de dados:** tabelas `{TAG}_TP_*` / `{TAG}_TB_*` / `{TAG}_TB_*_CHANGE` e colunas com
+  prefixo de tipo (`u_ i_ s_ n_ ts_ b_`) — perfil completo em
+  [[d_db_stf_pss|perfil de banco]]. Não é cobrado por máquina: o portão não lê DDL.
 - Bug corrigido cita o **QA-NN**; decisão cita o **D-NN**. `check.py` reprova ID que não existe.
 - `.gitattributes` normaliza fim de linha para **LF** — evita o churn CRLF↔LF do Windows.
 - **Nunca versionar:** `.venv/`, `node_modules/`, `__pycache__/`, bancos regeneráveis,

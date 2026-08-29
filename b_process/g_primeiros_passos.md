@@ -18,12 +18,15 @@ quanto a IA lê a cada sessão**. O resto é apoio para essas três.
 ## A primeira hora
 
 ```
-python scripts/new_project.py ../meu-app --name "Meu App" --code src
-cd ../meu-app && git init
-python 77777777_*_Project_DOCs/scripts/task.py hook
+python scripts/new_project.py ../stf_pss_ms_meu_app --name "Meu App" --tipo ms
+cd ../stf_pss_ms_meu_app && git init
+python e_doc/0_Context/scripts/task.py hook
 ```
 
-Pronto: o portão passa a rodar em todo commit. Agora abra **um** arquivo,
+Pronto: o portão passa a rodar em todo commit, e a mensagem passa a ser cobrada no
+formato da equipe (`OK|NOK: Tipo: Descrição`). O projeto nasce na árvore do padrão —
+`a_backend/`, `c_frontend/`, `d_test/`, `e_doc/`, `f_infra/`, `z_mis/` —, e este kit
+mora em `e_doc/0_Context/`. Agora abra **um** arquivo,
 `a_context/a_context_source.md`, e preencha o objetivo, as restrições e a stack. Ele tem teto
 de 4.000 caracteres e é o único que **toda** sessão de IA carrega — por isso cada caractere
 ali é pago de novo em cada conversa.
@@ -51,8 +54,9 @@ Esta seção existe porque um kit honesto precisa dizer onde ele atrapalha. **N�
 - **Você não vai usar IA para escrever o código.** Quase tudo aqui existe para conter agente
   de IA. Sem isso, sobra burocracia.
 - **Você precisa de isolamento ou permissão fina** (sandbox, allowlist de comando). O kit não
-  faz isso — o portão dele pega o *commit*, não a *ação*. Use a trava de escopo
-  (`task.py escopo`) e as permissões da sua ferramenta de IA para essa metade.
+  faz isso — o portão dele pega o *commit*, não a *ação*. Use as duas travas de agente
+  (`task.py escopo` e `task.py portao`) e as permissões da sua ferramenta de IA para essa
+  metade: elas cobrem o caminho de quem tem pressa, não o de quem quer burlar.
 - **A equipe é grande e distribuída.** O kit foi medido com **uma** pessoa e **um**
   repositório. Não há papéis, permissões nem regras de time.
 - **Você quer garantia de que vai ficar mais rápido.** Ninguém mediu isso. As duas únicas
@@ -82,8 +86,11 @@ Se você guardar só três coisas deste kit, guarde estas:
 
 Ele diz o que fazer em cada mensagem. Duas regras de conduta:
 
-- **Não desligue.** `git commit --no-verify` existe para a emergência, não para o costume.
-  Portão que a pessoa aprende a pular é pior que portão nenhum.
+- **Não desligue — e, se desligar, diga por quê.** `git commit --no-verify` existe para a
+  emergência, não para o costume. Com a trava do pulo ligada (`task.py portao`), a mensagem
+  precisa trazer `SEM-PORTAO: <motivo>`; sem ela, o commit é recusado. Não é burocracia: sem
+  esse rastro ninguém — nem o `evidencia` — consegue dizer quantas vezes o portão foi pulado,
+  e portão com taxa de contorno desconhecida não tem taxa de contorno zero.
 - **Se ele reclamar de algo que não é problema de verdade, isso é um defeito DELE.** Anote e
   conte para quem mantém o kit. Portão que dá alarme falso ensina a ignorar alarme.
 

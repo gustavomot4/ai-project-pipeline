@@ -46,12 +46,13 @@ D-NN / QA-NN / Q-NN registrados em a_context/c_decisions.md
    → "Estado atual" de a_context/a_context_source.md reescrito POR SUBSTITUIÇÃO
      (nunca anexado no fim)
    → linha datada em d_history/a_changelog.md, com `- **Skill:** <nome>` (o script avisa se faltar)
-   → commit citando os IDs:  TIPO: o que mudou (D-NN/QA-NN)
+   → commit no padrão da equipe:  OK|NOK: Tipo: Descrição (D-NN/QA-NN)
    → lição nova? 1 linha em b_process/d_agent_learnings.md
 ```
 
 Antes de commitar: `python scripts/check.py`. Antes de entregar (Fase 6):
-`python scripts/check.py --historico-completo`.
+`python scripts/check.py --historico-completo`. Precisou pular o portão? A mensagem do commit
+leva `SEM-PORTAO: <motivo>` — pular é permitido, pular calado não.
 
 ## Limites deste kit (não os contorne em silêncio)
 

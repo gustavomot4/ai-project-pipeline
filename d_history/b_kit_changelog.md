@@ -8,6 +8,330 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.15] — 2026-08-29
+**O kit se declara ferramenta, não projeto da equipe — e a chave que permitia isso era grossa
+demais.** O dono decidiu: o kit não tem relação com a equipe e não há intenção de ser usado
+por ela; o padrão é seguido porque o kit **vai ser apresentado** a eles, e familiaridade vale.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **`padrao_equipe` passa a ligar um aviso por vez.** Além de `false` (desliga os três), aceita
+  `{"commit": true, "branch": false, "repositorio": false}`. A forma grossa obrigava a escolher
+  entre ruído e cegueira: o repositório do kit **não** é projeto da equipe — nome e branch fora
+  do padrão estão corretos ali —, mas as mensagens de commit dele são lidas por quem vai
+  avaliar o kit, e ali seguir o padrão é o ponto inteiro. Desligar os três para calar dois
+  seria desligar o que funciona.
+
+- **Chave desconhecida DENTRO de `padrao_equipe` também reprova**, pela mesma razão do resto da
+  config: `{"comit": true}` silenciaria um aviso sem que ninguém percebesse.
+
+- **A config do kit não viaja mais para projeto novo.** Ela fala do repositório do kit; copiada
+  para um projeto que É da equipe, desligaria justamente os avisos que ali estão certos.
+  Entrou nas exclusões do `new_project.py` — e quem pegou a falta de classificação foi
+  `TestNadaFicaForaDaAtualizacao`, a guarda escrita no v13.11 para exatamente este erro.
+
+- **O kit passa a ter `.kit-config.json` próprio**, com commit ligado e os outros dois
+  desligados. Efeito imediato e verificável: o portão deixou de reclamar de nome e branch, e
+  o aviso de commit caiu de 30/30 para 28/30 — número que se corrige sozinho a cada commit
+  novo, sem ninguém mexer nele.
+
+## [kit v13.14] — 2026-08-29
+**A estrutura de pastas do padrão da equipe, na risca — e o vault do kit muda de casa.**
+Era o conflito de fundo que o v13.13 deixou declarado como decisão do dono. Decidido: adotar.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **Projeto novo nasce na árvore da equipe.** As sete pastas de topo (`a_backend`
+  `b_middleware` `c_frontend` `d_test` `e_doc` `f_infra` `z_mis`) e as vinte subpastas, cada
+  uma com um `LEIA-ME.md` de uma linha dizendo o que vai nela. O LEIA-ME não é enfeite: **o
+  git não versiona pasta vazia**, então sem ele a árvore chega pela metade no clone — e a
+  regra 3 do padrão ("o que não tem dono, não entra") não teria como ser aplicada a uma pasta
+  que ninguém explicou.
+
+- **O vault do kit passa a morar em `e_doc/0_Context/`** — a pasta que o padrão define como
+  "contexto e planejamento" —, com a estrutura interna intacta. `77777777_<TAG>_Project_DOCs`
+  sai de cena para projeto novo. A pasta de código default vira `a_backend/a_code`, e entrou
+  `--tipo {ms,ap,cd}`, que compõe o nome `stf_pss_<tipo>_<nome>` e avisa quando a pasta de
+  destino diverge.
+
+- **As duas casas continuam reconhecidas, e isso é promessa, não gentileza.** `check.py`,
+  `evidencia.py`, `arquivar.py`, `escopo_hook.py` e o `--upgrade` procuram
+  `e_doc/0_Context/` primeiro e `*_Project_DOCs/` depois. O único projeto real construído com
+  este kit está na casa antiga: **atualização que deixa de achar o projeto que ela mesma criou
+  não é atualização, é abandono.** `TestAsDuasCasasDoVault` guarda as duas.
+
+- **O defeito que a mudança produziu, e que só apareceu rodando.** A trava de escopo liberava
+  a documentação comparando o **nome** da pasta do vault (`rel.startswith(vault.name + "/")`).
+  Isso funcionava porque `77777777_X_Project_DOCs` é filha direta da raiz; com o vault em
+  `e_doc/0_Context/` o nome vira `0_Context`, nenhum caminho começa por isso, e a trava
+  passaria a **bloquear a escrita na documentação** — ou seja, a impedir o fecho de sessão que
+  o próprio kit exige. Agora compara o CAMINHO relativo. Pego pelo teste que existe
+  exatamente para isso, e por nenhum outro.
+
+- **E um defeito meu, no teste.** A busca-e-troca em massa que criou o helper `vault_de()`
+  trocou também a linha DENTRO do helper: ele passou a chamar a si mesmo, e o resultado foi
+  `RecursionError` no meio de um `Path`. Regex que reescreve a definição junto com as chamadas
+  é armadilha conhecida — ficou o comentário no lugar, para a próxima vez.
+
+## [kit v13.13] — 2026-08-28
+**O padrão da equipe (STF PSS) entra no kit — e a parte que dá para cobrar, é cobrada.**
+Fonte: a página de padrões da equipe. O kit já dizia "padrão da equipe, aplicado em
+2026-08-03", mas descrevia um padrão anterior: o de commit divergia, e branch, nome de
+repositório e convenções de banco não existiam aqui.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **Mensagem de commit vira trava, não recomendação.** `scripts/mensagem_hook.py` é um hook
+  `commit-msg` que exige `OK|NOK: Tipo: Descrição`, com a lista fechada de tipos da equipe
+  (`Feat Fix Doc Infra Config Chore Deploy Test Style Merge`). **Precisa ser um hook separado
+  porque o `check.py` roda no `pre-commit`, antes de a mensagem existir** — nenhuma checagem
+  do portão jamais poderia ter cobrado isto.
+
+- **Ele diz QUAL é o erro, não "formato inválido".** Status em minúscula, tipo fora da lista e
+  tipo não capitalizado têm mensagens distintas, porque o erro mais comum é o segundo e o
+  diagnóstico genérico produz a segunda tentativa errada. Merge, revert, fixup e squash
+  escritos pelo git passam sem discussão: hook que briga com a ferramenta é hook desinstalado.
+
+- **Instalado junto com o portão.** `install_hook.py` passa a escrever os dois hooks e a
+  remover os dois — padrão que depende de um segundo comando lembrado é a mesma "disciplina
+  humana" que este kit passa o dia condenando.
+
+- **Três avisos novos, e são AVISO de propósito:** commits recentes fora do padrão, branch
+  fora de `<u|v>_<nome>_<ss>` e repositório fora de `stf_pss_<ms|ap|cd>_<nome>`. Falha seria
+  portão sem saída — o histórico é imutável e renomear repositório é decisão do dono. Os três
+  apontaram o próprio kit na primeira execução (30 de 30 commits, branch `kit-v13.5`, nome
+  `pipeline-projetos-IA`), que é exatamente o que se espera de um aviso honesto.
+
+- **`padrao_equipe: false` na config desliga os três.** Fork, espelho e o próprio kit são
+  legitimamente fora do padrão; sem a chave de desligar, o aviso vira ruído — e aviso que vira
+  ruído ensina a ignorar aviso.
+
+- **Convenções de banco viram perfil**: `b_process/profiles/d_db_stf_pss.md`, com
+  `{TAG}_TP_*` / `{TAG}_TB_*` / `{TAG}_TB_*_CHANGE` e os prefixos de coluna
+  (`u_ i_ s_ n_ ts_ b_`). O perfil **declara que não é cobrado por máquina**: o portão não lê
+  DDL, então na régua do próprio kit isso é 3, não 4. A checagem sobre `.sql` não existe
+  porque nenhum projeto medido com o kit tem banco — e o kit não escreve checagem para
+  problema que ninguém teve.
+
+- **Um defeito meu, pego pelo teste que eu tinha acabado de escrever.** A comparação sem
+  acento trocava um codepoint por vez (`ã`), passava a mão em `á` e `é`, e reprovava o código
+  certo. Teste que erra a normalização é pior que teste ausente: ele acusa o inocente.
+
+- **O que NÃO foi feito, e é decisão do dono:** a estrutura de pastas da equipe
+  (`a_backend/ b_middleware/ c_frontend/ d_test/ e_doc/{0_Context,1_SPC,2_BPM,3_MER,4_Class}
+  f_infra/ z_mis/`) conflita com o vault `77777777_<TAG>_Project_DOCs/` que o kit instala.
+  Adotá-la muda como **todo projeto novo nasce** e onde a documentação mora — é `D-NN`, não
+  detalhe de implementação.
+
+## [kit v13.12] — 2026-08-27
+**A configuração ganhou as três regras que um projeto real tinha no fork — e a chave
+desconhecida deixou de sumir calada.** O v13.10 devolveu ao TAP GO o portão do kit e
+declarou os tetos em `.kit-config.json`. Mas o fork daquele projeto não tinha só tetos:
+tinha **três regras** que o kit não oferecia. Elas foram embora no `--upgrade` **sem uma
+linha de aviso**, e o projeto passou a medir a si mesmo com uma régua que não era mais a
+régua — exatamente o defeito que o v13.10 existia para curar, cometido pela cura.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **`medir_sem_padding`** — mede o CONTEÚDO das tabelas, sem o padding de alinhamento.
+  Medido naquele projeto em 12/08: um formatador de Markdown alinhou as colunas do
+  registro e somou **2.048 caracteres de padding puro**, 17% do arquivo, sem uma palavra
+  nova; o portão reprovou um commit que só respondia uma questão. Sem a chave, o mesmo
+  registro pulou de **18.858 para 19.422** medidos no dia do `--upgrade` — 578 de folga
+  num teto de 20.000, com o formatador a um "salvar" de distância. **Padrão continua
+  `len()`**: quem não usa tabela em registro não paga nada por ela.
+
+- **`linha_max` {limite, isentas}** — a linha de registro acima do limite reprova. O teto
+  do ARQUIVO só morde quando já é tarde, e quem está no meio de uma sessão corta o que
+  estiver à mão, não o que devia sair. Medido: 141, 175 e 238 quando a linha delega a
+  evidência a uma nota; 922 e 978 quando não delega. `isentas` é lista **congelada**, no
+  dado versionado: registro append-only tem linha que ninguém PODE reescrever, e checagem
+  vermelha em linha inconsertável ensina a ignorar o script inteiro.
+
+- **`candidatas`: "mais_antigas" (padrão) | "nao_citadas"** — o critério do que o aviso
+  aponta para arquivar. Num projeto que preserva as REJEITADAS de propósito, o padrão
+  aponta **justamente para elas**: a lista-morta que a fase de evolução varre sem abrir o
+  arquivo. Medido no TAP GO no dia do upgrade: o aviso mandava arquivar 5 das 10
+  rejeitadas vivas. Aviso que manda apagar a memória de rejeição ensina a re-propor o que
+  já morreu — o oposto do que o registro existe para fazer.
+
+- **A correção que vale mais que as três: CHAVE DESCONHECIDA REPROVA.** Antes, `_cfg.get`
+  descartava em silêncio o que não reconhecia. Um erro de digitação em `linha_max` — ou
+  uma chave de um kit mais novo — produzia um arquivo bonito no diff, uma regra que o dono
+  acreditava ter, e verde por cima dela. **Falso verde é pior que vermelho e pior que
+  portão nenhum, porque mente com autoridade**, e é a mesma espécie do `QA-14`. Valor
+  inválido dentro de uma chave conhecida (`linha_max.limite: "400"`) também reprova, em
+  vez de desligar a regra.
+
+- **A régua passou a ser UMA.** `medida()` cobre os quatro orçamentos (CONTEXT, DECISIONS,
+  BACKLOG e os registros declarados), o peso dos cards fechados **e** a conferência da
+  ocupação escrita à mão no CONTEXT. Duas réguas no mesmo arquivo fariam a linha caber e o
+  arquivo estourar sem que nenhum número explicasse — e o aviso da ocupação declarada
+  acusaria divergência onde não há.
+
+- **13 testes novos** (112 no total, eram 99), e cada chave tem a contraprova junto da
+  isca: `medir_sem_padding` **não** é desconto geral (texto de verdade acima do teto segue
+  reprovando), `linha_max` isenta por ID e **não** perdoa a vizinha, `nao_citadas` **não**
+  vira "nunca aponta nada". Sem a contraprova, a forma mais fácil de passar em cada uma
+  seria desligá-la. FALHA **18** no cabeçalho, com isca própria; README a 38 julgadas.
+
+## [kit v13.11] — 2026-08-27
+**Quatro defeitos que só apareceram ao migrar um projeto real — e três deles eram meus, de
+ontem.** A migração do TAP GO (v13.1 -> v13.10) não terminou com o portão verde: terminou
+com quatro coisas quebradas que nenhum teste tinha visto, porque nenhum teste roda numa
+sessão que muda de projeto no meio.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **A trava do pulo estava BLOQUEANDO todo comando.** O `settings.json` guardava
+  `python scripts/portao_hook.py` — caminho relativo, resolvido contra o diretório de
+  TRABALHO do agente. Bastou a sessão passar a trabalhar noutro projeto para o caminho
+  apontar para o vazio; o hook morreu, e o Claude Code trata hook morto como bloqueio.
+  Uma sessão inteira ficou sem executar comando nenhum. **Hook que bloqueia por bug
+  próprio é o pior caso do kit**, e o kit inteiro existe para condenar isso — em duas
+  skills, com todas as letras — enquanto o cometia na versão anterior.
+  Agora o comando resolve por `CLAUDE_PROJECT_DIR`, com o caminho absoluto da instalação
+  como reserva, e **sai 0 em silêncio se o script não estiver lá** (outro clone, outra
+  máquina): a trava some, nunca trava. Dois testes novos, um rodando o comando instalado
+  de OUTRO diretório e outro com o script apagado.
+
+- **`g_primeiros_passos.md` nunca entrou na lista `DO_KIT`.** Nasceu no v13.8, foi para os
+  projetos NOVOS (a cópia leva tudo o que não está excluído) e ficou invisível para o
+  `--upgrade`, que trabalha por lista. Como o `INDEX.md` É atualizado e aponta para ele,
+  **todo projeto que atualizasse ganhava um wikilink quebrado e um portão vermelho** —
+  causado pela atualização. Medido no TAP GO, na primeira tentativa.
+
+- **A guarda genérica, que é o conserto de verdade:** `TestNadaFicaForaDaAtualizacao`
+  exige que todo arquivo entregue a projeto novo esteja OU em `DO_KIT` (processo, o kit
+  atualiza) OU em `NUNCA` (verdade do projeto). Não existe terceira gaveta, e ficar fora
+  das duas é como o arquivo some na atualização. Ela achou mais quatro casos além do
+  conhecido: `.claude/`, `.obsidian/` e `LICENSE` foram para `NUNCA`, `.gitattributes`
+  para `DO_KIT`, e `.claude/settings.local.json` para as exclusões — configuração pessoal
+  de uma máquina não viaja para o repositório de outra pessoa.
+
+- **A FALHA 16 reprovava um projeto que TINHA registrado a decisão.** Ela exigia o nome do
+  arquivo com extensão (`d_qa.md`) e a casa cita registro por wikilink: `[[d_qa|QA]]`. É a
+  terceira ocorrência da espécie do `QA-14` — a checagem que não casa com o jeito que a
+  casa escreve é uma checagem cega. Agora casa pelo talo (`d_qa`).
+
+- **O portão mandava arquivar quando não havia mais nada a arquivar.** Depois de o TAP GO
+  arquivar 86% do backlog, a mensagem continuava dizendo "rode `arquivar.py`" e o
+  arquivador respondia "nenhum card arquivável" — o peso tinha passado para ponteiro, card
+  aberto e prosa, que ele não poda. **Portão sem saída ensina `--no-verify`**: a mensagem
+  agora diz o que fazer quando o arquivador está esgotado.
+
+- **O critério de conclusão do TAP GO foi CONGELADO** — `docs/f_criterio_conclusao_tapgo_260827.md`,
+  9.706 bytes, em 2026-08-27 14:01 UTC:
+
+      SHA-256  a9f129bd84af97c0f845a7b9c6c96ff0f6b5251386a0edbffb462832fddc8de7
+
+  Confira a qualquer momento com
+  `python -c "import hashlib,pathlib;print(hashlib.sha256(pathlib.Path('docs/f_criterio_conclusao_tapgo_260827.md').read_bytes()).hexdigest())"`.
+  Número diferente = arquivo editado depois do congelamento, e a regra 3 dele diz o que
+  fazer: arquivo novo, datado, dizendo o que mudou — nunca edição silenciosa.
+  Dois defeitos do rascunho foram consertados ANTES de congelar: ele mandava colar o hash
+  dentro do próprio arquivo (o que invalida o hash no ato) e guardava a tabela das 6 tarefas
+  do recorte, que só se preenche depois — o que se preenche depois não mora dentro do que
+  está congelado, e por isso o recorte ganhou arquivo e hash próprios.
+  E o `H3` ganhou marco zero explícito: a elevação de teto de hoje (`D-93`) **já está
+  gasta**, então qualquer outra até o fim do projeto reprova a hipótese. Sem essa data, a
+  contagem seria ambígua a favor do kit.
+
+- **O que a migração provou sobre a lista-morta.** A decisão que bifurcou o portão do TAP
+  GO (`D-50`, 12/08) já declarava o custo: *"o `check.py` sai do sha do kit e não recebe
+  mais correção por upgrade"*. Quinze dias depois, o custo chegou exatamente como escrito.
+  Não foi preciso descobrir o problema — ele estava registrado. É a tese do kit
+  funcionando, e é a evidência menos circular desta semana.
+
+## [kit v13.10] — 2026-08-27
+**O projeto para de editar o portão — e isso nasceu de um fork medido, não de uma ideia.**
+Ao preparar a atualização do primeiro projeto real (TAP GO, parado no `kit v13.1`), o
+`--upgrade` marcou `scripts/check.py` como PROTEGIDO: o projeto tinha editado o portão para
+subir o teto do DECISIONS para 20.000 e para criar um terceiro registro (`a_context/d_qa.md`,
+os `QA-NN` que não cabiam mais). Consequência medida: **o portão daquele projeto é um fork
+oito versões atrasado**, com a cegueira do `QA-14` — a checagem de ID que enxergava 12% —
+ainda dentro dele, e sem receber nenhuma correção posterior. O projeto passou a medir a si
+mesmo com uma régua que não é mais a régua.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **`.kit-config.json`: o que se editava agora se declara.** No vault, versionado:
+  `{"tetos": {"a_context/c_decisions.md": 20000, "a_context/d_qa.md": 8000},
+  "registros": ["a_context/d_qa.md"]}`. `tetos` é orçamento por caminho; `registros` são os
+  arquivos onde um ID D-/Q-/QA- também pode NASCER. O `check.py` volta a ser byte a byte
+  igual ao do kit em qualquer projeto, e a atualização deixa de conflitar.
+
+- **Sem isso, a única saída era editar o script.** Um projeto que move os `QA-NN` para
+  arquivo próprio via o kit tratar TODOS eles como "ID fantasma" — o portão reprovava todo
+  commit. Diante disso, editar o `check.py` não era desleixo: era a única porta aberta. O
+  kit agora abre a terceira.
+
+- **Registro extra paga o mesmo pedágio do teto (FALHA 16).** Criar o terceiro caderno nasce
+  da mesma decisão que eleva um teto — "o desenho de dois não coube" — e por isso também
+  exige um `D-NN` que o mencione. Configuração não é lugar de decisão silenciosa.
+
+- **Config quebrada REPROVA, não vale o padrão em silêncio.** Teto que o dono acha que
+  declarou e o script ignorou é pior que teto nenhum.
+
+- **A isca da FALHA 16 mudou de alvo.** Antes sabotava o `check.py`; agora escreve a config,
+  que é o caminho real. A checagem é a mesma; o caso que ela imita é que passou a ser outro.
+
+- **`evidencia.py` lê a config e mostra os DOIS números.** Ocupação contra o teto que vale no
+  projeto, e uma seção nova listando "tetos afrouxados em relação ao padrão do kit". Medir
+  com a régua que o medido escolheu seria circular; esconder a distância entre as duas
+  réguas seria pior.
+
+- **O `--upgrade` passou a gritar quando o portão está editado**, com o formato da config na
+  tela e o caminho de migração — porque o dono só descobria o problema quando já tinha oito
+  versões de atraso.
+
+## [kit v13.9] — 2026-08-24
+**As duas travas que a segunda rodada do benchmarking cobrou — e as duas doem.**
+A rodada nova refez os critérios para que o kit pudesse perder: saiu "honestidade sobre
+limites" (auto-retrato: descrevia a doutrina do próprio kit e não separava os concorrentes
+entre si), entrou "segurança e isolamento", e "prova de eficácia" passou a exigir medição
+INDEPENDENTE. Com a régua assim, o kit caiu de 1º (33 pontos entre 9) para penúltimo
+(23 pontos entre 13). O kit não piorou; a régua parou de ser um retrato dele. As duas
+mudanças abaixo atacam as duas notas que a medição do PRÓPRIO kit falseou.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **FALHA 16: teto elevado sem registro.** A tese central do kit é "orçamento cobrado por
+  script" — e ela estava falseada pelo próprio kit no único projeto real medido: backlog em
+  **191.591 caracteres (1.596% do teto)**, registro de decisões em 157% **depois** de o teto
+  dele ter sido elevado de 12.000 para 20.000 dentro do projeto. O portão continuava verde
+  porque cobrava o número que a própria vítima acabara de escolher, e a edição não deixava
+  rastro nenhum. Agora deixa: `TETOS_PADRAO` é o kit e não se mexe, `TETOS` é o projeto e
+  pode subir — subir **sem uma linha D-NN que registre a elevação** reprova o commit.
+  Um limite que sobe em silêncio não é limite, é lembrete.
+
+- **A checagem NÃO proíbe subir, e o teste que mais importa é esse.** Proibir quebraria todo
+  projeto grande e ensinaria o `--no-verify` — a doença que o kit condena, vista do outro
+  lado. `test_teto_elevado_COM_registro_passa` é a contraprova: com a linha registrada, passa.
+  A isca da 16 sabota o **próprio check.py** (é o caso real: alguém editar o portão para
+  caber), e leva quatro espaços na âncora de propósito — sem eles ela casaria primeiro com o
+  `TETOS_PADRAO`, mudaria os dois juntos e passaria sem sabotar nada.
+
+- **Trava do pulo (`scripts/portao_hook.py`, `task.py portao`).** O relatório de evidência
+  tinha uma linha constrangedora na seção "o que este relatório NÃO mede": *"se um commit
+  passou com --no-verify. Não fica rastro no histórico."* Era o contorno invisível do
+  mecanismo que o kit mais vende. Agora um hook `PreToolUse` sobre o Bash recusa
+  `git commit --no-verify` (e o atalho `-n`, e `-nm`) quando a mensagem não traz
+  `SEM-PORTAO: <motivo>`. **Pular continua permitido; pular calado, não.**
+
+- **E o item saiu de "não medido" para uma linha do relatório.** `evidencia.py` passa a contar
+  os commits com `SEM-PORTAO:` e imprime "pelo menos N" — nunca um total, porque pulo feito
+  fora do agente segue invisível. Zero ali significa "nenhum pulo declarado", não "nenhum
+  pulo", e o relatório escreve isso com todas as letras.
+
+- **Limite declarado, não fechado (regra 5).** `git -c core.hooksPath=…`, `HUSKY=0`,
+  desinstalar o hook ou rodar o git fora do agente continuam burlando sem rastro. A trava
+  cobre o caminho de quem tem pressa, não o de quem quer fraudar — e o docstring do hook diz
+  isso antes que alguém descubra sozinho.
+
+- **A checagem trabalha sobre palavras, não sobre substring.** `git commit -m "docs: explica
+  por que --no-verify deixa rastro"` não desliga nada e não pode ser bloqueado: alarme falso é
+  como o kit ensina a ignorar alarme. Tem teste.
+
+- **O que o benchmarking cobrou e NÃO foi feito aqui** (fica no BACKLOG, declarado): o grupo
+  de controle (Claude Code + MADR + `pre-commit` clássico + ADR na CI, para medir quanto do
+  diferencial se replica numa tarde), o corte do catálogo de 24 skills para as 10 que
+  dispararam, e o instalador de um comando que tornaria possível existir uma **segunda
+  pessoa** — sem a qual toda nota do kit continua sendo auto-relato.
+
 ## [kit v13.8] — 2026-08-22
 **As três melhorias implementáveis que o benchmarking apontou, e o estudo de MCP.**
 O benchmarking contra oito alternativas de mercado deixou sete recomendações. Três dependem

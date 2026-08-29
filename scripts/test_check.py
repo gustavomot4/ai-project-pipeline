@@ -100,6 +100,18 @@ def montar_kit(destino: Path) -> Path:
     return destino
 
 
+def vault_de(projeto: Path) -> Path:
+    """O vault do projeto, nas duas casas possíveis. Os testes criam projeto com o
+    `new_project.py`, que desde o v13.14 instala em `e_doc/0_Context/` (padrão da equipe);
+    a casa antiga fica reconhecida porque os scripts também a reconhecem."""
+    equipe = projeto / "e_doc" / "0_Context"
+    if (equipe / "a_context").is_dir():
+        return equipe
+    # NAO trocar por vault_de(): a substituicao em massa que criou este helper
+    # trocou tambem esta linha, e o helper passou a chamar a si mesmo.
+    return next(projeto.glob("*_Project_DOCs"))
+
+
 def plantar_segredo(repo: Path):
     """Segredo que ENTRA e SAI da árvore: some do working tree, fica no histórico."""
     (repo / "vazou.txt").write_text(ISCA + "\n", encoding="utf-8")
@@ -252,7 +264,7 @@ class TestProjetoNovo(unittest.TestCase):
             destino = Path(tmp) / "novo"
             r = rodar_script("new_project.py", str(destino), "--nome", "App Teste", cwd=kit)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-            docs = next(destino.glob("*_Project_DOCs"))
+            docs = vault_de(destino)
             self.assertFalse((docs / "docs").exists(), "auditoria do kit vazou para o projeto")
             # Infraestrutura de desenvolvimento DO KIT não é entregável de projeto. O CI
             # cairia dentro da pasta de docs (onde o Actions não procura) e a suíte de
@@ -280,7 +292,7 @@ class TestAtualizacao(unittest.TestCase):
         projeto = Path(tmp) / "projeto"
         r = rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        docs = next(projeto.glob("*_Project_DOCs"))
+        docs = vault_de(projeto)
         # trabalho do dono, um por categoria de verdade
         (docs / "a_context/c_decisions.md").write_text(
             (docs / "a_context/c_decisions.md").read_text(encoding="utf-8")
@@ -350,6 +362,43 @@ class TestAtualizacao(unittest.TestCase):
             self.assertIn("não commitadas", r2.stdout)
 
 
+class TestNadaFicaForaDaAtualizacao(unittest.TestCase):
+    """`DO_KIT` é uma lista mantida à mão, e lista mantida à mão sai de sincronia.
+
+    Aconteceu: `b_process/g_primeiros_passos.md` nasceu no v13.8, entrou na cópia de projeto
+    NOVO (que copia tudo o que não está excluído) e nunca entrou no `DO_KIT`, que é o que a
+    ATUALIZAÇÃO usa. Resultado medido no primeiro projeto real: o `INDEX.md` — esse sim
+    atualizado — passou a apontar para um arquivo que o projeto nunca receberia, e o portão
+    do projeto ficou vermelho com "wikilink sem destino" logo depois de atualizar.
+
+    Este teste fecha a classe: todo arquivo que o kit entrega a um projeto novo tem de ser
+    OU processo (o kit atualiza, `DO_KIT`) OU verdade do projeto (`NUNCA`). Não existe
+    terceira gaveta, e ficar fora das duas é como o arquivo desaparece na atualização."""
+
+    def test_todo_arquivo_entregue_e_processo_ou_verdade_do_projeto(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("np", KIT / "scripts/new_project.py")
+        np = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(np)
+
+        orfaos = []
+        for origem in sorted(KIT.rglob("*")):
+            if origem.is_dir():
+                continue
+            rel = origem.relative_to(KIT).as_posix()
+            if any(p in np.EXCLUIR_PASTAS for p in Path(rel).parts):
+                continue
+            if rel in np.EXCLUIR_ARQUIVOS or origem.name.endswith(np.EXCLUIR_SUFIXOS):
+                continue
+            coberto = any(rel == d or rel.startswith(d) for d in np.DO_KIT + np.NUNCA)
+            if not coberto:
+                orfaos.append(rel)
+        self.assertEqual(orfaos, [],
+                         "arquivo entregue a projeto novo e invisível para o --upgrade "
+                         "(acrescente a DO_KIT se é processo, ou a NUNCA se é do projeto): "
+                         + ", ".join(orfaos))
+
+
 class TestCustomizacaoPreservada(unittest.TestCase):
     """A atualização NÃO pode sobrescrever arquivo do kit que o dono editou.
 
@@ -363,7 +412,7 @@ class TestCustomizacaoPreservada(unittest.TestCase):
             kit = montar_kit(Path(tmp) / "kit")
             projeto = Path(tmp) / "projeto"
             rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
-            docs = next(projeto.glob("*_Project_DOCs"))
+            docs = vault_de(projeto)
             self.assertTrue((docs / ".kit-manifest").exists(), "manifesto não foi gravado")
 
             alvo = docs / "b_process/skills/planner/SKILL.md"
@@ -395,7 +444,7 @@ class TestCustomizacaoPreservada(unittest.TestCase):
             kit = montar_kit(Path(tmp) / "kit")
             projeto = Path(tmp) / "projeto"
             rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
-            docs = next(projeto.glob("*_Project_DOCs"))
+            docs = vault_de(projeto)
             alvo = docs / "b_process/skills/planner/SKILL.md"
             alvo.write_text(alvo.read_text(encoding="utf-8") + "\nlocal\n", encoding="utf-8")
             p = kit / "b_process/skills/planner/SKILL.md"
@@ -767,6 +816,36 @@ class TestTodaChecagemTemIsca(unittest.TestCase):
                         f"- [x] T-{i:02d} — tarefa {i} · **Módulo:** M1\n  {'peso ' * 40}\n"
                         for i in range(60))),
                  "c_backlog.md com"),
+            # A isca da 16 escreve a CONFIG, que é o caminho real desde o v13.10: o projeto
+            # declara o teto num dado versionado em vez de editar o portão. Sabotar o
+            # `check.py` provaria a mesma coisa por um caminho que o kit desencoraja.
+            16: (lambda r: (r / ".kit-config.json").write_text(
+                    '{"tetos": {"a_context/c_decisions.md": 20000}}', encoding="utf-8"),
+                 "sobe em silêncio"),
+            # A 17 é a 1/2/15 aplicada a um registro que o KIT não conhece: quem o declarou
+            # paga orçamento por ele. Sem isto, mover uma tabela para arquivo próprio seria
+            # a forma legal de fugir de todo teto — e foi assim que um projeto real chegou
+            # a um backlog de 191 mil caracteres.
+            17: (lambda r: (
+                    (r / ".kit-config.json").write_text(
+                        '{"registros": ["a_context/d_qa.md"], "tetos": {"a_context/d_qa.md": 500}}',
+                        encoding="utf-8"),
+                    (r / "a_context/d_qa.md").write_text(
+                        "---\ntags: [qa]\n---\n# QA\n" + "z" * 600, encoding="utf-8"),
+                    self.anexar(r, "a_context/c_decisions.md",
+                                "| D-50 | 2026-08-27 | ADOTADO | d_qa.md como registro "
+                                "proprio dos achados | tabela estourava o DECISIONS |\n")),
+                 "orçamento declarado"),
+            # A 18 é inerte sem a chave, então a isca declara a chave E a viola. Só
+            # `linha_max` na CONFIG: acrescentar um teto aqui reprovaria pela 16 e o
+            # `assertIn` passaria pelo motivo errado.
+            18: (lambda r: (
+                    (r / ".kit-config.json").write_text(
+                        '{"linha_max": {"limite": 120}}', encoding="utf-8"),
+                    self.anexar(r, "a_context/c_decisions.md",
+                                "| D-60 | 2026-08-27 | ADOTADO | decisao curta | "
+                                + "evidencia " * 30 + "|\n")),
+                 "Linha de registro acima de"),
         }
 
     def test_toda_falha_numerada_tem_isca(self):
@@ -790,6 +869,22 @@ class TestTodaChecagemTemIsca(unittest.TestCase):
                 self.assertIn(trecho, r.stdout,
                               f"FALHA {numero}: reprovou, mas por outro motivo.\n{r.stdout}")
 
+    def test_teto_elevado_pela_config_COM_registro_passa(self):
+        """A contraprova da 16, e ela importa mais que a isca: a checagem não proíbe subir
+        o teto — proíbe subir calado. Sem este teste, a forma mais fácil de "passar" na 16
+        seria proibir a elevação, o que quebraria todo projeto grande e ensinaria o dono a
+        rodar o portão com --no-verify (a checagem que emudece, vista do outro lado)."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            (repo / ".kit-config.json").write_text(
+                '{"tetos": {"a_context/c_decisions.md": 20000}}', encoding="utf-8")
+            self.anexar(repo, "a_context/c_decisions.md",
+                        "| D-44 | 2026-08-24 | ADOTADO | teto de a_context/c_decisions.md "
+                        "para 20.000 | arquivamento esgotado: todo D-NN vivo é citado |\n")
+            r = rodar_check(repo)
+            self.assertNotIn("sobe em silêncio", r.stdout,
+                             f"a elevação estava registrada e mesmo assim reprovou:\n{r.stdout}")
+
     def test_kit_entregue_passa_sem_isca(self):
         """Contraprova: sem sabotagem, o portão não pode reprovar. Sem isto, uma isca que
         reprova por acidente (e não pelo que ela sabota) passaria despercebida."""
@@ -797,6 +892,173 @@ class TestTodaChecagemTemIsca(unittest.TestCase):
             repo = montar_kit(Path(tmp) / "repo")
             r = rodar_check(repo)
             self.assertEqual(r.returncode, 0, f"o kit entregue reprova sozinho:\n{r.stdout}")
+
+
+class TestChavesDaConfig(unittest.TestCase):
+    """As três chaves que o v13.12 acrescentou à CONFIG, e a razão de existirem.
+
+    Um projeto real tinha escrito as três regras no PRÓPRIO `check.py`, porque o kit não
+    as oferecia. O `--upgrade` do v13.10 devolveu o portão do kit e as três sumiram sem
+    uma linha de aviso — o projeto passou a medir a si mesmo com uma régua que não era
+    mais a régua, e não havia como saber. O que estes testes protegem não é a feature: é
+    a propriedade de que regra declarada é regra cobrada, e chave que o kit não entende
+    reprova em vez de sumir.
+    """
+
+    def config(self, repo: Path, texto: str):
+        (repo / ".kit-config.json").write_text(texto, encoding="utf-8")
+
+    def anexar(self, repo: Path, rel: str, texto: str):
+        p = repo / rel
+        p.write_text(p.read_text(encoding="utf-8") + texto, encoding="utf-8")
+
+    # ---- chave desconhecida -------------------------------------------------
+    def test_chave_desconhecida_reprova(self):
+        """O defeito que originou as três: a chave que some calada."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"linha_maxima": {"limite": 400}}')
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, f"chave errada passou calada:\n{r.stdout}")
+            self.assertIn("linha_maxima", r.stdout)
+
+    def test_config_so_com_chaves_validas_nao_reclama(self):
+        """Contraprova: a checagem não pode reprovar quem escreveu certo."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"medir_sem_padding": true, "candidatas": "nao_citadas"}')
+            self.assertNotIn("nao conhece", rodar_check(repo).stdout)
+
+    # ---- medir_sem_padding --------------------------------------------------
+    def tabela_alinhada(self, colunas=2, linhas=40, largura=90):
+        """Tabela cujo conteúdo é curto e cujo PADDING é grande — é a forma que um
+        formatador de Markdown produz ao alinhar colunas."""
+        return "".join(
+            "| " + " | ".join("x".ljust(largura) for _ in range(colunas)) + " |\n"
+            for _ in range(linhas))
+
+    def test_sem_a_chave_o_padding_conta(self):
+        """O padrão do kit não muda: quem não declara continua medido por `len()`."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.anexar(repo, "a_context/c_decisions.md", self.tabela_alinhada(linhas=80))
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, f"o padding não contou sem a chave:\n{r.stdout}")
+            self.assertIn("acima de 12.000", r.stdout)
+
+    def test_com_a_chave_o_mesmo_arquivo_cabe(self):
+        """O mesmo conteúdo, o mesmo teto: só o alinhamento sai da conta. É a prova de
+        que a régua mede o texto e não o formatador de quem salvou por último."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.anexar(repo, "a_context/c_decisions.md", self.tabela_alinhada(linhas=80))
+            self.config(repo, '{"medir_sem_padding": true}')
+            r = rodar_check(repo)
+            self.assertNotIn("acima de 12.000", r.stdout)
+
+    def test_a_chave_nao_e_desconto_geral(self):
+        """Ela tira o padding, não o conteúdo: texto de verdade acima do teto reprova
+        com a chave ligada. Sem este teste, `medir_sem_padding` poderia virar a forma
+        legal de fugir do orçamento — que é o oposto do que ela existe para fazer."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"medir_sem_padding": true}')
+            self.anexar(repo, "a_context/c_decisions.md", "\n" + "y" * 12100)
+            self.assertIn("acima de 12.000", rodar_check(repo).stdout)
+
+    # ---- linha_max ----------------------------------------------------------
+    def linha(self, ident, tamanho):
+        return f"| {ident} | 2026-08-27 | ADOTADO | curta | " + "z" * tamanho + " |\n"
+
+    def test_sem_a_chave_linha_longa_passa(self):
+        """Inerte por padrão: o kit não tem opinião sobre o tamanho da linha de ninguém."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.anexar(repo, "a_context/c_decisions.md", self.linha("D-60", 900))
+            self.assertNotIn("Linha de registro acima de", rodar_check(repo).stdout)
+
+    def test_isenta_congelada_nao_reprova(self):
+        """A contraprova que importa mais que a isca: registro append-only tem linhas que
+        ninguém PODE reescrever, e checagem vermelha em linha inconsertável ensina a
+        ignorar o script inteiro."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"linha_max": {"limite": 120, "isentas": ["D-60"]}}')
+            self.anexar(repo, "a_context/c_decisions.md", self.linha("D-60", 900))
+            r = rodar_check(repo)
+            self.assertNotIn("Linha de registro acima de", r.stdout)
+
+    def test_isencao_e_por_ID_e_nao_perdoa_a_vizinha(self):
+        """Isenção que virasse janela móvel apagaria a regra em silêncio."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"linha_max": {"limite": 120, "isentas": ["D-60"]}}')
+            self.anexar(repo, "a_context/c_decisions.md",
+                        self.linha("D-60", 900) + self.linha("D-61", 900))
+            saida = rodar_check(repo).stdout
+            self.assertIn("D-61", saida)
+            self.assertNotIn("D-60 (", saida)
+
+    def test_limite_invalido_reprova_em_vez_de_desligar(self):
+        """Valor errado não pode virar "regra desligada": é o falso verde de novo."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"linha_max": {"limite": "400"}}')
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("linha_max.limite", r.stdout)
+
+    # ---- candidatas ---------------------------------------------------------
+    def encher(self, repo: Path, ate=0.95):
+        """Leva o DECISIONS ao aviso de 90% sem estourar o teto — é lá que a lista de
+        candidatas é impressa."""
+        alvo = int(12000 * ate)
+        p = repo / "a_context/c_decisions.md"
+        atual = p.read_text(encoding="utf-8")
+        p.write_text(atual + "\n" + "w" * max(0, alvo - len(atual)), encoding="utf-8")
+
+    def test_padrao_continua_apontando_as_mais_antigas(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.anexar(repo, "a_context/c_decisions.md",
+                        "| D-60 | 2026-08-27 | ADOTADO | uma decisao | evidencia |\n")
+            self.encher(repo)
+            self.assertIn("D-60", rodar_check(repo).stdout)
+
+    def test_nao_citadas_ignora_o_ID_que_algum_md_vivo_cita(self):
+        """O caso que motivou a chave: num projeto que preserva as REJEITADAS de
+        propósito, o critério antigo apontava justamente para elas — a lista-morta que a
+        fase de evolução varre sem abrir o arquivo."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"candidatas": "nao_citadas"}')
+            self.anexar(repo, "a_context/c_decisions.md",
+                        "| D-60 | 2026-08-27 | REJEITADO | nao repetir isto | o numero que matou |\n")
+            self.anexar(repo, "INDEX.md", "\n\nA razao esta em `D-60`.\n")
+            self.encher(repo)
+            saida = rodar_check(repo).stdout
+            # O que se prova e a AUSENCIA: o ID citado sai da lista. Que o template tenha
+            # outros IDs nao citados e ruido do fixture, nao do criterio.
+            self.assertIn("Candidatas:", saida)
+            self.assertNotIn("D-60", saida)
+
+    def test_nao_citadas_ainda_aponta_o_ID_que_ninguem_cita(self):
+        """Contraprova: a chave não pode virar "nunca aponta nada"."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"candidatas": "nao_citadas"}')
+            self.anexar(repo, "a_context/c_decisions.md",
+                        "| D-60 | 2026-08-27 | ADOTADO | ninguem me cita | x |\n")
+            self.encher(repo)
+            self.assertIn("D-60", rodar_check(repo).stdout)
+
+    def test_valor_invalido_de_candidatas_reprova(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.config(repo, '{"candidatas": "as_feias"}')
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("candidatas", r.stdout)
 
 
 class TestInstrumentacaoDaSessao(unittest.TestCase):
@@ -870,6 +1132,23 @@ class TestNumeroDeclarado(unittest.TestCase):
             p.write_text(p.read_text(encoding="utf-8") + f"\n- **Registro:** {real}/12.000\n",
                          encoding="utf-8")
             self.assertNotIn("não se mantém à mão", rodar_check(repo).stdout)
+
+    def test_dois_arquivos_com_o_mesmo_teto_nao_se_atropelam(self):
+        """DECISIONS e BACKLOG têm o mesmo teto padrão (12.000). Enquanto a tabela interna
+        era indexada pelo NÚMERO do teto, um sobrescrevia o outro e o aviso comparava a
+        ocupação declarada com o arquivo errado — acusando divergência onde não havia.
+        Defeito cometido ao generalizar a tabela para tetos de projeto, pego por
+        `test_ocupacao_declarada_certa_cala`. Este teste fixa a lição na forma geral:
+        bater com QUALQUER arquivo daquele teto basta para calar."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            tamanho_backlog = len((repo / "b_process/c_backlog.md").read_text(encoding="utf-8"))
+            p = repo / "a_context/a_context_source.md"
+            p.write_text(p.read_text(encoding="utf-8") + f"\n- **Backlog:** {tamanho_backlog}/12.000\n",
+                         encoding="utf-8")
+            saida = rodar_check(repo).stdout
+            self.assertNotIn("não se mantém à mão", saida,
+                             f"o número bate com o BACKLOG e mesmo assim avisou:\n{saida}")
 
     def test_numero_alheio_ao_orcamento_nao_dispara(self):
         """`385/385` é suíte de teste, não orçamento. Aviso falso ensina a ignorar aviso."""
@@ -1219,7 +1498,7 @@ class TestIdPrometidoNoChangelog(unittest.TestCase):
             projeto = Path(tmp) / "projeto"
             r = rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-            docs = next(projeto.glob("*_Project_DOCs"))
+            docs = vault_de(projeto)
             self.prometer(docs)
             saida = rodar_check(projeto, script=docs / "scripts/check.py").stdout
             self.assertIn("ID prometido", saida, f"aviso nasceu mudo no layout de projeto:\n{saida[-700:]}")
@@ -1335,7 +1614,7 @@ class TestTravaDeEscopo(unittest.TestCase):
         projeto = Path(tmp) / "projeto"
         r = rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        docs = next(projeto.glob("*_Project_DOCs"))
+        docs = vault_de(projeto)
         pl = docs / "a_context/b_plan.md"
         pl.write_text(pl.read_text(encoding="utf-8").replace(
             "### M1 — <nome>", f"### {modulo} — motor\n- **Pasta:** {pasta}", 1), encoding="utf-8")
@@ -1470,6 +1749,378 @@ class TestSkillOrfa(unittest.TestCase):
             log.write_text(log.read_text(encoding="utf-8") + "\n## 2026-01-01\n- **Skill:** `testing`\n",
                            encoding="utf-8")
             self.assertNotIn("nunca rodou", rodar_check(repo).stdout)
+
+
+class TestConfigDoProjeto(unittest.TestCase):
+    """`.kit-config.json` existe por um custo medido: o primeiro projeto real precisou de um
+    teto maior e de um terceiro registro (`QA-NN` fora do DECISIONS), e a única saída que o
+    kit oferecia era EDITAR o `check.py`. O portão do projeto virou um fork oito versões
+    atrasado — com uma cegueira já corrigida no kit — e toda atualização o marcava como
+    'PROTEGIDO'. O projeto passou a medir a si mesmo com uma régua que não era mais a régua.
+
+    Estes testes guardam as duas metades: que a configuração FUNCIONA (o projeto não precisa
+    editar o script) e que ela não abre buraco (subir teto continua exigindo D-NN)."""
+
+    def montar(self, tmp, config: str, extras=()):
+        repo = montar_kit(Path(tmp) / "repo")
+        (repo / ".kit-config.json").write_text(config, encoding="utf-8")
+        for rel, texto in extras:
+            (repo / rel).write_text(texto, encoding="utf-8")
+        return repo
+
+    def test_registro_extra_faz_o_ID_existir(self):
+        """O caso que criou o fork: com os `QA-NN` em arquivo próprio, o kit os via como
+        fantasmas e reprovava todo commit. Declarar o registro resolve sem tocar no script."""
+        with area_temporaria() as tmp:
+            tabela = ("---\ntags: [qa]\n---\n# QA\n\n| # | Data | Sev. | O que | Fechado em |\n"
+                      "|---|---|---|---|---|\n| QA-42 | 2026-08-24 | BAIXO | algo | 2026-08-24 |\n")
+            repo = self.montar(tmp, '{"registros": ["a_context/d_qa.md"], '
+                                    '"tetos": {"a_context/d_qa.md": 8000}}',
+                               [("a_context/d_qa.md", tabela)])
+            self.anexar_texto(repo, "INDEX.md", "\n\nVer `QA-42` para o detalhe.\n")
+            # O registro extra é decisão: sem o D-NN que o declare, a FALHA 16 reprova.
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("não é registro do kit", r.stdout)
+            self.anexar_texto(repo, "a_context/c_decisions.md",
+                              "| D-50 | 2026-08-24 | ADOTADO | d_qa.md como registro próprio "
+                              "dos achados, teto 8.000 | tabela de QA estourava o DECISIONS |\n")
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 0, f"QA-42 devia existir pelo registro declarado:\n{r.stdout}")
+
+    def test_teto_extra_estourado_reprova(self):
+        with area_temporaria() as tmp:
+            repo = self.montar(tmp, '{"registros": ["a_context/d_qa.md"], '
+                                    '"tetos": {"a_context/d_qa.md": 500}}',
+                               [("a_context/d_qa.md", "---\ntags: [qa]\n---\n# QA\n" + "z" * 600)])
+            self.anexar_texto(repo, "a_context/c_decisions.md",
+                              "| D-50 | 2026-08-24 | ADOTADO | d_qa.md como registro próprio | x |\n")
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("orçamento declarado", r.stdout)
+
+    def test_config_quebrada_reprova_em_vez_de_valer_o_padrao(self):
+        """Teto que o dono acha que declarou e o script ignorou é pior que teto nenhum."""
+        with area_temporaria() as tmp:
+            repo = self.montar(tmp, '{"tetos": {"a_context/c_decisions.md": ')
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("não é JSON válido", r.stdout)
+
+    def test_sem_config_vale_o_padrao_do_kit(self):
+        """Sem `.kit-config.json`, o portão usa os tetos e os avisos padrão.
+
+        Este teste dizia outra coisa até o v13.15: que o KIT não podia ter config nenhuma. A
+        afirmação estava certa no espírito e errada no sujeito — quem não pode herdar config é
+        o PROJETO gerado (guardado por `test_a_config_do_kit_nao_viaja_para_projeto`), e o
+        repositório do kit passou a ter a sua, declarando que ele não é projeto da equipe.
+        Teste que fixa o sujeito errado reprova a decisão certa; corrigido aqui, com o motivo
+        escrito para não voltar."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            (repo / ".kit-config.json").unlink(missing_ok=True)
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 0, r.stdout)
+            # Sem config, os avisos do padrão da equipe voltam ligados: é o que "vale o
+            # padrão" significa, e sem esta linha o teste passaria com o portão mudo.
+            self.assertIn("padrao da equipe",
+                          "".join(c for c in __import__("unicodedata").normalize("NFKD", r.stdout.lower())
+                                  if not __import__("unicodedata").combining(c)))
+
+    def anexar_texto(self, repo: Path, rel: str, texto: str):
+        p = repo / rel
+        p.write_text(p.read_text(encoding="utf-8") + texto, encoding="utf-8")
+
+
+class TestTravaDoPulo(unittest.TestCase):
+    """`git commit --no-verify` era o buraco declarado do próprio relatório de evidência:
+    "não fica rastro no histórico". A trava não proíbe o pulo — exige que ele se declare,
+    para que o número de contornos deixe de ser desconhecido. Como a trava de escopo, ela
+    FALHA ABERTA: bloquear demais ensina a desinstalar o hook."""
+
+    def bater(self, comando, ferramenta="Bash"):
+        evento = json.dumps({"cwd": str(KIT), "tool_name": ferramenta,
+                             "tool_input": {"command": comando}})
+        return subprocess.run([sys.executable, str(KIT / "scripts/portao_hook.py")],
+                              input=evento, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", env=AMBIENTE_UTF8, timeout=60)
+
+    def test_bloqueia_pulo_mudo(self):
+        r = self.bater('git commit --no-verify -m "fix: sobe rapido"')
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("BLOQUEADO", r.stderr)
+
+    def test_bloqueia_o_atalho_de_uma_letra(self):
+        """`-n` é `--no-verify` no git commit, e é a forma que quem tem pressa digita."""
+        for comando in ('git commit -n -m "x"', 'git commit -nm "x"'):
+            with self.subTest(comando=comando):
+                self.assertEqual(self.bater(comando).returncode, 2, comando)
+
+    def test_libera_pulo_declarado(self):
+        r = self.bater('git commit --no-verify -m "fix: hotfix  SEM-PORTAO: CI fora do ar"')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_commit_normal_passa(self):
+        self.assertEqual(self.bater('git commit -m "FEAT: coisa (D-01)"').returncode, 0)
+
+    def test_falar_do_assunto_nao_e_pular(self):
+        """A checagem trabalha sobre palavras separadas, não sobre substring: um commit que
+        MENCIONA --no-verify na mensagem não desliga nada, e bloqueá-lo seria aviso falso —
+        que é como o kit ensina a ignorar avisos."""
+        r = self.bater('git commit -m "docs: explica por que --no-verify deixa rastro"')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_falha_aberta_com_entrada_quebrada(self):
+        for entrada in ("", "{isto nao e json", '{"tool_name": "Bash"}'):
+            with self.subTest(entrada=entrada):
+                r = subprocess.run([sys.executable, str(KIT / "scripts/portao_hook.py")],
+                                   input=entrada, capture_output=True, text=True,
+                                   encoding="utf-8", errors="replace", env=AMBIENTE_UTF8, timeout=60)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_outra_ferramenta_nao_e_assunto(self):
+        self.assertEqual(self.bater("git commit --no-verify -m x", ferramenta="Edit").returncode, 0)
+
+    def comando_instalado(self, repo: Path) -> str:
+        self.assertEqual(rodar_script("install_hook.py", "--portao", cwd=repo).returncode, 0)
+        cfg = json.loads((repo / ".claude/settings.json").read_text(encoding="utf-8"))
+        return cfg["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+
+    def test_o_comando_instalado_funciona_de_outro_diretorio(self):
+        """O defeito que isto guarda aconteceu em uso, não em teoria: o comando instalado
+        era `python scripts/portao_hook.py`, resolvido contra o diretório de TRABALHO do
+        agente. Bastou a sessão passar a trabalhar em outro projeto para o caminho apontar
+        para o vazio; o hook morreu, e o Claude Code trata hook morto como BLOQUEIO — a
+        sessão ficou sem executar nenhum comando. Hook que bloqueia por bug próprio é
+        exatamente o que este kit chama de pior que hook nenhum."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            comando = self.comando_instalado(repo)
+            outro = Path(tmp) / "outro_lugar"
+            outro.mkdir()
+            evento = json.dumps({"cwd": str(repo), "tool_name": "Bash",
+                                 "tool_input": {"command": 'git commit --no-verify -m "x"'}})
+            # CLAUDE_PROJECT_DIR apontando para ESTE repo: é o que o Claude Code faz, e
+            # sem fixá-lo o teste herdaria a variável da sessão que o está rodando —
+            # resolvendo para outro kit e passando pelo motivo errado.
+            ambiente = dict(AMBIENTE_UTF8, CLAUDE_PROJECT_DIR=str(repo))
+            r = subprocess.run(comando, shell=True, input=evento, capture_output=True,
+                               text=True, encoding="utf-8", errors="replace",
+                               cwd=str(outro), env=ambiente, timeout=60)
+            self.assertEqual(r.returncode, 2,
+                             f"rodando de {outro}, a trava deveria bloquear:\n{r.stdout}{r.stderr}")
+
+    def test_o_comando_instalado_falha_aberto_se_o_script_sumir(self):
+        """Outro clone, outra máquina, arquivo removido: a trava desaparece em silêncio.
+        Nunca trava o trabalho — é o que separa 'proteção' de 'armadilha'."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            comando = self.comando_instalado(repo)
+            (repo / "scripts/portao_hook.py").unlink()
+            evento = json.dumps({"cwd": str(repo), "tool_name": "Bash",
+                                 "tool_input": {"command": 'git commit --no-verify -m "x"'}})
+            ambiente = dict(AMBIENTE_UTF8, CLAUDE_PROJECT_DIR=str(repo))
+            r = subprocess.run(comando, shell=True, input=evento, capture_output=True,
+                               text=True, encoding="utf-8", errors="replace",
+                               cwd=str(repo), env=ambiente, timeout=60)
+            self.assertEqual(r.returncode, 0,
+                             f"sem o script, a trava tem de sumir e não travar:\n{r.stdout}{r.stderr}")
+
+    def test_instalar_e_remover_nao_mexe_em_hook_alheio(self):
+        """Mesmo contrato da trava de escopo: `.claude/settings.json` pode ter hooks do dono."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            cfg = repo / ".claude/settings.json"
+            cfg.parent.mkdir(parents=True, exist_ok=True)
+            alheio = {"hooks": {"PreToolUse": [
+                {"matcher": "Bash", "hooks": [{"type": "command", "command": "echo do dono"}]}]}}
+            cfg.write_text(json.dumps(alheio), encoding="utf-8")
+            self.assertEqual(rodar_script("install_hook.py", "--portao", cwd=repo).returncode, 0)
+            depois = json.loads(cfg.read_text(encoding="utf-8"))
+            self.assertEqual(len(depois["hooks"]["PreToolUse"]), 2)
+            self.assertEqual(rodar_script("install_hook.py", "--portao", "--remover",
+                                          cwd=repo).returncode, 0)
+            final = json.loads(cfg.read_text(encoding="utf-8"))
+            self.assertEqual(final["hooks"]["PreToolUse"], alheio["hooks"]["PreToolUse"],
+                             "a remoção levou junto o hook do dono")
+
+
+class TestPadraoDaEquipe(unittest.TestCase):
+    """O padrao de commit da equipe (STF PSS) cobrado por maquina.
+
+    O `check.py` NAO consegue cobrar mensagem: ele roda no `pre-commit`, antes de ela existir.
+    Por isso o hook e separado, e por isso ele precisa de teste proprio — a peca que o portao
+    nao alcanca e exatamente a que ninguem percebe quando para de funcionar."""
+
+    def bater(self, mensagem: str):
+        with area_temporaria() as tmp:
+            alvo = Path(tmp) / "MSG"
+            alvo.write_text(mensagem, encoding="utf-8")
+            return subprocess.run([sys.executable, str(KIT / "scripts/mensagem_hook.py"), str(alvo)],
+                                  capture_output=True, text=True, encoding="utf-8",
+                                  errors="replace", env=AMBIENTE_UTF8, timeout=60)
+
+    def sem_acento(self, s: str) -> str:
+        """Compara sem acento DE VERDADE. A primeira versao trocava um codepoint por vez
+        (`\u00e3`) e passava a mao em `á` e `é` — teste que erra a normalizacao reprova o
+        codigo certo, que e' pior que teste ausente."""
+        import unicodedata
+        return "".join(c for c in unicodedata.normalize("NFKD", s.lower())
+                       if not unicodedata.combining(c))
+
+    def test_formato_certo_passa(self):
+        for m in ("OK: Feat: Adicionar endpoint de execucao (D-12)",
+                  "NOK: Fix: Tentativa de correcao no timeout",
+                  "OK: Chore: Reorganizar pastas do backend"):
+            with self.subTest(m=m):
+                self.assertEqual(self.bater(m).returncode, 0, m)
+
+    def test_formato_errado_reprova_e_diz_qual_e_o_erro(self):
+        casos = {
+            "melhorias no kit": "nao esta no formato",
+            "feat: coisa nova": "nao e status",
+            "ok: Feat: minuscula": "maiuscula",
+            "OK: feature: tipo fora da lista": "nao e um tipo",
+            "OK: feat: tipo em minuscula": "capitalizado",
+        }
+        for m, trecho in casos.items():
+            with self.subTest(m=m):
+                r = self.bater(m)
+                self.assertEqual(r.returncode, 1, f"{m!r} deveria reprovar")
+                self.assertIn(trecho, self.sem_acento(r.stderr),
+                              f"reprovou, mas sem dizer o motivo certo: {r.stderr}")
+
+    def test_mensagem_do_git_passa(self):
+        """Merge, revert, fixup e squash sao escritos pelo GIT. Bloquea-los seria bloquear o
+        git — e hook que briga com a ferramenta e hook que o dono desinstala."""
+        for m in ("Merge branch 'main'", "Revert \"OK: Feat: x\"", "fixup! OK: Fix: y"):
+            with self.subTest(m=m):
+                self.assertEqual(self.bater(m).returncode, 0, m)
+
+    def test_comentario_e_linha_vazia_nao_contam(self):
+        """A mensagem chega com os comentarios do git (`# Please enter...`). Ler a primeira
+        linha crua sem filtrar comentario reprovaria todo commit interativo."""
+        msg = "\n# comentario do git\nOK: Doc: Escrever guia\n"
+        self.assertEqual(self.bater(msg).returncode, 0)
+
+    def test_falha_aberta_sem_arquivo(self):
+        r = subprocess.run([sys.executable, str(KIT / "scripts/mensagem_hook.py")],
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", env=AMBIENTE_UTF8, timeout=60)
+        self.assertEqual(r.returncode, 0, "sem arquivo de mensagem, tem de liberar")
+
+    def test_instalar_poe_os_dois_hooks_e_remover_leva_os_dois(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.assertEqual(rodar_script("install_hook.py", cwd=repo).returncode, 0)
+            hooks = repo / ".git/hooks"
+            self.assertTrue((hooks / "pre-commit").exists(), "pre-commit nao instalado")
+            self.assertTrue((hooks / "commit-msg").exists(), "commit-msg nao instalado")
+            self.assertEqual(rodar_script("install_hook.py", "--remover", cwd=repo).returncode, 0)
+            self.assertFalse((hooks / "commit-msg").exists(), "--remover deixou o commit-msg")
+
+    def test_padrao_equipe_granular_liga_um_por_um(self):
+        """A chave grossa obrigava a escolher entre ruido e cegueira. O repositorio do proprio
+        kit nao e um projeto da equipe — nome e branch fora do padrao estao CERTOS ali —, mas
+        as mensagens de commit dele sao lidas por quem avalia o kit, e ali seguir o padrao e o
+        ponto. Desligar os tres para calar dois seria desligar o que funciona."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            (repo / ".kit-config.json").write_text(
+                '{"padrao_equipe": {"commit": true, "branch": false, "repositorio": false}}',
+                encoding="utf-8")
+            saida = self.sem_acento(rodar_check(repo).stdout)
+            self.assertIn("fora do padrao da equipe `ok|nok", saida,
+                          "o aviso de COMMIT deveria continuar ligado")
+            self.assertNotIn("branch `", saida, "o aviso de branch deveria estar desligado")
+            self.assertNotIn("repositorio `", saida, "o aviso de nome deveria estar desligado")
+
+    def test_padrao_equipe_com_chave_desconhecida_reprova(self):
+        """Mesma regra do resto da config: chave que some calada e a doenca, nao o remedio."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            (repo / ".kit-config.json").write_text(
+                '{"padrao_equipe": {"comit": true}}', encoding="utf-8")
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("comit", r.stdout)
+
+    def test_a_config_do_kit_nao_viaja_para_projeto(self):
+        """A config do kit desliga avisos que num projeto DA EQUIPE sao corretos. Se ela fosse
+        copiada, todo projeto novo nasceria cego para o padrao que o kit acabou de adotar."""
+        with area_temporaria() as tmp:
+            kit = montar_kit(Path(tmp) / "kit")
+            (kit / ".kit-config.json").write_text('{"padrao_equipe": false}', encoding="utf-8")
+            projeto = Path(tmp) / "projeto"
+            self.assertEqual(rodar_script("new_project.py", str(projeto), "--nome", "App",
+                                          cwd=kit).returncode, 0)
+            self.assertFalse((vault_de(projeto) / ".kit-config.json").exists(),
+                             "a config do kit viajou para o projeto")
+
+    def test_avisos_do_padrao_somem_com_padrao_equipe_false(self):
+        """Fork, espelho e o proprio kit sao legitimamente fora do padrao. Sem a chave de
+        desligar, o aviso vira ruido — e aviso que vira ruido ensina a ignorar aviso."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.assertIn("padrao da equipe", self.sem_acento(rodar_check(repo).stdout),
+                          "os avisos do padrao nao apareceram")
+            (repo / ".kit-config.json").write_text('{"padrao_equipe": false}', encoding="utf-8")
+            self.assertNotIn("padrao da equipe", self.sem_acento(rodar_check(repo).stdout),
+                             "a chave nao desligou os avisos")
+
+
+class TestAsDuasCasasDoVault(unittest.TestCase):
+    """Desde o v13.14 o vault nasce em `e_doc/0_Context/` (padrao da equipe). A casa antiga,
+    `*_Project_DOCs/`, PRECISA continuar reconhecida: o unico projeto real construido com este
+    kit esta nela, e atualizacao que deixa de achar o projeto que ela mesma criou nao e
+    atualizacao, e abandono. Estes testes guardam as DUAS casas — a nova porque e o padrao, a
+    velha porque e a promessa."""
+
+    def montar(self, tmp, antiga=False):
+        kit = montar_kit(Path(tmp) / "kit")
+        projeto = Path(tmp) / "projeto"
+        r = rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        if antiga:
+            (projeto / "e_doc" / "0_Context").rename(projeto / "77777777_APP_Project_DOCs")
+        # `git init` nao e detalhe: sem repositorio, o `check.py` cai para o vault como topo,
+        # e entao o `.gitignore` e o `CLAUDE.md` — que moram na RAIZ do projeto — ficam fora
+        # da varredura. O portao reprovaria por ausencia de arquivo que existe.
+        git(projeto, "init", "-q")
+        git(projeto, "add", "-A")
+        git(projeto, *GIT_ID, "commit", "-qm", "OK: Chore: Estrutura inicial")
+        return projeto
+
+    def test_nasce_na_casa_do_padrao_da_equipe(self):
+        with area_temporaria() as tmp:
+            projeto = self.montar(tmp)
+            self.assertTrue((projeto / "e_doc/0_Context/a_context").is_dir(),
+                            "o vault nao nasceu em e_doc/0_Context")
+            for pasta in ("a_backend/a_code", "d_test/b_test_unit", "f_infra/a_docker", "z_mis"):
+                self.assertTrue((projeto / pasta).is_dir(), f"{pasta} nao foi criada")
+                self.assertTrue((projeto / pasta / "LEIA-ME.md").exists(),
+                                f"{pasta} nasceu vazia — o git nao versiona pasta vazia")
+
+    def test_o_portao_acha_o_vault_nas_duas_casas(self):
+        for antiga in (False, True):
+            with self.subTest(casa="antiga" if antiga else "equipe"), area_temporaria() as tmp:
+                projeto = self.montar(tmp, antiga=antiga)
+                vault = vault_de(projeto)
+                r = rodar_check(projeto, script=vault / "scripts/check.py")
+                self.assertNotIn("nao achei", r.stdout.lower())
+                self.assertIn("OK:", r.stdout, r.stdout)
+
+    def test_evidencia_e_upgrade_acham_o_vault_nas_duas_casas(self):
+        for antiga in (False, True):
+            with self.subTest(casa="antiga" if antiga else "equipe"), area_temporaria() as tmp:
+                projeto = self.montar(tmp, antiga=antiga)
+                kit = Path(tmp) / "kit"
+                r = rodar_script("evidencia.py", str(projeto), cwd=kit)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertIn("EVID", r.stdout)
+                r2 = rodar_script("new_project.py", "--upgrade", str(projeto), "--simular", cwd=kit)
+                self.assertEqual(r2.returncode, 0, r2.stdout + r2.stderr)
+                self.assertNotIn("nao achei", r2.stdout.lower())
 
 
 if __name__ == "__main__":

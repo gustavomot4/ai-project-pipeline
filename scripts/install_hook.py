@@ -70,6 +70,38 @@ fi
 """
 
 
+CAMINHO_MSG = "@@MSG@@"
+# O `commit-msg` existe porque o `check.py` NAO consegue ver a mensagem: ele roda no
+# `pre-commit`, antes de ela existir. O padrao de commit era prosa no padrao do
+# repositorio, e prosa no padrao e pedido, nao trava — mesma licao que ja transformou
+# a regra de escopo e o pulo do portao em hooks.
+CORPO_MSG = f"""#!/bin/sh
+{MARCA} (mensagem)
+# Remova com: python {CAMINHO_MSG.replace('mensagem_hook.py', 'install_hook.py')} --remover
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+PY=""
+for cand in python3 python py; do
+  if "$cand" -c "import sys; sys.exit(0)" >/dev/null 2>&1; then PY="$cand"; break; fi
+done
+
+if [ -z "$PY" ]; then
+  echo "AVISO: nenhum Python executavel — o padrao da mensagem NAO foi conferido."
+  exit 0
+fi
+
+"$PY" "{CAMINHO_MSG}" "$1" || exit 1
+"""
+
+
+def escrever_hook(caminho: Path, corpo: str) -> None:
+    """Escreve o hook com fim de linha LF e bit de execucao. Os DOIS hooks passam por
+    aqui: `chmod` duplicado e como um deles nasce sem permissao e falha calado no WSL."""
+    caminho.write_text(corpo, encoding="utf-8", newline="\n")
+    caminho.chmod(caminho.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+
 def dir_hooks(raiz: Path) -> Path | None:
     try:
         saida = subprocess.run(
@@ -93,14 +125,42 @@ def topo_do_repo(inicio: Path) -> Path | None:
     return Path(saida).resolve()
 
 
-def escopo(aqui: Path, topo: Path, remover: bool) -> int:
-    """Liga (ou desliga) a trava de escopo do Claude Code em `.claude/settings.json`.
+# As travas que vivem em `.claude/settings.json`. Uma entrada por trava, e não um `if` por
+# trava: a segunda (o pulo do portão) nasceu como cópia da primeira, e cópia é onde as duas
+# começam a divergir em silêncio.
+TRAVAS = {
+    "--escopo": {
+        "script": "escopo_hook.py",
+        "matcher": "Edit|Write|NotebookEdit|MultiEdit",
+        "nome": "trava de escopo",
+        "efeito": [
+            "   A partir de agora, escrita fora da pasta do módulo em andamento é recusada.",
+            "   Ela só age quando há UMA tarefa em andamento, ela declara **Módulo:**, e o",
+            "   módulo declara **Pasta:** no PLANO. Em qualquer outra situação, libera e diz por quê.",
+        ],
+    },
+    "--portao": {
+        "script": "portao_hook.py",
+        "matcher": "Bash",
+        "nome": "trava do pulo",
+        "efeito": [
+            "   A partir de agora, `git commit --no-verify` sem motivo declarado é recusado.",
+            "   Pular continua permitido — em silêncio, não: a mensagem precisa trazer",
+            "   'SEM-PORTAO: <motivo>', e `task.py evidencia` passa a contar os pulos.",
+        ],
+    },
+}
+
+
+def trava_de_agente(aqui: Path, topo: Path, remover: bool, flag: str) -> int:
+    """Liga (ou desliga) uma trava do Claude Code em `.claude/settings.json`.
 
     É o único ponto do kit que fala com um agente específico, e por isso mora aqui e não
     dentro do `check.py`: o portão de higiene continua sendo Python puro rodando em git, em
-    CI e na mão. Quem não usa Claude Code perde esta trava e mais nada.
+    CI e na mão. Quem não usa Claude Code perde estas travas e mais nada.
     """
     import json
+    trava = TRAVAS[flag]
     cfg = topo / ".claude" / "settings.json"
     dados = {}
     if cfg.exists():
@@ -110,38 +170,61 @@ def escopo(aqui: Path, topo: Path, remover: bool) -> int:
             print(f"ERRO: {cfg} não é JSON válido. Revise-o à mão antes de instalar a trava.")
             return 1
     try:
-        rel = (aqui / "escopo_hook.py").relative_to(topo).as_posix()
+        rel = (aqui / trava["script"]).relative_to(topo).as_posix()
     except ValueError:
-        print(f"ERRO: escopo_hook.py está fora do repositório em {topo}.")
+        print(f"ERRO: {trava['script']} está fora do repositório em {topo}.")
         return 1
 
-    comando = f"python {rel}"
+    # O comando NÃO pode ser um caminho relativo. Ele é resolvido contra o diretório de
+    # trabalho do agente, não contra o repositório — e no momento em que a sessão passa a
+    # trabalhar em OUTRA pasta, o caminho aponta para um arquivo que não existe, o hook
+    # morre, e o Claude Code trata a morte do hook como BLOQUEIO. Medido em uso: com a
+    # trava do pulo instalada assim, uma sessão que mudou de projeto ficou sem executar
+    # nenhum comando. Hook que bloqueia por bug próprio é o pior caso do kit, e estava aqui.
+    #
+    # Três exigências, e a linha abaixo atende as três:
+    #   1. achar o script com o cwd em qualquer lugar -> CLAUDE_PROJECT_DIR, e o caminho
+    #      absoluto da instalação como reserva;
+    #   2. FALHAR ABERTO se o script não estiver lá (outra máquina, outro clone, arquivo
+    #      removido) -> sai 0 em silêncio, em vez de travar o trabalho;
+    #   3. viajar no git — por isso a variável de ambiente vem PRIMEIRO: quem clonar em
+    #      outra máquina continua protegido sem reinstalar nada.
+    base = topo.as_posix()
+    comando = (
+        'python -c "import os,sys,runpy;'
+        + "b=os.environ.get('CLAUDE_PROJECT_DIR') or r'" + base + "';"
+        + "p=os.path.join(b,'" + rel + "');"
+        + "sys.exit(0) if not os.path.exists(p) else runpy.run_path(p,run_name='__main__')\""
+    )
+    # A entrada é reconhecida pelo NOME DO SCRIPT, não pelo comando inteiro: o comando
+    # carrega um caminho absoluto que muda de máquina para máquina, e comparar o comando
+    # inteiro faria `--remover` não achar a própria instalação num clone.
+    assinatura = trava["script"]
     ganchos = dados.setdefault("hooks", {}).setdefault("PreToolUse", [])
     # Reconhece a entrada pelo COMANDO e não por índice: o dono pode ter outros hooks, e
     # mexer no que não é nosso é como se apaga trabalho alheio sem perceber.
     nossos = [g for g in ganchos
-              if any(comando in (h.get("command") or "") for h in g.get("hooks", []))]
+              if any(assinatura in (h.get("command") or "") for h in g.get("hooks", []))]
     if remover:
         if not nossos:
-            print("Nada a remover (a trava de escopo não está instalada).")
+            print(f"Nada a remover (a {trava['nome']} não está instalada).")
             return 0
         dados["hooks"]["PreToolUse"] = [g for g in ganchos if g not in nossos]
         cfg.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"OK: trava de escopo removida de {cfg}.")
+        print(f"OK: {trava['nome']} removida de {cfg}.")
         return 0
     if nossos:
-        print(f"A trava de escopo já está instalada em {cfg}.")
+        print(f"A {trava['nome']} já está instalada em {cfg}.")
         return 0
 
-    ganchos.append({"matcher": "Edit|Write|NotebookEdit|MultiEdit",
+    ganchos.append({"matcher": trava["matcher"],
                     "hooks": [{"type": "command", "command": comando}]})
     cfg.parent.mkdir(parents=True, exist_ok=True)
     cfg.write_text(json.dumps(dados, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"OK: trava de escopo instalada em {cfg}.")
-    print("   A partir de agora, escrita fora da pasta do módulo em andamento é recusada.")
-    print("   Ela só age quando há UMA tarefa em andamento, ela declara **Módulo:**, e o")
-    print("   módulo declara **Pasta:** no PLANO. Em qualquer outra situação, libera e diz por quê.")
-    print("   Desligar: python scripts/install_hook.py --escopo --remover")
+    print(f"OK: {trava['nome']} instalada em {cfg}.")
+    for linha in trava["efeito"]:
+        print(linha)
+    print(f"   Desligar: python scripts/install_hook.py {flag} --remover")
     return 0
 
 
@@ -149,11 +232,12 @@ def main() -> int:
     aqui = Path(__file__).resolve().parent          # .../scripts
     raiz = aqui.parent                              # a pasta de documentação (ou o kit)
     topo = topo_do_repo(raiz)
-    if "--escopo" in sys.argv:
-        if topo is None:
-            print("ERRO: não é um repositório git. Rode `git init` primeiro.")
-            return 1
-        return escopo(aqui, topo, "--remover" in sys.argv)
+    for flag in TRAVAS:
+        if flag in sys.argv:
+            if topo is None:
+                print("ERRO: não é um repositório git. Rode `git init` primeiro.")
+                return 1
+            return trava_de_agente(aqui, topo, "--remover" in sys.argv, flag)
     hooks = dir_hooks(raiz)
     if hooks is None or topo is None:
         print("ERRO: não é um repositório git (ou o git não está no PATH). Rode `git init` primeiro.")
@@ -162,6 +246,10 @@ def main() -> int:
     hook = hooks / "pre-commit"
 
     if "--remover" in sys.argv:
+        msg = hooks / "commit-msg"
+        if msg.exists() and MARCA in msg.read_text(encoding="utf-8"):
+            msg.unlink()
+            print("OK: hook de mensagem removido.")
         if hook.exists() and MARCA in hook.read_text(encoding="utf-8"):
             hook.unlink()
             print("OK: hook removido. A higiene volta a depender de você rodar o script.")
@@ -184,11 +272,27 @@ def main() -> int:
         print(f"      Revise-o à mão e acrescente a linha: python {rel_check} || exit 1")
         return 1
 
-    hook.write_text(corpo, encoding="utf-8", newline="\n")
-    hook.chmod(hook.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    escrever_hook(hook, corpo)
     print(f"OK: hook {'atualizado' if ja_existe else 'instalado'} em {hook}")
     print(f"   A partir de agora todo commit roda {rel_check} e falha se a higiene falhar.")
     print("   Pular uma vez: git commit --no-verify")
+
+    # O padrao de commit da equipe vive num hook SEPARADO porque o `check.py` roda antes de a
+    # mensagem existir. Instalado JUNTO: quem instala o portao espera o portao inteiro, e um
+    # padrao que depende de um segundo comando lembrado e a mesma "disciplina humana" que este
+    # kit passa o dia condenando.
+    msg = hooks / "commit-msg"
+    if msg.exists() and MARCA not in msg.read_text(encoding="utf-8"):
+        print(f"AVISO: ja existe um commit-msg de outra origem em {msg}; nao foi tocado.")
+        return 0
+    try:
+        rel_msg = (aqui / "mensagem_hook.py").relative_to(topo).as_posix()
+    except ValueError:
+        print("AVISO: mensagem_hook.py fora do repositorio; padrao de commit nao instalado.")
+        return 0
+    escrever_hook(msg, CORPO_MSG.replace("@@MSG@@", rel_msg))
+    print(f"OK: hook de MENSAGEM instalado em {msg}")
+    print("   Formato cobrado: `OK|NOK: Tipo: Descricao` (padrao da equipe).")
     return 0
 
 
