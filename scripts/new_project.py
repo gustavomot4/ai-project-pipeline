@@ -58,6 +58,11 @@ EXCLUIR_ARQUIVOS = {
     # Configuração PESSOAL da máquina (permissões que o dono aprovou no Claude Code).
     # Copiada para um projeto, ela leva decisões de UMA pessoa para o repositório de outra.
     ".claude/settings.local.json",
+    # A configuração do KIT fala do repositório do kit: ele nao e um projeto da equipe, entao
+    # declara `padrao_equipe` sem branch e sem nome. Copiada para um projeto que E da equipe,
+    # ela desligaria justamente os avisos que ali sao corretos. Config de projeto nasce no
+    # projeto — e o `check.py` reconhece a ausencia dela como "vale o padrao do kit".
+    ".kit-config.json",
     "scripts/new_project.py",
     # Testa os scripts DO KIT (inclusive o `new_project.py`, que nem vai junto). Copiado
     # para um projeto, ele reprova no primeiro `task.py test` — e suíte que nasce vermelha

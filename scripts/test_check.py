@@ -1807,12 +1807,25 @@ class TestConfigDoProjeto(unittest.TestCase):
             self.assertEqual(r.returncode, 1, r.stdout)
             self.assertIn("não é JSON válido", r.stdout)
 
-    def test_sem_config_o_kit_entregue_continua_verde(self):
+    def test_sem_config_vale_o_padrao_do_kit(self):
+        """Sem `.kit-config.json`, o portão usa os tetos e os avisos padrão.
+
+        Este teste dizia outra coisa até o v13.15: que o KIT não podia ter config nenhuma. A
+        afirmação estava certa no espírito e errada no sujeito — quem não pode herdar config é
+        o PROJETO gerado (guardado por `test_a_config_do_kit_nao_viaja_para_projeto`), e o
+        repositório do kit passou a ter a sua, declarando que ele não é projeto da equipe.
+        Teste que fixa o sujeito errado reprova a decisão certa; corrigido aqui, com o motivo
+        escrito para não voltar."""
         with area_temporaria() as tmp:
             repo = montar_kit(Path(tmp) / "repo")
-            self.assertFalse((repo / ".kit-config.json").exists(),
-                             "o kit não deve nascer com config: o padrão é o padrão")
-            self.assertEqual(rodar_check(repo).returncode, 0)
+            (repo / ".kit-config.json").unlink(missing_ok=True)
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 0, r.stdout)
+            # Sem config, os avisos do padrão da equipe voltam ligados: é o que "vale o
+            # padrão" significa, e sem esta linha o teste passaria com o portão mudo.
+            self.assertIn("padrao da equipe",
+                          "".join(c for c in __import__("unicodedata").normalize("NFKD", r.stdout.lower())
+                                  if not __import__("unicodedata").combining(c)))
 
     def anexar_texto(self, repo: Path, rel: str, texto: str):
         p = repo / rel
@@ -2005,6 +2018,44 @@ class TestPadraoDaEquipe(unittest.TestCase):
             self.assertTrue((hooks / "commit-msg").exists(), "commit-msg nao instalado")
             self.assertEqual(rodar_script("install_hook.py", "--remover", cwd=repo).returncode, 0)
             self.assertFalse((hooks / "commit-msg").exists(), "--remover deixou o commit-msg")
+
+    def test_padrao_equipe_granular_liga_um_por_um(self):
+        """A chave grossa obrigava a escolher entre ruido e cegueira. O repositorio do proprio
+        kit nao e um projeto da equipe — nome e branch fora do padrao estao CERTOS ali —, mas
+        as mensagens de commit dele sao lidas por quem avalia o kit, e ali seguir o padrao e o
+        ponto. Desligar os tres para calar dois seria desligar o que funciona."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            (repo / ".kit-config.json").write_text(
+                '{"padrao_equipe": {"commit": true, "branch": false, "repositorio": false}}',
+                encoding="utf-8")
+            saida = self.sem_acento(rodar_check(repo).stdout)
+            self.assertIn("fora do padrao da equipe `ok|nok", saida,
+                          "o aviso de COMMIT deveria continuar ligado")
+            self.assertNotIn("branch `", saida, "o aviso de branch deveria estar desligado")
+            self.assertNotIn("repositorio `", saida, "o aviso de nome deveria estar desligado")
+
+    def test_padrao_equipe_com_chave_desconhecida_reprova(self):
+        """Mesma regra do resto da config: chave que some calada e a doenca, nao o remedio."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            (repo / ".kit-config.json").write_text(
+                '{"padrao_equipe": {"comit": true}}', encoding="utf-8")
+            r = rodar_check(repo)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("comit", r.stdout)
+
+    def test_a_config_do_kit_nao_viaja_para_projeto(self):
+        """A config do kit desliga avisos que num projeto DA EQUIPE sao corretos. Se ela fosse
+        copiada, todo projeto novo nasceria cego para o padrao que o kit acabou de adotar."""
+        with area_temporaria() as tmp:
+            kit = montar_kit(Path(tmp) / "kit")
+            (kit / ".kit-config.json").write_text('{"padrao_equipe": false}', encoding="utf-8")
+            projeto = Path(tmp) / "projeto"
+            self.assertEqual(rodar_script("new_project.py", str(projeto), "--nome", "App",
+                                          cwd=kit).returncode, 0)
+            self.assertFalse((vault_de(projeto) / ".kit-config.json").exists(),
+                             "a config do kit viajou para o projeto")
 
     def test_avisos_do_padrao_somem_com_padrao_equipe_false(self):
         """Fork, espelho e o proprio kit sao legitimamente fora do padrao. Sem a chave de

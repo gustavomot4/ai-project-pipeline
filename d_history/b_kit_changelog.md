@@ -8,6 +8,32 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.15] — 2026-08-29
+**O kit se declara ferramenta, não projeto da equipe — e a chave que permitia isso era grossa
+demais.** O dono decidiu: o kit não tem relação com a equipe e não há intenção de ser usado
+por ela; o padrão é seguido porque o kit **vai ser apresentado** a eles, e familiaridade vale.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **`padrao_equipe` passa a ligar um aviso por vez.** Além de `false` (desliga os três), aceita
+  `{"commit": true, "branch": false, "repositorio": false}`. A forma grossa obrigava a escolher
+  entre ruído e cegueira: o repositório do kit **não** é projeto da equipe — nome e branch fora
+  do padrão estão corretos ali —, mas as mensagens de commit dele são lidas por quem vai
+  avaliar o kit, e ali seguir o padrão é o ponto inteiro. Desligar os três para calar dois
+  seria desligar o que funciona.
+
+- **Chave desconhecida DENTRO de `padrao_equipe` também reprova**, pela mesma razão do resto da
+  config: `{"comit": true}` silenciaria um aviso sem que ninguém percebesse.
+
+- **A config do kit não viaja mais para projeto novo.** Ela fala do repositório do kit; copiada
+  para um projeto que É da equipe, desligaria justamente os avisos que ali estão certos.
+  Entrou nas exclusões do `new_project.py` — e quem pegou a falta de classificação foi
+  `TestNadaFicaForaDaAtualizacao`, a guarda escrita no v13.11 para exatamente este erro.
+
+- **O kit passa a ter `.kit-config.json` próprio**, com commit ligado e os outros dois
+  desligados. Efeito imediato e verificável: o portão deixou de reclamar de nome e branch, e
+  o aviso de commit caiu de 30/30 para 28/30 — número que se corrige sozinho a cada commit
+  novo, sem ninguém mexer nele.
+
 ## [kit v13.14] — 2026-08-29
 **A estrutura de pastas do padrão da equipe, na risca — e o vault do kit muda de casa.**
 Era o conflito de fundo que o v13.13 deixou declarado como decisão do dono. Decidido: adotar.

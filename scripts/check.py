@@ -185,8 +185,9 @@ TETOS_PADRAO = {CONTEXTO: 4000, DECISOES: 12000, BACKLOG: 12000}
 # `medir_sem_padding` — mede o CONTEÚDO das tabelas, sem o padding de alinhamento.
 # `linha_max`  — {"limite": N, "isentas": [ID, ...]}: linha de registro acima de N reprova.
 # `candidatas` — "mais_antigas" (padrão) | "nao_citadas": critério do que arquivar.
-# `padrao_equipe` — false desliga os avisos de commit/branch/nome de repositório da
-#                equipe (STF PSS). Serve para fork, espelho e para o próprio kit.
+# `padrao_equipe` — `false` desliga os três avisos da equipe (commit, branch, nome de
+#                repositório); um objeto liga um por um:
+#                `{"commit": true, "branch": false, "repositorio": false}`.
 #
 # Subir teto continua exigindo um D-NN (FALHA 16). O que muda é onde a elevação mora: num
 # dado versionado, e não numa linha de código que ninguém consegue atualizar depois.
@@ -1213,13 +1214,30 @@ def _saida_git(*args) -> str:
 #   - o nome da branch e o do repositório são decisão de quem abriu, e podem ser legítimos
 #     fora do padrão (fork, espelho, repositório do próprio kit).
 # O projeto que não segue o padrão da equipe declara `padrao_equipe: false` na config.
-if _cfg.get("padrao_equipe", True) and TEM_GIT:
+# `padrao_equipe` aceita duas formas: `false` desliga os três de uma vez, e um objeto
+# liga/desliga um por um — `{"commit": true, "branch": false, "repositorio": false}`.
+# A forma granular existe porque a chave grossa obrigava a escolher entre ruído e cegueira:
+# o repositório DESTE kit não é um projeto da equipe (nome e branch fora do padrão são
+# corretos), mas as mensagens de commit dele são lidas por quem vai avaliar o kit — e ali
+# seguir o padrão é o ponto. Desligar os três para calar dois seria desligar o que funciona.
+_pe = _cfg.get("padrao_equipe", True)
+if isinstance(_pe, dict):
+    _desconhecidas_pe = sorted(set(_pe) - {"commit", "branch", "repositorio"})
+    if _desconhecidas_pe:
+        falhas.append(
+            f"{CONFIG}: padrao_equipe tem chave(s) que este kit nao conhece: "
+            f"{', '.join(_desconhecidas_pe)} — as validas sao branch, commit, repositorio.")
+    _liga = {k: bool(_pe.get(k, True)) for k in ("commit", "branch", "repositorio")}
+else:
+    _liga = dict.fromkeys(("commit", "branch", "repositorio"), bool(_pe))
+
+if any(_liga.values()) and TEM_GIT:
     _tipos = ("Feat", "Fix", "Doc", "Infra", "Config", "Chore", "Deploy", "Test", "Style", "Merge")
     _re_msg = re.compile(rf"^(OK|NOK): ({'|'.join(_tipos)}): \S")
     _bruto = _saida_git("log", "-30", "--no-merges", "--pretty=format:%h %s")
     _fora = [l for l in (_bruto or "").splitlines()
              if l.strip() and not _re_msg.match(l.split(" ", 1)[-1])]
-    if _fora:
+    if _fora and _liga["commit"]:
         _amostra = " · ".join(l[:60] for l in _fora[:3])
         avisos.append(
             f"{len(_fora)} dos últimos 30 commits fora do padrão da equipe "
@@ -1229,14 +1247,15 @@ if _cfg.get("padrao_equipe", True) and TEM_GIT:
               "que a próxima mensagem seja recusada em vez de contada aqui."
         )
     _branch = (_saida_git("rev-parse", "--abbrev-ref", "HEAD") or "").strip()
-    if _branch and _branch != "HEAD" and not re.fullmatch(r"[uv]_[a-z]+_[a-z]{2,}", _branch):
+    if (_liga["branch"] and _branch and _branch != "HEAD"
+            and not re.fullmatch(r"[uv]_[a-z]+_[a-z]{2,}", _branch)):
         avisos.append(
             f"branch `{_branch}` fora do padrão da equipe `<u|v>_<nome>_<ss>` "
             "(`u_` veterano, `v_` novo; ex.: `u_ezequiel_fc`) — se esta branch é legítima "
             "fora do padrão, declare `\"padrao_equipe\": false` em .kit-config.json."
         )
     _nome_repo = topo.name
-    if not re.fullmatch(r"stf_pss_(ms|ap|cd)_[a-z0-9_]+", _nome_repo):
+    if _liga["repositorio"] and not re.fullmatch(r"stf_pss_(ms|ap|cd)_[a-z0-9_]+", _nome_repo):
         avisos.append(
             f"repositório `{_nome_repo}` fora do padrão da equipe "
             "`stf_pss_<ms|ap|cd>_<nome>` (ms = microserviço · ap = aplicação · "
