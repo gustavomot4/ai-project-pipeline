@@ -70,6 +70,38 @@ fi
 """
 
 
+CAMINHO_MSG = "@@MSG@@"
+# O `commit-msg` existe porque o `check.py` NAO consegue ver a mensagem: ele roda no
+# `pre-commit`, antes de ela existir. O padrao de commit era prosa no padrao do
+# repositorio, e prosa no padrao e pedido, nao trava — mesma licao que ja transformou
+# a regra de escopo e o pulo do portao em hooks.
+CORPO_MSG = f"""#!/bin/sh
+{MARCA} (mensagem)
+# Remova com: python {CAMINHO_MSG.replace('mensagem_hook.py', 'install_hook.py')} --remover
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+PY=""
+for cand in python3 python py; do
+  if "$cand" -c "import sys; sys.exit(0)" >/dev/null 2>&1; then PY="$cand"; break; fi
+done
+
+if [ -z "$PY" ]; then
+  echo "AVISO: nenhum Python executavel — o padrao da mensagem NAO foi conferido."
+  exit 0
+fi
+
+"$PY" "{CAMINHO_MSG}" "$1" || exit 1
+"""
+
+
+def escrever_hook(caminho: Path, corpo: str) -> None:
+    """Escreve o hook com fim de linha LF e bit de execucao. Os DOIS hooks passam por
+    aqui: `chmod` duplicado e como um deles nasce sem permissao e falha calado no WSL."""
+    caminho.write_text(corpo, encoding="utf-8", newline="\n")
+    caminho.chmod(caminho.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+
 def dir_hooks(raiz: Path) -> Path | None:
     try:
         saida = subprocess.run(
@@ -214,6 +246,10 @@ def main() -> int:
     hook = hooks / "pre-commit"
 
     if "--remover" in sys.argv:
+        msg = hooks / "commit-msg"
+        if msg.exists() and MARCA in msg.read_text(encoding="utf-8"):
+            msg.unlink()
+            print("OK: hook de mensagem removido.")
         if hook.exists() and MARCA in hook.read_text(encoding="utf-8"):
             hook.unlink()
             print("OK: hook removido. A higiene volta a depender de você rodar o script.")
@@ -236,11 +272,27 @@ def main() -> int:
         print(f"      Revise-o à mão e acrescente a linha: python {rel_check} || exit 1")
         return 1
 
-    hook.write_text(corpo, encoding="utf-8", newline="\n")
-    hook.chmod(hook.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    escrever_hook(hook, corpo)
     print(f"OK: hook {'atualizado' if ja_existe else 'instalado'} em {hook}")
     print(f"   A partir de agora todo commit roda {rel_check} e falha se a higiene falhar.")
     print("   Pular uma vez: git commit --no-verify")
+
+    # O padrao de commit da equipe vive num hook SEPARADO porque o `check.py` roda antes de a
+    # mensagem existir. Instalado JUNTO: quem instala o portao espera o portao inteiro, e um
+    # padrao que depende de um segundo comando lembrado e a mesma "disciplina humana" que este
+    # kit passa o dia condenando.
+    msg = hooks / "commit-msg"
+    if msg.exists() and MARCA not in msg.read_text(encoding="utf-8"):
+        print(f"AVISO: ja existe um commit-msg de outra origem em {msg}; nao foi tocado.")
+        return 0
+    try:
+        rel_msg = (aqui / "mensagem_hook.py").relative_to(topo).as_posix()
+    except ValueError:
+        print("AVISO: mensagem_hook.py fora do repositorio; padrao de commit nao instalado.")
+        return 0
+    escrever_hook(msg, CORPO_MSG.replace("@@MSG@@", rel_msg))
+    print(f"OK: hook de MENSAGEM instalado em {msg}")
+    print("   Formato cobrado: `OK|NOK: Tipo: Descricao` (padrao da equipe).")
     return 0
 
 

@@ -8,6 +8,55 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.13] — 2026-08-28
+**O padrão da equipe (STF PSS) entra no kit — e a parte que dá para cobrar, é cobrada.**
+Fonte: a página de padrões da equipe. O kit já dizia "padrão da equipe, aplicado em
+2026-08-03", mas descrevia um padrão anterior: o de commit divergia, e branch, nome de
+repositório e convenções de banco não existiam aqui.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **Mensagem de commit vira trava, não recomendação.** `scripts/mensagem_hook.py` é um hook
+  `commit-msg` que exige `OK|NOK: Tipo: Descrição`, com a lista fechada de tipos da equipe
+  (`Feat Fix Doc Infra Config Chore Deploy Test Style Merge`). **Precisa ser um hook separado
+  porque o `check.py` roda no `pre-commit`, antes de a mensagem existir** — nenhuma checagem
+  do portão jamais poderia ter cobrado isto.
+
+- **Ele diz QUAL é o erro, não "formato inválido".** Status em minúscula, tipo fora da lista e
+  tipo não capitalizado têm mensagens distintas, porque o erro mais comum é o segundo e o
+  diagnóstico genérico produz a segunda tentativa errada. Merge, revert, fixup e squash
+  escritos pelo git passam sem discussão: hook que briga com a ferramenta é hook desinstalado.
+
+- **Instalado junto com o portão.** `install_hook.py` passa a escrever os dois hooks e a
+  remover os dois — padrão que depende de um segundo comando lembrado é a mesma "disciplina
+  humana" que este kit passa o dia condenando.
+
+- **Três avisos novos, e são AVISO de propósito:** commits recentes fora do padrão, branch
+  fora de `<u|v>_<nome>_<ss>` e repositório fora de `stf_pss_<ms|ap|cd>_<nome>`. Falha seria
+  portão sem saída — o histórico é imutável e renomear repositório é decisão do dono. Os três
+  apontaram o próprio kit na primeira execução (30 de 30 commits, branch `kit-v13.5`, nome
+  `pipeline-projetos-IA`), que é exatamente o que se espera de um aviso honesto.
+
+- **`padrao_equipe: false` na config desliga os três.** Fork, espelho e o próprio kit são
+  legitimamente fora do padrão; sem a chave de desligar, o aviso vira ruído — e aviso que vira
+  ruído ensina a ignorar aviso.
+
+- **Convenções de banco viram perfil**: `b_process/profiles/d_db_stf_pss.md`, com
+  `{TAG}_TP_*` / `{TAG}_TB_*` / `{TAG}_TB_*_CHANGE` e os prefixos de coluna
+  (`u_ i_ s_ n_ ts_ b_`). O perfil **declara que não é cobrado por máquina**: o portão não lê
+  DDL, então na régua do próprio kit isso é 3, não 4. A checagem sobre `.sql` não existe
+  porque nenhum projeto medido com o kit tem banco — e o kit não escreve checagem para
+  problema que ninguém teve.
+
+- **Um defeito meu, pego pelo teste que eu tinha acabado de escrever.** A comparação sem
+  acento trocava um codepoint por vez (`ã`), passava a mão em `á` e `é`, e reprovava o código
+  certo. Teste que erra a normalização é pior que teste ausente: ele acusa o inocente.
+
+- **O que NÃO foi feito, e é decisão do dono:** a estrutura de pastas da equipe
+  (`a_backend/ b_middleware/ c_frontend/ d_test/ e_doc/{0_Context,1_SPC,2_BPM,3_MER,4_Class}
+  f_infra/ z_mis/`) conflita com o vault `77777777_<TAG>_Project_DOCs/` que o kit instala.
+  Adotá-la muda como **todo projeto novo nasce** e onde a documentação mora — é `D-NN`, não
+  detalhe de implementação.
+
 ## [kit v13.12] — 2026-08-27
 **A configuração ganhou as três regras que um projeto real tinha no fork — e a chave
 desconhecida deixou de sumir calada.** O v13.10 devolveu ao TAP GO o portão do kit e

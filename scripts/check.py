@@ -34,7 +34,8 @@ AVISOS (não reprovam; com --avisos-reprovam, reprovam)
   questão do dono ausente do CONTEXT ·
   achado vencido (7 dias p/ CRÍTICO e ALTO, 15 p/ MÉDIO, BAIXO não vence) ·
   ID prometido no CHANGELOG e nunca registrado ·
-  skill declarada responsável no PLANO que nunca rodou
+  skill declarada responsável no PLANO que nunca rodou ·
+  commit fora do padrão da equipe · branch fora do padrão · repositório fora do padrão
 
 O README declara quantos itens de checklist existem e quantos esta máquina julga.
 Esse número é cobrado por `test_check.py` — a frase mais honesta do kit não pode
@@ -177,6 +178,8 @@ TETOS_PADRAO = {CONTEXTO: 4000, DECISOES: 12000, BACKLOG: 12000}
 # `medir_sem_padding` — mede o CONTEÚDO das tabelas, sem o padding de alinhamento.
 # `linha_max`  — {"limite": N, "isentas": [ID, ...]}: linha de registro acima de N reprova.
 # `candidatas` — "mais_antigas" (padrão) | "nao_citadas": critério do que arquivar.
+# `padrao_equipe` — false desliga os avisos de commit/branch/nome de repositório da
+#                equipe (STF PSS). Serve para fork, espelho e para o próprio kit.
 #
 # Subir teto continua exigindo um D-NN (FALHA 16). O que muda é onde a elevação mora: num
 # dado versionado, e não numa linha de código que ninguém consegue atualizar depois.
@@ -193,7 +196,8 @@ TETOS_PADRAO = {CONTEXTO: 4000, DECISOES: 12000, BACKLOG: 12000}
 CONFIG = ".kit-config.json"
 
 # O contrato inteiro num lugar só. Chave fora daqui não é ignorada: reprova.
-CHAVES_CONFIG = {"tetos", "registros", "medir_sem_padding", "linha_max", "candidatas"}
+CHAVES_CONFIG = {"tetos", "registros", "medir_sem_padding", "linha_max", "candidatas",
+                 "padrao_equipe"}
 CANDIDATAS_VALIDAS = {"mais_antigas", "nao_citadas"}
 
 
@@ -1182,6 +1186,56 @@ for nome in (PLANO, DECISOES, BACKLOG):
     arq = raiz / nome
     if arq.exists() and re.search(r"^status:\s*rascunho\s*$", arq.read_text(encoding="utf-8"), re.M):
         avisos.append(f"{nome} ainda está em 'status: rascunho' (template não preenchido).")
+
+def _saida_git(*args) -> str:
+    """`git <args>` no topo do repositório, ou string vazia. Encoding fixo pelo QA-01: o git
+    emite UTF-8 e `text=True` sozinho decodifica com o do sistema."""
+    try:
+        r = subprocess.run(["git", "-C", str(topo), *args], capture_output=True,
+                           text=True, timeout=20, **UTF8)
+        return r.stdout if r.returncode == 0 else ""
+    except (subprocess.SubprocessError, OSError):
+        return ""
+
+
+# --- Padrão da equipe (STF PSS): commit, branch e nome de repositório ------------------
+# Estes três são convenções de EQUIPE, e por isso entram como AVISO e não como falha:
+#   - a mensagem de commit já tem trava própria (`commit-msg`, ver mensagem_hook.py), que
+#     morde ANTES de o commit existir; aqui o que se mede é o histórico, que é imutável —
+#     reprovar hoje o commit de ontem é portão sem saída, e portão sem saída ensina o pulo;
+#   - o nome da branch e o do repositório são decisão de quem abriu, e podem ser legítimos
+#     fora do padrão (fork, espelho, repositório do próprio kit).
+# O projeto que não segue o padrão da equipe declara `padrao_equipe: false` na config.
+if _cfg.get("padrao_equipe", True) and TEM_GIT:
+    _tipos = ("Feat", "Fix", "Doc", "Infra", "Config", "Chore", "Deploy", "Test", "Style", "Merge")
+    _re_msg = re.compile(rf"^(OK|NOK): ({'|'.join(_tipos)}): \S")
+    _bruto = _saida_git("log", "-30", "--no-merges", "--pretty=format:%h %s")
+    _fora = [l for l in (_bruto or "").splitlines()
+             if l.strip() and not _re_msg.match(l.split(" ", 1)[-1])]
+    if _fora:
+        _amostra = " · ".join(l[:60] for l in _fora[:3])
+        avisos.append(
+            f"{len(_fora)} dos últimos 30 commits fora do padrão da equipe "
+            f"`OK|NOK: Tipo: Descrição`: {_amostra}"
+            + (" …" if len(_fora) > 3 else "")
+            + " — instale a trava com `python scripts/install_hook.py` (hook commit-msg) para "
+              "que a próxima mensagem seja recusada em vez de contada aqui."
+        )
+    _branch = (_saida_git("rev-parse", "--abbrev-ref", "HEAD") or "").strip()
+    if _branch and _branch != "HEAD" and not re.fullmatch(r"[uv]_[a-z]+_[a-z]{2,}", _branch):
+        avisos.append(
+            f"branch `{_branch}` fora do padrão da equipe `<u|v>_<nome>_<ss>` "
+            "(`u_` veterano, `v_` novo; ex.: `u_ezequiel_fc`) — se esta branch é legítima "
+            "fora do padrão, declare `\"padrao_equipe\": false` em .kit-config.json."
+        )
+    _nome_repo = topo.name
+    if not re.fullmatch(r"stf_pss_(ms|ap|cd)_[a-z0-9_]+", _nome_repo):
+        avisos.append(
+            f"repositório `{_nome_repo}` fora do padrão da equipe "
+            "`stf_pss_<ms|ap|cd>_<nome>` (ms = microserviço · ap = aplicação · "
+            "cd = cross-domain) — renomear repositório é decisão do dono; o aviso existe "
+            "para que a divergência seja consciente, não descoberta na revisão."
+        )
 
 if avisos:
     print("AVISOS:")

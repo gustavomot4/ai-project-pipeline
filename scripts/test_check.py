@@ -1920,5 +1920,91 @@ class TestTravaDoPulo(unittest.TestCase):
                              "a remoção levou junto o hook do dono")
 
 
+class TestPadraoDaEquipe(unittest.TestCase):
+    """O padrao de commit da equipe (STF PSS) cobrado por maquina.
+
+    O `check.py` NAO consegue cobrar mensagem: ele roda no `pre-commit`, antes de ela existir.
+    Por isso o hook e separado, e por isso ele precisa de teste proprio — a peca que o portao
+    nao alcanca e exatamente a que ninguem percebe quando para de funcionar."""
+
+    def bater(self, mensagem: str):
+        with area_temporaria() as tmp:
+            alvo = Path(tmp) / "MSG"
+            alvo.write_text(mensagem, encoding="utf-8")
+            return subprocess.run([sys.executable, str(KIT / "scripts/mensagem_hook.py"), str(alvo)],
+                                  capture_output=True, text=True, encoding="utf-8",
+                                  errors="replace", env=AMBIENTE_UTF8, timeout=60)
+
+    def sem_acento(self, s: str) -> str:
+        """Compara sem acento DE VERDADE. A primeira versao trocava um codepoint por vez
+        (`\u00e3`) e passava a mao em `á` e `é` — teste que erra a normalizacao reprova o
+        codigo certo, que e' pior que teste ausente."""
+        import unicodedata
+        return "".join(c for c in unicodedata.normalize("NFKD", s.lower())
+                       if not unicodedata.combining(c))
+
+    def test_formato_certo_passa(self):
+        for m in ("OK: Feat: Adicionar endpoint de execucao (D-12)",
+                  "NOK: Fix: Tentativa de correcao no timeout",
+                  "OK: Chore: Reorganizar pastas do backend"):
+            with self.subTest(m=m):
+                self.assertEqual(self.bater(m).returncode, 0, m)
+
+    def test_formato_errado_reprova_e_diz_qual_e_o_erro(self):
+        casos = {
+            "melhorias no kit": "nao esta no formato",
+            "feat: coisa nova": "nao e status",
+            "ok: Feat: minuscula": "maiuscula",
+            "OK: feature: tipo fora da lista": "nao e um tipo",
+            "OK: feat: tipo em minuscula": "capitalizado",
+        }
+        for m, trecho in casos.items():
+            with self.subTest(m=m):
+                r = self.bater(m)
+                self.assertEqual(r.returncode, 1, f"{m!r} deveria reprovar")
+                self.assertIn(trecho, self.sem_acento(r.stderr),
+                              f"reprovou, mas sem dizer o motivo certo: {r.stderr}")
+
+    def test_mensagem_do_git_passa(self):
+        """Merge, revert, fixup e squash sao escritos pelo GIT. Bloquea-los seria bloquear o
+        git — e hook que briga com a ferramenta e hook que o dono desinstala."""
+        for m in ("Merge branch 'main'", "Revert \"OK: Feat: x\"", "fixup! OK: Fix: y"):
+            with self.subTest(m=m):
+                self.assertEqual(self.bater(m).returncode, 0, m)
+
+    def test_comentario_e_linha_vazia_nao_contam(self):
+        """A mensagem chega com os comentarios do git (`# Please enter...`). Ler a primeira
+        linha crua sem filtrar comentario reprovaria todo commit interativo."""
+        msg = "\n# comentario do git\nOK: Doc: Escrever guia\n"
+        self.assertEqual(self.bater(msg).returncode, 0)
+
+    def test_falha_aberta_sem_arquivo(self):
+        r = subprocess.run([sys.executable, str(KIT / "scripts/mensagem_hook.py")],
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", env=AMBIENTE_UTF8, timeout=60)
+        self.assertEqual(r.returncode, 0, "sem arquivo de mensagem, tem de liberar")
+
+    def test_instalar_poe_os_dois_hooks_e_remover_leva_os_dois(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.assertEqual(rodar_script("install_hook.py", cwd=repo).returncode, 0)
+            hooks = repo / ".git/hooks"
+            self.assertTrue((hooks / "pre-commit").exists(), "pre-commit nao instalado")
+            self.assertTrue((hooks / "commit-msg").exists(), "commit-msg nao instalado")
+            self.assertEqual(rodar_script("install_hook.py", "--remover", cwd=repo).returncode, 0)
+            self.assertFalse((hooks / "commit-msg").exists(), "--remover deixou o commit-msg")
+
+    def test_avisos_do_padrao_somem_com_padrao_equipe_false(self):
+        """Fork, espelho e o proprio kit sao legitimamente fora do padrao. Sem a chave de
+        desligar, o aviso vira ruido — e aviso que vira ruido ensina a ignorar aviso."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.assertIn("padrao da equipe", self.sem_acento(rodar_check(repo).stdout),
+                          "os avisos do padrao nao apareceram")
+            (repo / ".kit-config.json").write_text('{"padrao_equipe": false}', encoding="utf-8")
+            self.assertNotIn("padrao da equipe", self.sem_acento(rodar_check(repo).stdout),
+                             "a chave nao desligou os avisos")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

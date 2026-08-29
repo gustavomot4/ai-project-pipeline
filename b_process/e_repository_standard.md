@@ -139,8 +139,35 @@ valia". `check.py` avisa quando falta.
 
 ## 6. Git
 
-- **Mensagem de commit:** `TIPO: o que mudou (por quê)`. Tipos em uso: `ADD`, `FIX`, `DOCS`,
-  `REFACTOR`, `CHORE`.
+- **Mensagem de commit — padrão da equipe (STF PSS), cobrado por hook `commit-msg`:**
+
+  ```
+  <STATUS>: <Tipo>: <Descrição>
+  ```
+
+  `STATUS` é `OK` (completo, funcional e revisado) ou `NOK` (em progresso). `Tipo` é um da
+  lista fechada: `Feat` · `Fix` · `Doc` · `Infra` · `Config` · `Chore` · `Deploy` · `Test` ·
+  `Style` · `Merge`. Um commit = uma unidade lógica de trabalho, e o detalhe adicional vai no
+  **segundo `-m`**, nunca na primeira linha:
+
+  ```
+  git commit -m "OK: Fix: Corrigir parser do relatório (QA-07)"              -m "A causa era o padding das tabelas; teste de regressão junto."
+  ```
+
+  Instale a trava com `python scripts/install_hook.py` — ela recusa a mensagem fora do
+  formato e diz **qual** é o erro (status minúsculo, tipo fora da lista, tipo não
+  capitalizado). Merge, revert, fixup e squash gerados pelo git passam sem discussão.
+- **Nome da branch:** `<u|v>_<nome>_<ss>` — `u_` para membro veterano, `v_` para membro novo;
+  primeira letra do nome mais as iniciais do sobrenome (`u_ezequiel_fc`, `v_ana_ps`).
+- **Nome do repositório:** `stf_pss_<tipo>_<nome>`, com `ms` (microserviço), `ap` (aplicação)
+  ou `cd` (cross-domain: infra, segurança, mock). Exemplos: `stf_pss_ms_graph`,
+  `stf_pss_ap_sat`, `stf_pss_cd_cloud`.
+- Os três acima entram como **AVISO** no `check.py`, não como falha — o histórico é imutável
+  e renomear repositório é decisão do dono. Projeto legitimamente fora do padrão declara
+  `"padrao_equipe": false` em `.kit-config.json`, e os três silenciam.
+- **Banco de dados:** tabelas `{TAG}_TP_*` / `{TAG}_TB_*` / `{TAG}_TB_*_CHANGE` e colunas com
+  prefixo de tipo (`u_ i_ s_ n_ ts_ b_`) — perfil completo em
+  [[d_db_stf_pss|perfil de banco]]. Não é cobrado por máquina: o portão não lê DDL.
 - Bug corrigido cita o **QA-NN**; decisão cita o **D-NN**. `check.py` reprova ID que não existe.
 - `.gitattributes` normaliza fim de linha para **LF** — evita o churn CRLF↔LF do Windows.
 - **Nunca versionar:** `.venv/`, `node_modules/`, `__pycache__/`, bancos regeneráveis,
