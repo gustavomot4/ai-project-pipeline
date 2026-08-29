@@ -18,12 +18,15 @@ quanto a IA lê a cada sessão**. O resto é apoio para essas três.
 ## A primeira hora
 
 ```
-python scripts/new_project.py ../meu-app --name "Meu App" --code src
-cd ../meu-app && git init
-python 77777777_*_Project_DOCs/scripts/task.py hook
+python scripts/new_project.py ../stf_pss_ms_meu_app --name "Meu App" --tipo ms
+cd ../stf_pss_ms_meu_app && git init
+python e_doc/0_Context/scripts/task.py hook
 ```
 
-Pronto: o portão passa a rodar em todo commit. Agora abra **um** arquivo,
+Pronto: o portão passa a rodar em todo commit, e a mensagem passa a ser cobrada no
+formato da equipe (`OK|NOK: Tipo: Descrição`). O projeto nasce na árvore do padrão —
+`a_backend/`, `c_frontend/`, `d_test/`, `e_doc/`, `f_infra/`, `z_mis/` —, e este kit
+mora em `e_doc/0_Context/`. Agora abra **um** arquivo,
 `a_context/a_context_source.md`, e preencha o objetivo, as restrições e a stack. Ele tem teto
 de 4.000 caracteres e é o único que **toda** sessão de IA carrega — por isso cada caractere
 ali é pago de novo em cada conversa.

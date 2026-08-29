@@ -7,14 +7,22 @@ Uso:
 
 O que ele monta (os itens do "checklist para abrir projeto novo" do padrão, executáveis):
 
-    meu-app/
-    ├── 77777777_<TAG>_Project_DOCs/   ← este kit, instalado como a pasta de docs
-    │   ├── INDEX.md  a_context/  b_process/  c_technical_docs/  d_history/  e_qa/  scripts/
-    ├── <pasta_de_codigo>/             ← nasce com o README técnico
-    ├── CLAUDE.md                      ← contrato de leitura, na raiz (a ferramenta carrega)
-    ├── README.md                      ← porta de entrada, na estrutura da seção 8 do padrão
+    stf_pss_<ms|ap|cd>_<nome>/          ← a árvore do padrão da equipe (STF PSS)
+    ├── a_backend/{a_code,d_doc}/       ← o código nasce em a_backend/a_code
+    ├── b_middleware/  c_frontend/{a_code,d_doc}/
+    ├── d_test/{a_data_dictionary,b_test_unit,c_test_integration,...}/
+    ├── e_doc/
+    │   ├── 0_Context/                  ← ESTE KIT, instalado inteiro
+    │   │   └── INDEX.md  a_context/  b_process/  c_technical_docs/  d_history/  e_qa/  scripts/
+    │   └── 1_SPC/  2_BPM/  3_MER/  4_Class/
+    ├── f_infra/{a_docker,b_terraform}/  z_mis/
+    ├── CLAUDE.md                       ← contrato de leitura, na raiz (a ferramenta carrega)
+    ├── README.md                       ← porta de entrada, na estrutura da seção 8 do padrão
     ├── .gitignore
     └── .gitattributes
+
+Cada pasta da árvore nasce com um LEIA-ME de uma linha: git não versiona pasta vazia, e sem
+isso a árvore chegaria pela metade no clone.
 
 Por que existe: o passo "copie tudo exceto .git" era manual e levava junto o histórico e a
 análise de OUTRO projeto — o que viola "uma verdade por assunto" logo no primeiro dia.
@@ -71,6 +79,62 @@ SO_DO_KIT = tuple(
     {Path(a).stem for a in EXCLUIR_ARQUIVOS if a.endswith(".md")}
     | {p.stem for p in (raiz / "docs").rglob("*.md")}
 )
+
+
+# --- Padrão da equipe (STF PSS): a árvore que todo projeto novo nasce com ---------------
+# Cada pasta nasce com um LEIA-ME de uma linha em vez de vazia, por dois motivos: o git não
+# versiona pasta vazia (a árvore chegaria pela metade no clone), e a regra 3 do padrão diz
+# que o que não tem dono não entra — a linha É o dono declarado.
+ARVORE_EQUIPE = {
+    "a_backend/a_code": "Código-fonte do backend.",
+    "a_backend/d_doc": "DDL e documentação técnica do backend.",
+    "b_middleware": "Camada intermediária (opcional).",
+    "c_frontend/a_code": "Código-fonte do frontend.",
+    "c_frontend/d_doc": "Documentação técnica do frontend.",
+    "d_test/a_data_dictionary": "Dicionário de dados usado pelos testes.",
+    "d_test/b_test_unit": "Teste unitário: regra e borda.",
+    "d_test/c_test_integration": "Teste de integração entre componentes.",
+    "d_test/c_test_system": "Teste de sistema, ponta a ponta.",
+    "d_test/d_test_load": "Teste de carga.",
+    "d_test/e_test_capacity": "Teste de capacidade.",
+    "d_test/f_test_performance": "Teste de desempenho.",
+    "d_test/g_test_security": "Teste de segurança.",
+    "e_doc/1_SPC": "Especificação funcional e técnica (a_CHAT_functional, b_SPC_functional, c_CHAT_technical, d_SPC_technical).",
+    "e_doc/2_BPM": "Fluxos de processo (bpm_a_CHAT_<Op>, bpm_b_PRD_<Op>, bpm_c_BPM_<Op>.drawio).",
+    "e_doc/3_MER": "Modelo de dados (mer_a_CHAT, mer_b_PRD, mer_c_MER.mermaid).",
+    "e_doc/4_Class": "Diagrama de classes (class_a_CHAT, class_b_PRD, class_c_Class.mermaid).",
+    "f_infra/a_docker": "Docker e Docker Compose.",
+    "f_infra/b_terraform": "Terraform (infraestrutura como código).",
+    "z_mis": "Miscelânea e rascunhos. O que ficar aqui e ganhar dono, sai daqui.",
+}
+# `e_doc/0_Context` NÃO está na lista acima porque não nasce vazia: é onde o vault do kit é
+# instalado inteiro (contexto, processo, histórico, QA e scripts).
+VAULT_EQUIPE = "e_doc/0_Context"
+TIPOS_REPO = ("ms", "ap", "cd")
+
+
+def montar_arvore(destino: Path) -> int:
+    """As pastas do padrão da equipe, cada uma com o seu LEIA-ME de uma linha."""
+    for rel, papel in ARVORE_EQUIPE.items():
+        pasta = destino / rel
+        pasta.mkdir(parents=True, exist_ok=True)
+        alvo = pasta / "LEIA-ME.md"
+        if not alvo.exists():
+            titulo = rel.split("/")[-1]
+            alvo.write_text(
+                f"---\ntags: [padrao-equipe]\nstatus: atual\n---\n"
+                f"# {titulo}\n\n{papel}\n\n"
+                f"> Pasta do padrao da equipe (STF PSS). A estrutura completa esta em\n"
+                f"> `{VAULT_EQUIPE}/b_process/e_repository_standard.md`.\n",
+                encoding="utf-8")
+    return len(ARVORE_EQUIPE)
+
+
+def nome_de_repo(nome: str, tipo: str) -> str:
+    """'Caixa da Loja' + 'ms' -> 'stf_pss_ms_caixa_da_loja'."""
+    sem_acento = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode()
+    slug = re.sub(r"[^A-Za-z0-9]+", "_", sem_acento).strip("_").lower()
+    return f"stf_pss_{tipo}_{slug}" if slug else f"stf_pss_{tipo}_projeto"
 
 
 def sigla(nome: str) -> str:
@@ -329,6 +393,12 @@ def versao_do_kit() -> str:
 
 
 def achar_docs(projeto: Path) -> Path | None:
+    """O vault do projeto. Duas casas possíveis, e a ordem importa: a do padrão da equipe
+    primeiro, a antiga depois. Sem a segunda, o `--upgrade` deixaria de atualizar todos os
+    projetos criados antes do v13.14 — que é como uma atualização vira abandono."""
+    equipe = projeto / VAULT_EQUIPE
+    if (equipe / "a_context").is_dir():
+        return equipe
     candidatos = sorted(p for p in projeto.glob("*_Project_DOCs") if (p / "a_context").is_dir())
     if len(candidatos) == 1:
         return candidatos[0]
@@ -351,7 +421,7 @@ def arvore_suja(projeto: Path) -> bool:
 def atualizar(projeto: Path, simular: bool, forcar: bool) -> int:
     docs = achar_docs(projeto)
     if docs is None:
-        print(f"ERRO: não achei uma pasta *_Project_DOCs em {projeto}.")
+        print(f"ERRO: nao achei o vault em {projeto} — nem em `{VAULT_EQUIPE}/`, nem em `*_Project_DOCs/`.")
         return 1
     if arvore_suja(projeto) and not (simular or forcar):
         print("ERRO: a árvore do projeto tem mudanças não commitadas.")
@@ -449,8 +519,12 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Cria um projeto novo no padrão do repositório.")
     ap.add_argument("destino", help="pasta do projeto novo (será criada)")
     ap.add_argument("--name", "--nome", dest="nome", help="nome do projeto (obrigatório ao criar)")
-    ap.add_argument("--tag", help="sigla da pasta de docs (default: derivada do nome)")
-    ap.add_argument("--code", "--codigo", dest="codigo", default="src", help="pasta do código (default: src)")
+    ap.add_argument("--tag", help="sigla do projeto (default: derivada do nome)")
+    ap.add_argument("--tipo", choices=TIPOS_REPO, default="ms",
+                    help="tipo do repositório no padrão da equipe: ms (microserviço), "
+                         "ap (aplicação) ou cd (cross-domain). Default: ms")
+    ap.add_argument("--code", "--codigo", dest="codigo", default="a_backend/a_code",
+                    help="pasta do código (default: a_backend/a_code, do padrão da equipe)")
     ap.add_argument("--forcar", "--force", action="store_true", help="permite destino já existente e não vazio")
     ap.add_argument("--upgrade", "--atualizar", dest="upgrade", action="store_true",
                     help="atualiza o PROCESSO de um projeto existente, sem tocar na verdade dele")
@@ -471,8 +545,18 @@ def main() -> int:
         print(f"ERRO: {destino} já existe e não está vazia. Use --forcar se for intencional.")
         return 1
 
-    pasta_docs = f"77777777_{(args.tag or sigla(args.nome)).upper()}_Project_DOCs"
+    # Padrão da equipe (STF PSS): a documentação vive em `e_doc/`, e o vault do kit ocupa
+    # `e_doc/0_Context/` — a pasta que o padrão define como "contexto e planejamento".
+    # O nome `77777777_<TAG>_Project_DOCs` sai de cena para projeto NOVO; ele continua sendo
+    # reconhecido por todos os scripts, porque os projetos criados antes dependem dele.
+    pasta_docs = VAULT_EQUIPE
+    esperado = nome_de_repo(args.nome, args.tipo)
+    if destino.name != esperado:
+        print(f"AVISO: o padrão da equipe nomeia este repositório `{esperado}`, e a pasta se "
+              f"chama `{destino.name}`.")
+        print("       Renomear é decisão sua; o `check.py` vai avisar enquanto divergir.")
     destino.mkdir(parents=True, exist_ok=True)
+    pastas = montar_arvore(destino)
 
     n = copiar(destino, pasta_docs)
     nomear(destino, pasta_docs, args.nome)
@@ -483,6 +567,7 @@ def main() -> int:
 
     print(f"OK: {args.nome} criado em {destino}")
     print(f"   {n} arquivos de documentação em {pasta_docs}/")
+    print(f"   {pastas} pastas do padrão da equipe, cada uma com o seu LEIA-ME")
     print(f"   pasta de código: {args.codigo}/")
     print("   Ficaram no kit: changelog do kit, caso de referência e os relatórios de QA do kit.")
     print()

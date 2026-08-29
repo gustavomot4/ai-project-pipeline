@@ -8,6 +8,43 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.14] — 2026-08-29
+**A estrutura de pastas do padrão da equipe, na risca — e o vault do kit muda de casa.**
+Era o conflito de fundo que o v13.13 deixou declarado como decisão do dono. Decidido: adotar.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **Projeto novo nasce na árvore da equipe.** As sete pastas de topo (`a_backend`
+  `b_middleware` `c_frontend` `d_test` `e_doc` `f_infra` `z_mis`) e as vinte subpastas, cada
+  uma com um `LEIA-ME.md` de uma linha dizendo o que vai nela. O LEIA-ME não é enfeite: **o
+  git não versiona pasta vazia**, então sem ele a árvore chega pela metade no clone — e a
+  regra 3 do padrão ("o que não tem dono, não entra") não teria como ser aplicada a uma pasta
+  que ninguém explicou.
+
+- **O vault do kit passa a morar em `e_doc/0_Context/`** — a pasta que o padrão define como
+  "contexto e planejamento" —, com a estrutura interna intacta. `77777777_<TAG>_Project_DOCs`
+  sai de cena para projeto novo. A pasta de código default vira `a_backend/a_code`, e entrou
+  `--tipo {ms,ap,cd}`, que compõe o nome `stf_pss_<tipo>_<nome>` e avisa quando a pasta de
+  destino diverge.
+
+- **As duas casas continuam reconhecidas, e isso é promessa, não gentileza.** `check.py`,
+  `evidencia.py`, `arquivar.py`, `escopo_hook.py` e o `--upgrade` procuram
+  `e_doc/0_Context/` primeiro e `*_Project_DOCs/` depois. O único projeto real construído com
+  este kit está na casa antiga: **atualização que deixa de achar o projeto que ela mesma criou
+  não é atualização, é abandono.** `TestAsDuasCasasDoVault` guarda as duas.
+
+- **O defeito que a mudança produziu, e que só apareceu rodando.** A trava de escopo liberava
+  a documentação comparando o **nome** da pasta do vault (`rel.startswith(vault.name + "/")`).
+  Isso funcionava porque `77777777_X_Project_DOCs` é filha direta da raiz; com o vault em
+  `e_doc/0_Context/` o nome vira `0_Context`, nenhum caminho começa por isso, e a trava
+  passaria a **bloquear a escrita na documentação** — ou seja, a impedir o fecho de sessão que
+  o próprio kit exige. Agora compara o CAMINHO relativo. Pego pelo teste que existe
+  exatamente para isso, e por nenhum outro.
+
+- **E um defeito meu, no teste.** A busca-e-troca em massa que criou o helper `vault_de()`
+  trocou também a linha DENTRO do helper: ele passou a chamar a si mesmo, e o resultado foi
+  `RecursionError` no meio de um `Path`. Regex que reescreve a definição junto com as chamadas
+  é armadilha conhecida — ficou o comentário no lugar, para a próxima vez.
+
 ## [kit v13.13] — 2026-08-28
 **O padrão da equipe (STF PSS) entra no kit — e a parte que dá para cobrar, é cobrada.**
 Fonte: a página de padrões da equipe. O kit já dizia "padrão da equipe, aplicado em

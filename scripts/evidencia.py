@@ -52,6 +52,10 @@ args = [a for a in sys.argv[1:] if not a.startswith("--")]
 def achar_vault(p: Path) -> Path:
     if (p / "a_context").is_dir():
         return p
+    # Padrão da equipe: `e_doc/0_Context/`. A busca por `*_Project_DOCs` fica para os
+    # projetos criados antes do v13.14 — ver achar_vault() do check.py.
+    if (p / "e_doc" / "0_Context" / "a_context").is_dir():
+        return p / "e_doc" / "0_Context"
     cand = sorted(q for q in p.glob("*_Project_DOCs") if (q / "a_context").is_dir())
     return cand[0] if len(cand) == 1 else p
 

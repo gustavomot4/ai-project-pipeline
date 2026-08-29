@@ -41,6 +41,8 @@ def achar_vault(inicio: Path):
     for _ in range(8):
         if (atual / "a_context").is_dir() and (atual / BACKLOG).exists():
             return atual
+        if (atual / "e_doc" / "0_Context" / BACKLOG).exists():
+            return atual / "e_doc" / "0_Context"
         candidatos = sorted(q for q in atual.glob("*_Project_DOCs") if (q / "a_context").is_dir())
         if len(candidatos) == 1:
             return candidatos[0]
@@ -74,7 +76,12 @@ def main() -> int:
     if vault is None:
         passa("não achei a pasta de documentação do kit a partir daqui")
 
-    raiz = vault.parent if vault.name.endswith("_Project_DOCs") else vault
+    # A raiz do PROJETO é o pai do vault — dois níveis acima quando ele está em
+    # `e_doc/0_Context/`, um nível quando está em `*_Project_DOCs/`, e ele mesmo no kit.
+    if vault.name == "0_Context" and vault.parent.name == "e_doc":
+        raiz = vault.parent.parent
+    else:
+        raiz = vault.parent if vault.name.endswith("_Project_DOCs") else vault
     try:
         rel = Path(alvo).resolve().relative_to(raiz).as_posix()
     except ValueError:
@@ -82,8 +89,17 @@ def main() -> int:
 
     # A própria documentação é sempre gravável: é nela que a sessão registra decisão,
     # achado e fecho. Travar isso quebraria o fecho de sessão que o kit exige.
-    if vault != raiz and rel.startswith(vault.name + "/"):
-        sys.exit(0)
+    #
+    # Compara o CAMINHO do vault em relação à raiz, não o NOME da pasta. Com o vault em
+    # `77777777_X_Project_DOCs/` o nome bastava, porque ele é filho direto da raiz; com o
+    # padrão da equipe ele é `e_doc/0_Context/`, o nome vira `0_Context`, e nenhum caminho
+    # começa por isso — a trava passaria a BLOQUEAR a escrita na documentação, ou seja, a
+    # impedir o fecho de sessão que o próprio kit exige. Pego pelo teste que existe
+    # exatamente para isso; é o defeito que uma mudança de estrutura produz calada.
+    if vault != raiz:
+        rel_vault = vault.relative_to(raiz).as_posix()
+        if rel == rel_vault or rel.startswith(rel_vault + "/"):
+            sys.exit(0)
 
     texto_bl = (vault / BACKLOG).read_text(encoding="utf-8")
     bloco = re.search(r"## Em andamento([^\n]*)\n(.*?)(?=\n## |\Z)", texto_bl, re.S)

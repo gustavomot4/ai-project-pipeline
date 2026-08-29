@@ -100,6 +100,18 @@ def montar_kit(destino: Path) -> Path:
     return destino
 
 
+def vault_de(projeto: Path) -> Path:
+    """O vault do projeto, nas duas casas possíveis. Os testes criam projeto com o
+    `new_project.py`, que desde o v13.14 instala em `e_doc/0_Context/` (padrão da equipe);
+    a casa antiga fica reconhecida porque os scripts também a reconhecem."""
+    equipe = projeto / "e_doc" / "0_Context"
+    if (equipe / "a_context").is_dir():
+        return equipe
+    # NAO trocar por vault_de(): a substituicao em massa que criou este helper
+    # trocou tambem esta linha, e o helper passou a chamar a si mesmo.
+    return next(projeto.glob("*_Project_DOCs"))
+
+
 def plantar_segredo(repo: Path):
     """Segredo que ENTRA e SAI da árvore: some do working tree, fica no histórico."""
     (repo / "vazou.txt").write_text(ISCA + "\n", encoding="utf-8")
@@ -252,7 +264,7 @@ class TestProjetoNovo(unittest.TestCase):
             destino = Path(tmp) / "novo"
             r = rodar_script("new_project.py", str(destino), "--nome", "App Teste", cwd=kit)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-            docs = next(destino.glob("*_Project_DOCs"))
+            docs = vault_de(destino)
             self.assertFalse((docs / "docs").exists(), "auditoria do kit vazou para o projeto")
             # Infraestrutura de desenvolvimento DO KIT não é entregável de projeto. O CI
             # cairia dentro da pasta de docs (onde o Actions não procura) e a suíte de
@@ -280,7 +292,7 @@ class TestAtualizacao(unittest.TestCase):
         projeto = Path(tmp) / "projeto"
         r = rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        docs = next(projeto.glob("*_Project_DOCs"))
+        docs = vault_de(projeto)
         # trabalho do dono, um por categoria de verdade
         (docs / "a_context/c_decisions.md").write_text(
             (docs / "a_context/c_decisions.md").read_text(encoding="utf-8")
@@ -400,7 +412,7 @@ class TestCustomizacaoPreservada(unittest.TestCase):
             kit = montar_kit(Path(tmp) / "kit")
             projeto = Path(tmp) / "projeto"
             rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
-            docs = next(projeto.glob("*_Project_DOCs"))
+            docs = vault_de(projeto)
             self.assertTrue((docs / ".kit-manifest").exists(), "manifesto não foi gravado")
 
             alvo = docs / "b_process/skills/planner/SKILL.md"
@@ -432,7 +444,7 @@ class TestCustomizacaoPreservada(unittest.TestCase):
             kit = montar_kit(Path(tmp) / "kit")
             projeto = Path(tmp) / "projeto"
             rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
-            docs = next(projeto.glob("*_Project_DOCs"))
+            docs = vault_de(projeto)
             alvo = docs / "b_process/skills/planner/SKILL.md"
             alvo.write_text(alvo.read_text(encoding="utf-8") + "\nlocal\n", encoding="utf-8")
             p = kit / "b_process/skills/planner/SKILL.md"
@@ -1486,7 +1498,7 @@ class TestIdPrometidoNoChangelog(unittest.TestCase):
             projeto = Path(tmp) / "projeto"
             r = rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-            docs = next(projeto.glob("*_Project_DOCs"))
+            docs = vault_de(projeto)
             self.prometer(docs)
             saida = rodar_check(projeto, script=docs / "scripts/check.py").stdout
             self.assertIn("ID prometido", saida, f"aviso nasceu mudo no layout de projeto:\n{saida[-700:]}")
@@ -1602,7 +1614,7 @@ class TestTravaDeEscopo(unittest.TestCase):
         projeto = Path(tmp) / "projeto"
         r = rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        docs = next(projeto.glob("*_Project_DOCs"))
+        docs = vault_de(projeto)
         pl = docs / "a_context/b_plan.md"
         pl.write_text(pl.read_text(encoding="utf-8").replace(
             "### M1 — <nome>", f"### {modulo} — motor\n- **Pasta:** {pasta}", 1), encoding="utf-8")
@@ -2004,6 +2016,60 @@ class TestPadraoDaEquipe(unittest.TestCase):
             (repo / ".kit-config.json").write_text('{"padrao_equipe": false}', encoding="utf-8")
             self.assertNotIn("padrao da equipe", self.sem_acento(rodar_check(repo).stdout),
                              "a chave nao desligou os avisos")
+
+
+class TestAsDuasCasasDoVault(unittest.TestCase):
+    """Desde o v13.14 o vault nasce em `e_doc/0_Context/` (padrao da equipe). A casa antiga,
+    `*_Project_DOCs/`, PRECISA continuar reconhecida: o unico projeto real construido com este
+    kit esta nela, e atualizacao que deixa de achar o projeto que ela mesma criou nao e
+    atualizacao, e abandono. Estes testes guardam as DUAS casas — a nova porque e o padrao, a
+    velha porque e a promessa."""
+
+    def montar(self, tmp, antiga=False):
+        kit = montar_kit(Path(tmp) / "kit")
+        projeto = Path(tmp) / "projeto"
+        r = rodar_script("new_project.py", str(projeto), "--nome", "App", cwd=kit)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        if antiga:
+            (projeto / "e_doc" / "0_Context").rename(projeto / "77777777_APP_Project_DOCs")
+        # `git init` nao e detalhe: sem repositorio, o `check.py` cai para o vault como topo,
+        # e entao o `.gitignore` e o `CLAUDE.md` — que moram na RAIZ do projeto — ficam fora
+        # da varredura. O portao reprovaria por ausencia de arquivo que existe.
+        git(projeto, "init", "-q")
+        git(projeto, "add", "-A")
+        git(projeto, *GIT_ID, "commit", "-qm", "OK: Chore: Estrutura inicial")
+        return projeto
+
+    def test_nasce_na_casa_do_padrao_da_equipe(self):
+        with area_temporaria() as tmp:
+            projeto = self.montar(tmp)
+            self.assertTrue((projeto / "e_doc/0_Context/a_context").is_dir(),
+                            "o vault nao nasceu em e_doc/0_Context")
+            for pasta in ("a_backend/a_code", "d_test/b_test_unit", "f_infra/a_docker", "z_mis"):
+                self.assertTrue((projeto / pasta).is_dir(), f"{pasta} nao foi criada")
+                self.assertTrue((projeto / pasta / "LEIA-ME.md").exists(),
+                                f"{pasta} nasceu vazia — o git nao versiona pasta vazia")
+
+    def test_o_portao_acha_o_vault_nas_duas_casas(self):
+        for antiga in (False, True):
+            with self.subTest(casa="antiga" if antiga else "equipe"), area_temporaria() as tmp:
+                projeto = self.montar(tmp, antiga=antiga)
+                vault = vault_de(projeto)
+                r = rodar_check(projeto, script=vault / "scripts/check.py")
+                self.assertNotIn("nao achei", r.stdout.lower())
+                self.assertIn("OK:", r.stdout, r.stdout)
+
+    def test_evidencia_e_upgrade_acham_o_vault_nas_duas_casas(self):
+        for antiga in (False, True):
+            with self.subTest(casa="antiga" if antiga else "equipe"), area_temporaria() as tmp:
+                projeto = self.montar(tmp, antiga=antiga)
+                kit = Path(tmp) / "kit"
+                r = rodar_script("evidencia.py", str(projeto), cwd=kit)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertIn("EVID", r.stdout)
+                r2 = rodar_script("new_project.py", "--upgrade", str(projeto), "--simular", cwd=kit)
+                self.assertEqual(r2.returncode, 0, r2.stdout + r2.stderr)
+                self.assertNotIn("nao achei", r2.stdout.lower())
 
 
 if __name__ == "__main__":

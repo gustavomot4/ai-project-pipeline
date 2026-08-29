@@ -79,6 +79,13 @@ def achar_vault(inicio: Path) -> Path:
     Sem isto o hook precisaria saber o nome da pasta de docs de cada projeto."""
     if (inicio / "a_context").is_dir():
         return inicio
+    # Padrão da equipe (STF PSS): a documentação mora em `e_doc/`, e o contexto/planejamento
+    # em `e_doc/0_Context/` — que é onde o vault do kit passa a ser instalado. A busca por
+    # `*_Project_DOCs` FICA, e não por nostalgia: os projetos criados antes do v13.14 têm o
+    # vault lá, e um kit que só acha a casa nova quebra todo projeto que ele mesmo criou.
+    equipe = inicio / "e_doc" / "0_Context"
+    if (equipe / "a_context").is_dir():
+        return equipe
     candidatos = sorted(p for p in inicio.glob("*_Project_DOCs") if (p / "a_context").is_dir())
     if len(candidatos) == 1:
         return candidatos[0]
