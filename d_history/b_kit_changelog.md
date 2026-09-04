@@ -8,6 +8,85 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.16] — 2026-09-04
+**O kit ganha a única medida que não é sobre ele mesmo — e conserta o defeito que escondia
+todos os próprios achados.** Uma revisão adversarial de cinco propostas de melhoria matou
+três delas com medição (fundir commits de fecho: 94,3% já eram fundidos; três checagens de
+frontend: 0 achados verdadeiros e 3 falsos positivos no projeto real; subagente de review:
+nasceria fora do git, duplicando o SKILL.md e cegando o censo de skills). O que sobrou saiu
+de um lugar que nenhuma das cinco olhava: a seção 4 do critério de conclusão congelado, que
+lista quatro itens de instrumentação e tinha **um** feito.
+- **Skill:** nenhuma (evolução do próprio kit)
+
+- **QA-15 — o modelo oficial de achado escondia todos os achados.**
+  `b_process/templates/b_qa_finding.md` emitia **seis** células contra as **sete** do
+  cabeçalho do DECISIONS: faltava `Fechado em`. Como a checagem de achado vencido lê a
+  ÚLTIMA célula como "Fechado em", numa linha curta ela lia `Correção` — que nunca está
+  vazia e nunca diz "aberto". Efeito: **todo achado escrito pelo modelo do próprio kit era
+  contado como FECHADO**, e a única checagem que cobra prazo dele nunca disparava em
+  nenhum. É a espécie do `QA-14` (checagem que emudece) entrando pela porta de **quem
+  escreve**, e não pela de quem confere — que é justamente por que sobreviveu: o portão
+  ficou verde o tempo todo. Consertado o modelo e consertada a ESPÉCIE: o `check.py` agora
+  compara cada linha com o cabeçalho **daquele arquivo** e avisa quando não pôde julgar, em
+  vez de julgar errado em silêncio. A isca reproduz o defeito original (`6 != 8`).
+
+- **Coluna `Origem` no `QA-NN`** (`portão` · `revisão` · `dono` · `usuário`). É o item 2 da
+  seção 4 do critério congelado, e o documento o chama de "o número menos circular que este
+  projeto pode produzir". Sem ela, "quantos defeitos o portão pegou?" não dá zero — dá
+  **irrespondível**, e um kit que não sabe se o próprio portão pega alguma coisa está
+  vendendo a parte que mais anuncia sem nenhuma medida atrás. Todo o resto que o kit mede é
+  ele conferindo se seguiu a própria regra; esta é a única afirmação sobre o mundo.
+  Cobrada por AVISO, nunca por falha: o registro é append-only, e reprovar o que a regra
+  proíbe editar é armadilha, não portão. `evidencia.py` passa a imprimir o placar por
+  origem, e distingue **coluna ausente** de **coluna vazia** — diagnósticos diferentes,
+  ações diferentes, e dizer um pelo outro é o relatório mentindo com número certo.
+
+- **`python scripts/task.py marco`** grava `e_qa/evidencia_AAMMDD.json` e imprime o delta
+  contra o marco anterior. É o item 3 da mesma seção ("série temporal, não foto"), e nasceu
+  da medição mais constrangedora desta rodada: a última linha do próprio relatório **pedia**
+  "guarde a saída de `--json`", no lugar mais visível que existe, e a taxa de cumprimento no
+  único projeto real foi **zero em oito dias**. É a lição do kit apontada para ele mesmo —
+  *regra que a máquina não cobra é pedido, não regra* —, então o pedido virou comando.
+  O delta vem com a ressalva junto: ele não diz se melhorou (mais achados pode ser mais
+  revisão ou mais defeito), só garante que a série exista — e tendência não se reconstrói
+  depois, só se acumula.
+
+- **`pct_so_processo` passa a ser `null`, e não `0.0`, quando não foi medido.** No
+  repositório do kit o vault É a raiz, então não existe "produto" do qual separar o
+  processo. O relatório já dizia isso em texto; o **JSON** dizia `0.0` — e é o JSON que a
+  série de marcos compara, então a mentira viajava para dentro da tendência. Zero é a
+  leitura mais elogiosa possível de algo que nem foi medido.
+
+- **Questão do dono cujo MARCO já passou** aparece no `evidencia.py`. A avaliação de campo
+  registrou "2 questões com prazo estourado que o kit registrou e não cobrou", e o reflexo
+  era contar dias. Errado: as duas linhas reais diziam "antes de T-10" e "antes de E-3" —
+  o que venceu foi um **marco**, não uma data, e um contador de calendário não pega nenhuma
+  das duas (o projeto inteiro durou 4 dias). Agora a regra é "Q-NN aberta cujo card já está
+  `[x]` no BACKLOG". Mora no relatório do DONO e não no portão do agente, de propósito: a
+  fila é dele e só ele a fecha, e cobrança sem saída no portão vira ruído.
+
+- **O aviso do padrão da equipe parou de pedir o que já foi feito.** Ele terminava com
+  "instale a trava" mesmo com o hook `commit-msg` instalado. A **contagem não mudou** — e
+  isso é decisão: calar um aviso verdadeiro deixaria verde um repositório que ignora o
+  padrão, que é a mesma doença por outro lado. Mudou o **pedido**: com a trava posta, o
+  texto diz que nenhuma mensagem nova entra fora do padrão e que a contagem cai sozinha,
+  um commit por vez. Adotar o padrão hoje não reescreve o histórico de ontem.
+
+- **Projeto existente:** `--upgrade` leva o modelo consertado e os scripts (`templates/` e
+  `scripts/` são do kit), e **não** toca no `a_context/c_decisions.md` — ele é do projeto.
+  A coluna `Origem` entra à mão, uma vez; os achados antigos podem ficar em branco, e o
+  aviso diz exatamente isso. Achados antigos não se retro-datam.
+
+- **Achado de carona, pago pela suíte:** a linha de exemplo do `QA-NN` estava a **um**
+  caractere do teto de 120 que o `linha_max` oferece, e a coluna nova a estourou — o portão
+  passou a reprovar o projeto por uma linha que o próprio kit tinha escrito. Encurtada para
+  114 com o vocabulário (`gravidade`, `origem`) movido para a prosa acima da tabela, onde ele
+  já explicava a coluna nova. Quem pegou foi `TestChavesDaConfig`, um teste que existe desde
+  o v13.12 para outra coisa: margem em template não é folga, é requisito.
+
+- 14 testes novos (139 no total), entre eles a isca que reproduz o `6 != 8` do modelo e a
+  contraprova de que o aviso de desalinhamento não engole o de prazo.
+
 ## [kit v13.15] — 2026-08-29
 **O kit se declara ferramenta, não projeto da equipe — e a chave que permitia isso era grossa
 demais.** O dono decidiu: o kit não tem relação com a equipe e não há intenção de ser usado

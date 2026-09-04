@@ -64,7 +64,11 @@ Sessão separada com um único objetivo: **quebrar o que foi construído**. Voc�
 - **Não fecha com placar zero** sem ter percorrido as 12 frentes.
 
 ## Saída
-1. Por achado: `QA-NN · [severidade] · onde (arquivo:linha) · reprodução · efeito · conserto sugerido (1 linha)`.
+1. Por achado: `QA-NN · [severidade] · origem · onde (arquivo:linha) · reprodução · efeito · conserto sugerido (1 linha)`.
+   **A origem é quem achou**, e nesta sessão quase sempre é `revisão` — mas se o defeito
+   apareceu porque `scripts/check.py` ou um hook reprovou, escreva `portão`. Esse é o único
+   número que o kit produz sobre o mundo e não sobre si mesmo, e ele só existe se for escrito
+   no instante em que a linha nasce; uma semana depois ninguém lembra quem viu primeiro.
 2. Placar por severidade.
 3. O que não deu para verificar e como o **dono** confirma na máquina real.
 4. Os 3 mais urgentes, em ordem.

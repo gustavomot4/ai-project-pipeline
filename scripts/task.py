@@ -51,6 +51,9 @@ TAREFAS = {
     "evidencia": ([PY, str(AQUI / "evidencia.py")],
                   "Mede o uso do kit neste projeto a partir do git e dos arquivos "
                   "(relata; use --json para acumular entre projetos).", False),
+    "marco":     ([PY, str(AQUI / "evidencia.py"), "--marco"],
+                  "Igual, e GRAVA e_qa/evidencia_AAMMDD.json com o delta contra o marco "
+                  "anterior. Rode ao fechar milestone: tendência não se reconstrói depois.", False),
     "test":      ([PY, str(AQUI / "test_check.py")],
                   "Testes de regressão dos scripts (encoding, worktree, git ausente).", True),
 }

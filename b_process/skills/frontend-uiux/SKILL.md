@@ -43,7 +43,7 @@ Você constrói a interface que a pessoa real usa. Um módulo/tela por sessão, 
 - **Não entrega tela sem estado de erro e vazio** — eles não são polimento.
 
 ## Saída
-1. Delta dos arquivos (arquivo novo pode vir inteiro). 2. Roteiro de verificação passo a passo para o dono. 3. O que NÃO foi coberto e por quê. 4. D-NN/Q-NN/QA-NN gerados. 5. Mensagem de commit (`feat(ui): …`).
+1. Delta dos arquivos (arquivo novo pode vir inteiro). 2. Roteiro de verificação passo a passo para o dono. 3. O que NÃO foi coberto e por quê. 4. D-NN/Q-NN/QA-NN gerados. 5. Mensagem de commit (`OK: Feat: <o que a tela passa a fazer>: …`).
 
 ## Armadilhas pagas (não repague)
 - Proteger com senha/PIN uma tela do fluxo principal: o dono remove depois porque travava o caixa. Pergunte o que ele quer proteger **antes**.

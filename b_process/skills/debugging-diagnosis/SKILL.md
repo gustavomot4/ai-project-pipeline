@@ -60,7 +60,7 @@ Se as três não estiverem respondidas, **pare e pergunte**. Investigar sem elas
 4. Delta da correção + o teste de regressão.
 5. `QA-NN` (severidade, onde, o que quebrava, correção) para o [[c_decisions|DECISIONS]].
 6. **O que continua sem explicação**, se algo continua. Lacuna declarada, nunca preenchida com suposição.
-7. O que o **dono** roda e reinicia na máquina real. Commit (`fix(escopo): QA-NN …`).
+7. O que o **dono** roda e reinicia na máquina real. Commit (`OK: Fix: <o que mudou>: QA-NN …`).
 
 ## Armadilhas pagas
 - **Consertar sem reproduzir:** o defeito volta, agora sem o rastro de que já tinha sido "corrigido" uma vez.

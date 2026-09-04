@@ -44,7 +44,7 @@ Você constrói a camada que existe **para uma interface específica**: agrega, 
 - **Não decide contrato de outro serviço** — isso é `microservice-sync`.
 
 ## Saída
-1. Delta dos arquivos. 2. Contrato com exemplo real de request/response. 3. Teste + comando para rodar. 4. Matriz "dependência × comportamento na falha". 5. D-NN/QA-NN. 6. Commit (`feat(bff): …`).
+1. Delta dos arquivos. 2. Contrato com exemplo real de request/response. 3. Teste + comando para rodar. 4. Matriz "dependência × comportamento na falha". 5. D-NN/QA-NN. 6. Commit (`OK: Feat: <o que a borda passa a expor>: …`).
 
 ## Armadilhas pagas
 - Parser escrito sobre payload imaginado: retrabalho garantido.

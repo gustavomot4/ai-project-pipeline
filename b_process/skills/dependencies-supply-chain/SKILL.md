@@ -65,7 +65,7 @@ Aprovação de dependência nova é `D-NN`, com a alternativa descartada citada.
 5. Removidas: o que saiu e por quê.
 6. Delta do manifesto e do lockfile.
 7. O que o **dono** roda na máquina real: instalação limpa, build, suíte.
-8. Commit (`chore(deps): D-NN …`).
+8. Commit (`OK: Chore: <a dependencia e a versao>: D-NN …`).
 
 ## Armadilhas pagas
 - **Atualizar tudo de uma vez:** o teste quebra e ninguém sabe qual das 40 foi.

@@ -50,7 +50,7 @@ Escreva a matriz `área × exigência` no D-NN. Ela é o contrato que o teste va
 - **Não inventa política de senha ou de sessão** sem registrar como D-NN.
 
 ## Saída
-1. D-NN com a matriz `área × exigência`. 2. Delta do código. 3. Testes de acesso (um por rota sensível) + comando. 4. O que o dono precisa fazer na máquina real (gerar segredo, definir a senha inicial). 5. Procedimento de recuperação para o runbook. 6. Commit (`feat(auth): …`).
+1. D-NN com a matriz `área × exigência`. 2. Delta do código. 3. Testes de acesso (um por rota sensível) + comando. 4. O que o dono precisa fazer na máquina real (gerar segredo, definir a senha inicial). 5. Procedimento de recuperação para o runbook. 6. Commit (`OK: Feat: <o que passa a ser exigido>: …`).
 
 ## Armadilhas pagas
 - Segredo de sessão fixo no repositório e boot com placeholder: os dois achados mais graves de um projeto real deste kit.

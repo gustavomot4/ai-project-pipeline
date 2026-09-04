@@ -33,6 +33,8 @@ AVISOS (não reprovam; com --avisos-reprovam, reprovam)
   sessão sem skill declarada no changelog · ocupação declarada divergindo do arquivo ·
   questão do dono ausente do CONTEXT ·
   achado vencido (7 dias p/ CRÍTICO e ALTO, 15 p/ MÉDIO, BAIXO não vence) ·
+  linha de QA com menos células que o próprio cabeçalho ·
+  tabela de QA sem a coluna Origem (quem achou: portão/revisão/dono/usuário) ·
   ID prometido no CHANGELOG e nunca registrado ·
   skill declarada responsável no PLANO que nunca rodou ·
   commit fora do padrão da equipe · branch fora do padrão · repositório fora do padrão
@@ -1147,37 +1149,94 @@ def prazo_de(sev):
 fontes_qa = [t for t in [texto_dec] + [corpo[p] for p in notas
                                        if p.parent == raiz / "a_context"
                                        and re.search(r"qa", p.stem, re.I)] if t]
-com_coluna = [t for t in fontes_qa if re.search(r"^\|\s*#\s*\|.*Fechado", t, re.M | re.I)]
-if com_coluna:
-    velhos = []
-    for texto_fonte in com_coluna:
-        for linha in texto_fonte.splitlines():
-            if not re.match(r"^\|\s*`?QA-\d+`?\s*\|", linha):
-                continue
-            celulas = [c.strip().strip("`") for c in linha.strip().strip("|").split("|")]
-            if len(celulas) < 5:
-                continue
-            ident, quando_txt, sev, fechado = celulas[0], celulas[1], celulas[2], celulas[-1]
-            if fechado and "ABERTO" not in fechado.upper():
-                continue
-            prazo = prazo_de(sev)
-            if prazo is None:
-                continue
-            try:
-                idade = (date.today() - date.fromisoformat(quando_txt[:10])).days
-            except ValueError:
-                continue
-            if idade > prazo:
-                velhos.append(f"{ident} ({sev}, {idade} dias, prazo {prazo})")
-    if velhos:
-        avisos.append(
-            "Achado vencido: " + ", ".join(velhos)
-            + " — o prazo é 7 dias para CRÍTICO/ALTO e 15 para MÉDIO (BAIXO não vence). "
-            "Ou fecha com data, ou vira card no BACKLOG, ou o dono rebaixa a gravidade. "
-            "Registro append-only precisa de disciplina de expiração, senão a linha "
-            "descreve um mundo que já acabou."
-        )
-elif fontes_qa:
+def _celulas(linha: str):
+    """Células de uma linha de tabela markdown, sem crases e sem os pipes das pontas."""
+    return [c.strip().strip("`") for c in linha.strip().strip("|").split("|")]
+
+
+def _cabecalho_qa(texto: str):
+    """As células do cabeçalho da tabela de QA, ou None. Existe porque a posição de
+    'Fechado em' e a de 'Origem' são LIDAS do cabeçalho, e não fixadas aqui: projeto que
+    acrescenta uma coluna própria continua sendo julgado certo."""
+    for linha in texto.splitlines():
+        if re.match(r"^\|\s*#\s*\|", linha) and re.search(r"Fechado", linha, re.I):
+            return _celulas(linha)
+    return None
+
+
+# AVISO: linha de QA com menos células que o próprio cabeçalho.
+#
+# Não é cosmético, e o kit pagou por isto: o modelo oficial de achado
+# (b_process/templates/b_qa_finding.md) emitia SEIS células contra as SETE do cabeçalho —
+# faltava justamente "Fechado em". Como a checagem de achado vencido lê a ÚLTIMA célula
+# como "Fechado em", numa linha curta ela lia "Correção", que nunca está vazia e nunca diz
+# "aberto": o `continue` abaixo tratava o achado como FECHADO. Resultado: TODO achado
+# escrito pelo modelo oficial do kit ficava invisível para a única checagem que cobra
+# prazo dele. A cegueira nasceu do lado de quem escreve, não do lado de quem confere — que
+# é exatamente por que ela sobreviveu: o portão estava "verde" o tempo todo.
+#
+# É a mesma espécie do QA-14 (checagem que emudece), e por isso a resposta aqui é a mesma:
+# consertar a ESPÉCIE. Em vez de fixar 7 ou 8 colunas, compare cada linha com o cabeçalho
+# DAQUELE arquivo e diga em voz alta quando não puder julgar.
+velhos, desalinhadas, sem_origem = [], [], []
+for texto_fonte in fontes_qa:
+    cab = _cabecalho_qa(texto_fonte)
+    if cab is None:
+        continue
+    tem_origem = any(re.search(r"origem", c, re.I) for c in cab)
+    for linha in texto_fonte.splitlines():
+        if not re.match(r"^\|\s*`?QA-\d+`?\s*\|", linha):
+            continue
+        celulas = _celulas(linha)
+        if len(celulas) < 5:
+            continue
+        ident = celulas[0]
+        if len(celulas) != len(cab):
+            # NÃO julga o prazo desta linha: os índices não são confiáveis, e chutar aqui
+            # é o defeito, não o conserto.
+            desalinhadas.append(f"{ident} ({len(celulas)} de {len(cab)})")
+            continue
+        if not tem_origem:
+            sem_origem.append(ident)
+        quando_txt, sev, fechado = celulas[1], celulas[2], celulas[-1]
+        if fechado and "ABERTO" not in fechado.upper():
+            continue
+        prazo = prazo_de(sev)
+        if prazo is None:
+            continue
+        try:
+            idade = (date.today() - date.fromisoformat(quando_txt[:10])).days
+        except ValueError:
+            continue
+        if idade > prazo:
+            velhos.append(f"{ident} ({sev}, {idade} dias, prazo {prazo})")
+
+if velhos:
+    avisos.append(
+        "Achado vencido: " + ", ".join(velhos)
+        + " — o prazo é 7 dias para CRÍTICO/ALTO e 15 para MÉDIO (BAIXO não vence). "
+        "Ou fecha com data, ou vira card no BACKLOG, ou o dono rebaixa a gravidade. "
+        "Registro append-only precisa de disciplina de expiração, senão a linha "
+        "descreve um mundo que já acabou."
+    )
+if desalinhadas:
+    avisos.append(
+        "Linha de QA com contagem de células diferente do cabeçalho: "
+        + ", ".join(desalinhadas)
+        + " — o prazo NÃO foi julgado nessas linhas, porque a última célula deixa de ser "
+        "'Fechado em' e o achado passaria por fechado sem nunca ter sido. Foi assim que o "
+        "modelo oficial do kit escondeu todos os próprios achados. Acerte as células."
+    )
+if sem_origem:
+    avisos.append(
+        f"Tabela de QA sem a coluna 'Origem' ({len(sem_origem)} achado(s)): não dá para "
+        "responder quantos defeitos o PORTÃO pegou, e essa é a única medida deste kit que "
+        "não é ele se elogiando por seguir a própria regra. Acrescente a coluna "
+        "(`portão`/`revisão`/`dono`/`usuário`) — os achados antigos podem ficar em branco; "
+        "o que importa é o próximo. Aviso, e não falha, porque o registro é append-only e "
+        "reprovar o que a regra proíbe editar é armadilha, não portão."
+    )
+if fontes_qa and not any(_cabecalho_qa(t) for t in fontes_qa):
     avisos.append(
         "Tabela de QA sem a coluna 'Fechado em' — a checagem de achado vencido NÃO rodou. "
         "Dito em voz alta de propósito: checagem que emudece é pior que checagem que não existe."
@@ -1239,12 +1298,31 @@ if any(_liga.values()) and TEM_GIT:
              if l.strip() and not _re_msg.match(l.split(" ", 1)[-1])]
     if _fora and _liga["commit"]:
         _amostra = " · ".join(l[:60] for l in _fora[:3])
+        # A CONTAGEM não muda quando a trava já está posta, e isso é decisão: um repositório
+        # que ignora o padrão não pode ficar verde só por ter instalado o hook depois. O que
+        # muda é o PEDIDO. O aviso mandava "instale a trava" para quem já a tinha instalado —
+        # e um aviso que cobra o que já foi feito é a mesma doença que este arquivo persegue
+        # do outro lado: ele vira ruído, e ruído deixa de ser lido. Adotar o padrão hoje não
+        # reescreve o histórico de ontem; o que a pessoa pode fazer é garantir o de amanhã, e
+        # é só isso que o texto deve pedir.
+        _travado = False
+        if DIR_HOOKS is not None:
+            _g = DIR_HOOKS / "commit-msg"
+            try:
+                _travado = _g.is_file() and "mensagem_hook" in _g.read_text(
+                    encoding="utf-8", errors="replace")
+            except OSError:
+                _travado = False
         avisos.append(
             f"{len(_fora)} dos últimos 30 commits fora do padrão da equipe "
             f"`OK|NOK: Tipo: Descrição`: {_amostra}"
             + (" …" if len(_fora) > 3 else "")
-            + " — instale a trava com `python scripts/install_hook.py` (hook commit-msg) para "
-              "que a próxima mensagem seja recusada em vez de contada aqui."
+            + (" — a trava (hook commit-msg) JÁ está instalada, então nenhuma mensagem NOVA "
+               "entra fora do padrão. Estes são anteriores a ela e o histórico não se "
+               "reescreve: a contagem cai sozinha, um por commit."
+               if _travado else
+               " — instale a trava com `python scripts/install_hook.py` (hook commit-msg) para "
+               "que a próxima mensagem seja recusada em vez de contada aqui.")
         )
     _branch = (_saida_git("rev-parse", "--abbrev-ref", "HEAD") or "").strip()
     if (_liga["branch"] and _branch and _branch != "HEAD"

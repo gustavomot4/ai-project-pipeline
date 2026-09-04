@@ -50,7 +50,7 @@ Você é o dono da regra de negócio e do dado. Um módulo por sessão, por **de
 - **Não mexe em módulo que não é o desta sessão.** Precisa? Pare e avise.
 
 ## Saída
-1. Delta dos arquivos (+ migration). 2. Teste + comando exato. 3. Invariantes verificados, um por linha. 4. O que NÃO foi testado e por quê. 5. D-NN/QA-NN gerados. 6. O que o dono roda na máquina real (migration, restart — processo vivo tem cache). 7. Commit (`feat(escopo): …`).
+1. Delta dos arquivos (+ migration). 2. Teste + comando exato. 3. Invariantes verificados, um por linha. 4. O que NÃO foi testado e por quê. 5. D-NN/QA-NN gerados. 6. O que o dono roda na máquina real (migration, restart — processo vivo tem cache). 7. Commit (`OK: Feat: <o que mudou>: …`).
 
 ## Armadilhas pagas
 - Float em dinheiro: centavo fantasma que só aparece no fechamento do mês.
