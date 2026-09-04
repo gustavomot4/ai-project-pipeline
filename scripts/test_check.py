@@ -1206,14 +1206,14 @@ class TestAchadoVencido(unittest.TestCase):
 
     def test_critico_antigo_e_aberto_avisa(self):
         with area_temporaria() as tmp:
-            repo = self.preparar(tmp, "| QA-42 | 2020-01-01 | Crítico | `x.py:1` | quebrava | — | _(aberto)_ |")
+            repo = self.preparar(tmp, "| QA-42 | 2020-01-01 | Crítico | revisão | `x.py:1` | quebrava | — | _(aberto)_ |")
             saida = rodar_check(repo).stdout
             self.assertIn("Achado vencido", saida)
             self.assertIn("QA-42", saida)
 
     def test_critico_fechado_cala(self):
         with area_temporaria() as tmp:
-            repo = self.preparar(tmp, "| QA-42 | 2020-01-01 | Crítico | `x.py:1` | quebrava | — | ✔ 2020-01-02 |")
+            repo = self.preparar(tmp, "| QA-42 | 2020-01-01 | Crítico | revisão | `x.py:1` | quebrava | — | ✔ 2020-01-02 |")
             self.assertNotIn("Achado vencido", rodar_check(repo).stdout)
 
     def test_prazo_por_gravidade(self):
@@ -1231,7 +1231,7 @@ class TestAchadoVencido(unittest.TestCase):
         ]
         for sev, idade, deve_avisar, porque in casos:
             with self.subTest(sev=sev, idade=idade), area_temporaria() as tmp:
-                repo = self.preparar(tmp, f"| QA-42 | {self.dias_atras(idade)} | {sev} | "
+                repo = self.preparar(tmp, f"| QA-42 | {self.dias_atras(idade)} | {sev} | revisão | "
                                           "`x.py:1` | quebrava | — | _(aberto)_ |")
                 saida = rodar_check(repo).stdout
                 self.assertEqual("Achado vencido" in saida, deve_avisar, f"{porque}:\n{saida[-400:]}")
@@ -1241,7 +1241,7 @@ class TestAchadoVencido(unittest.TestCase):
         BAIXO. Um aviso que passa a cobrar o que ninguém vai fazer vira ruído — e aviso que
         vira ruído deixa de ser lido, que é a mesma morte da checagem que emudece."""
         with area_temporaria() as tmp:
-            repo = self.preparar(tmp, "| QA-42 | 2020-01-01 | Baixo | `x.py:1` | quebrava | — | _(aberto)_ |")
+            repo = self.preparar(tmp, "| QA-42 | 2020-01-01 | Baixo | revisão | `x.py:1` | quebrava | — | _(aberto)_ |")
             self.assertNotIn("Achado vencido", rodar_check(repo).stdout)
 
     def test_acha_o_registro_que_mudou_de_casa(self):
@@ -1269,6 +1269,111 @@ class TestAchadoVencido(unittest.TestCase):
                 "| O que quebrava | Correção | Fechado em |", "| O que quebrava | Correção |"),
                 encoding="utf-8")
             self.assertIn("NÃO rodou", rodar_check(repo).stdout)
+
+
+class TestOrigemDoAchado(unittest.TestCase):
+    """A coluna `Origem` e o defeito que a fez nascer.
+
+    Duas coisas moram aqui porque foram achadas juntas, na mesma leitura:
+
+    1. **O modelo oficial de achado emitia SEIS células contra as SETE do cabeçalho.**
+       Não era cosmético: a checagem de achado vencido lê a ÚLTIMA célula como
+       "Fechado em", e numa linha curta ela lia "Correção" — que nunca está vazia e nunca
+       diz "aberto". Todo achado escrito pelo modelo do próprio kit era contado como
+       FECHADO, e a única checagem que cobra prazo dele nunca disparava. A cegueira
+       entrou pela porta de QUEM ESCREVE, não pela de quem confere, e por isso o portão
+       ficou verde o tempo todo. É a espécie do QA-14 vista de outro ângulo.
+    2. **Faltava `Origem`** (`portão`/`revisão`/`dono`/`usuário`), e sem ela a pergunta
+       "quantos defeitos o portão pegou?" não tem resposta — nem zero, que seria uma
+       resposta. É a única medida deste kit sobre o MUNDO, e não sobre si mesmo.
+    """
+
+    def celulas(self, linha: str):
+        return [c.strip() for c in linha.strip().strip("|").split("|")]
+
+    def test_o_modelo_de_achado_bate_com_o_cabecalho(self):
+        """A regressão que impede o defeito de voltar. Compara os DOIS arquivos reais do
+        kit — não uma cópia da regra escrita aqui, que envelheceria junto."""
+        cab = None
+        for linha in (KIT / "a_context/c_decisions.md").read_text(encoding="utf-8").splitlines():
+            if re.match(r"^\|\s*#\s*\|", linha) and "Fechado" in linha:
+                cab = self.celulas(linha)
+        self.assertIsNotNone(cab, "o cabeçalho da tabela de QA sumiu do DECISIONS")
+
+        modelo = (KIT / "b_process/templates/b_qa_finding.md").read_text(encoding="utf-8")
+        linha_modelo = next((l for l in modelo.splitlines()
+                             if re.match(r"^\|\s*QA-NN\s*\|", l)), None)
+        self.assertIsNotNone(linha_modelo, "o modelo de achado não tem mais a linha da tabela")
+        self.assertEqual(
+            len(self.celulas(linha_modelo)), len(cab),
+            "o modelo de achado escreve um número de células diferente do cabeçalho do "
+            "DECISIONS. Foi exatamente assim que TODO achado do kit passou a ser contado "
+            "como fechado: a última célula deixa de ser 'Fechado em'. "
+            f"cabeçalho ({len(cab)}): {cab} · "
+            f"modelo ({len(self.celulas(linha_modelo))}): {self.celulas(linha_modelo)}")
+
+    def test_o_cabecalho_tem_origem(self):
+        cab = (KIT / "a_context/c_decisions.md").read_text(encoding="utf-8")
+        self.assertTrue(
+            re.search(r"^\|\s*#\s*\|.*\bOrigem\b.*Fechado", cab, re.M | re.I),
+            "o cabeçalho da tabela de QA perdeu a coluna 'Origem' — sem ela, 'quantos "
+            "defeitos o portão pegou' volta a ser irrespondível")
+
+    def preparar(self, tmp, linha_qa, cabecalho=None):
+        repo = montar_kit(Path(tmp) / "repo")
+        d = repo / "a_context/c_decisions.md"
+        corpo = d.read_text(encoding="utf-8")
+        if cabecalho:
+            corpo = re.sub(r"^\|\s*#\s*\|.*Fechado em \|$", cabecalho, corpo, flags=re.M)
+        d.write_text(corpo + "\n" + linha_qa + "\n", encoding="utf-8")
+        return repo
+
+    def test_linha_curta_nao_passa_por_fechada(self):
+        """A isca do defeito real: linha SEM a célula 'Fechado em', com a de 'Correção'
+        preenchida — que é como o modelo antigo escrevia. Antes do conserto isso saía
+        silencioso; agora tem de falar."""
+        with area_temporaria() as tmp:
+            repo = self.preparar(
+                tmp, "| QA-42 | 2020-01-01 | Crítico | revisão | `x.py:1` | quebrava | trocou o parser |")
+            saida = rodar_check(repo).stdout
+            self.assertIn("contagem de células", saida,
+                          f"linha curta passou calada — é o defeito de volta:\n{saida[-600:]}")
+            self.assertIn("QA-42", saida)
+
+    def test_linha_completa_continua_sendo_julgada(self):
+        """Contraprova: o aviso de desalinhamento não pode engolir o de prazo."""
+        with area_temporaria() as tmp:
+            repo = self.preparar(
+                tmp, "| QA-42 | 2020-01-01 | Crítico | revisão | `x.py:1` | quebrava | — | _(aberto)_ |")
+            saida = rodar_check(repo).stdout
+            self.assertIn("Achado vencido", saida)
+            self.assertNotIn("contagem de células", saida)
+
+    def test_tabela_sem_a_coluna_origem_avisa(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(
+                tmp,
+                "| QA-42 | 2020-01-01 | Crítico | `x.py:1` | quebrava | — | _(aberto)_ |",
+                cabecalho="| # | Data | Sev. | Onde | O que quebrava | Correção | Fechado em |")
+            self.assertIn("sem a coluna 'Origem'", rodar_check(repo).stdout)
+
+    def test_tabela_com_a_coluna_origem_nao_avisa(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(
+                tmp, "| QA-42 | 2020-01-01 | Crítico | portão | `x.py:1` | quebrava | — | _(aberto)_ |")
+            self.assertNotIn("sem a coluna 'Origem'", rodar_check(repo).stdout)
+
+    def test_o_aviso_de_origem_e_aviso_e_nao_falha(self):
+        """Registro append-only: reprovar o que a regra proíbe editar é armadilha, não
+        portão. A lição já está paga em d_agent_learnings.md."""
+        with area_temporaria() as tmp:
+            repo = self.preparar(
+                tmp,
+                "| QA-42 | 2030-01-01 | Baixo | `x.py:1` | quebrava | — | _(aberto)_ |",
+                cabecalho="| # | Data | Sev. | Onde | O que quebrava | Correção | Fechado em |")
+            r = rodar_check(repo)
+            self.assertIn("sem a coluna 'Origem'", r.stdout)
+            self.assertEqual(r.returncode, 0, f"virou falha:\n{r.stdout[-500:]}")
 
 
 class TestArquivar(unittest.TestCase):
@@ -1600,6 +1705,115 @@ class TestEvidencia(unittest.TestCase):
             for chave in ("orcamentos", "decisoes", "questoes", "achados", "skills", "git"):
                 self.assertIn(chave, dados)
             self.assertEqual(dados["skills"]["disponiveis"], 24)
+
+
+class TestMarcoEOrigem(unittest.TestCase):
+    """A SÉRIE e a ORIGEM — as duas metades que faltavam para o kit conseguir se julgar.
+
+    Ambas nasceram do mesmo achado: um critério de conclusão congelado exigia
+    "campo `origem` em cada QA-NN" e "série temporal a cada marco, commitada", e nenhum dos
+    dois existia meses depois. O da série é o mais constrangedor: a última linha do próprio
+    relatório PEDIA "guarde a saída de --json", por escrito, no lugar mais visível possível —
+    e a taxa de cumprimento no único projeto real foi ZERO em oito dias. É a lição do kit
+    apontada para ele mesmo: *regra que a máquina não cobra é pedido, não regra.*
+    """
+
+    def relatar(self, repo, *extra):
+        r = rodar_script("evidencia.py", str(repo), *extra)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("Traceback", r.stderr, r.stderr[-800:])
+        return r.stdout
+
+    def com_qa(self, repo, linha, cabecalho=None):
+        d = repo / "a_context/c_decisions.md"
+        corpo = d.read_text(encoding="utf-8")
+        if cabecalho:
+            corpo = re.sub(r"^\|\s*#\s*\|.*Fechado em \|$", cabecalho, corpo, flags=re.M)
+        d.write_text(corpo + "\n" + linha + "\n", encoding="utf-8")
+
+    def test_origem_declarada_aparece_no_relatorio(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.com_qa(repo, "| QA-42 | 2026-01-01 | Alto | portão | `x.py:1` | quebrava | — | ✔ 2026-01-02 |")
+            saida = self.relatar(repo)
+            self.assertIn("origem:", saida)
+            self.assertIn("portão 1", saida, saida[-900:])
+
+    def test_coluna_ausente_e_coluna_vazia_sao_diagnosticos_diferentes(self):
+        """Dizer um pelo outro é o relatório mentindo com número certo — e as ações que
+        eles pedem são diferentes: uma é acrescentar estrutura, a outra é preencher."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.com_qa(repo, "| QA-42 | 2026-01-01 | Alto | `x.py:1` | quebrava | — | ✔ 2026-01-02 |",
+                        cabecalho="| # | Data | Sev. | Onde | O que quebrava | Correção | Fechado em |")
+            self.assertIn("NÃO EXISTE", self.relatar(repo))
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.com_qa(repo, "| QA-42 | 2026-01-01 | Alto |  | `x.py:1` | quebrava | — | ✔ 2026-01-02 |")
+            saida = self.relatar(repo)
+            self.assertIn("VAZIA", saida)
+            self.assertNotIn("NÃO EXISTE", saida)
+
+    def test_questao_cujo_marco_ja_fechou_aparece(self):
+        """A isca dos dois casos reais: as Q-NN que "venceram" no projeto medido diziam
+        "antes de T-10" e "antes de E-3" — MARCOS, não datas. Um contador de dias não pega
+        nenhuma das duas (o projeto inteiro durou 4 dias)."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            d = repo / "a_context/c_decisions.md"
+            d.write_text(d.read_text(encoding="utf-8").replace(
+                "| Q-01 | <ex.: quais formas de pagamento entram no escopo?> | <marco/condição> |",
+                "| Q-09 | de quem é a escolha pendente? | antes de T-10 |"), encoding="utf-8")
+            bl = repo / "b_process/c_backlog.md"
+            bl.write_text(bl.read_text(encoding="utf-8") + "\n- [x] T-10 — a tarefa que andou sem a resposta\n",
+                          encoding="utf-8")
+            saida = self.relatar(repo)
+            self.assertIn("MARCO JÁ PASSOU", saida, saida[-900:])
+            self.assertIn("Q-09", saida)
+
+    def test_questao_com_marco_ainda_aberto_nao_e_cobrada(self):
+        """Contraprova. Pergunta aberta cujo marco não chegou é o canal FUNCIONANDO — cobrar
+        aí seria transformar o funcionamento normal em prova de fracasso, que foi exatamente
+        o erro de régua que a primeira avaliação de campo cometeu e declarou."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            d = repo / "a_context/c_decisions.md"
+            d.write_text(d.read_text(encoding="utf-8").replace(
+                "| Q-01 | <ex.: quais formas de pagamento entram no escopo?> | <marco/condição> |",
+                "| Q-09 | de quem é a escolha pendente? | antes de T-10 |"), encoding="utf-8")
+            bl = repo / "b_process/c_backlog.md"
+            bl.write_text(bl.read_text(encoding="utf-8") + "\n- [ ] T-10 — ainda aberta\n",
+                          encoding="utf-8")
+            self.assertNotIn("MARCO JÁ PASSOU", self.relatar(repo))
+
+    def test_marco_grava_o_arquivo_e_compara_com_o_anterior(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            hoje = date.today().strftime("%y%m%d")
+            saida = self.relatar(repo, "--marco")
+            alvo = repo / "e_qa" / ("evidencia_" + hoje + ".json")
+            self.assertTrue(alvo.exists(), "o marco não gravou nada — era o pedido que virou comando")
+            self.assertIn("ponto zero", saida, "o primeiro marco tem de dizer que não é série")
+            dados = json.loads(alvo.read_text(encoding="utf-8"))
+            self.assertIn("achados", dados)
+
+            velho = dict(dados, medido_em="2020-01-01")
+            velho["decisoes"] = dict(velho["decisoes"], rejeitadas=99)
+            (repo / "e_qa/evidencia_200101.json").write_text(
+                json.dumps(velho, ensure_ascii=False), encoding="utf-8")
+            alvo.unlink()
+            saida2 = self.relatar(repo, "--marco")
+            self.assertIn("evidencia_200101.json", saida2)
+            self.assertIn("99 ->", saida2, saida2[:900])
+
+    def test_marco_nao_inventa_zero_onde_nao_mediu(self):
+        """No repositório do KIT o vault É a raiz, então não existe "produto" do qual
+        separar o processo. Um 0,0 ali seria a leitura mais elogiosa possível de algo que
+        nem foi medido — e é o JSON que a série compara, então a mentira viajaria."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            r = rodar_script("evidencia.py", str(repo), "--json")
+            self.assertIsNone(json.loads(r.stdout)["git"]["pct_so_processo"])
 
 
 class TestTravaDeEscopo(unittest.TestCase):
@@ -2067,6 +2281,29 @@ class TestPadraoDaEquipe(unittest.TestCase):
             (repo / ".kit-config.json").write_text('{"padrao_equipe": false}', encoding="utf-8")
             self.assertNotIn("padrao da equipe", self.sem_acento(rodar_check(repo).stdout),
                              "a chave nao desligou os avisos")
+
+
+    def test_o_aviso_muda_de_pedido_quando_a_trava_ja_esta_posta(self):
+        """A CONTAGEM nao muda, e isso e decisao: um repositorio que ignora o padrao nao pode
+        ficar verde so por ter instalado o hook depois — calar um aviso verdadeiro e a
+        "checagem que emudece" com outro nome. O que muda e o PEDIDO. O texto mandava
+        "instale a trava" para quem ja a tinha instalado, e aviso que cobra o que ja foi feito
+        vira ruido; adotar o padrao hoje nao reescreve o historico de ontem, e o unico ato
+        possivel — garantir as mensagens de amanha — ja estava feito."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            git(repo, *GIT_ID, "commit", "-q", "--allow-empty", "-m", "mensagem fora do padrao")
+
+            antes = rodar_check(repo).stdout
+            self.assertIn("instale a trava", antes, "sem hook, o pedido correto e instalar")
+
+            self.assertEqual(rodar_script("install_hook.py", cwd=repo).returncode, 0)
+            depois = rodar_check(repo).stdout
+            self.assertIn("fora do padrao", self.sem_acento(depois),
+                          "a CONTAGEM sumiu — isso deixaria verde quem ignora o padrao")
+            self.assertNotIn("instale a trava", depois,
+                             "continua mandando instalar o que ja esta instalado")
+            self.assertIn("cai sozinha", depois, "o novo texto nao explica a saida real")
 
 
 class TestAsDuasCasasDoVault(unittest.TestCase):

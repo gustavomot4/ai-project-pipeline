@@ -61,7 +61,7 @@ Ciclo obrigatório: **backup antes → pull da versão pinada → subir → heal
 - **Não muda código de aplicação** para contornar problema de empacotamento.
 
 ## Saída
-1. Delta dos arquivos (`Dockerfile`, `compose`, `.tf`, `.dockerignore`, `.env.example`). 2. Comandos exatos que o **dono** roda, em ordem. 3. Saída do `plan` com os pontos de risco destacados. 4. Procedimento de backup, atualização e rollback (vira o `RUNBOOK.md`). 5. Custo mensal estimado. 6. D-NN/QA-NN. 7. Commit (`chore(infra): …`).
+1. Delta dos arquivos (`Dockerfile`, `compose`, `.tf`, `.dockerignore`, `.env.example`). 2. Comandos exatos que o **dono** roda, em ordem. 3. Saída do `plan` com os pontos de risco destacados. 4. Procedimento de backup, atualização e rollback (vira o `RUNBOOK.md`). 5. Custo mensal estimado. 6. D-NN/QA-NN. 7. Commit (`OK: Chore: <o que muda no ambiente>: …`).
 
 ## Armadilhas pagas
 - Build na máquina do cliente: lento, frágil e sem versão rastreável — publique imagem e faça pull pinado.

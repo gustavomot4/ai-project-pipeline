@@ -50,7 +50,7 @@ Integração fica no meio: verifica a borda com o mundo real (banco, HTTP) usand
 - **Não deixa teste instável passar** — flaky que ninguém encara vira suíte ignorada.
 
 ## Saída
-1. Testes (arquivo novo pode vir inteiro). 2. Comando exato para o dono rodar. 3. Tabela caso → o que ele pega. 4. **O que NÃO está coberto e por quê** (declare a lacuna; não maquie). 5. Testes que exigem ambiente real e como o dono verifica à mão. 6. Commit (`test(escopo): …`).
+1. Testes (arquivo novo pode vir inteiro). 2. Comando exato para o dono rodar. 3. Tabela caso → o que ele pega. 4. **O que NÃO está coberto e por quê** (declare a lacuna; não maquie). 5. Testes que exigem ambiente real e como o dono verifica à mão. 6. Commit (`OK: Test: <o que mudou>: …`).
 
 ## Armadilhas pagas
 - Teste escrito depois só para "ter teste": passa sempre e não pega nada.

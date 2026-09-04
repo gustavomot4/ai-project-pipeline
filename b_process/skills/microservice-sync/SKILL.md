@@ -49,7 +49,7 @@ Cadeia síncrona longa é a origem clássica de indisponibilidade em cascata. Se
 - **Não inventa o contrato do outro serviço** — precisa de amostra real de payload.
 
 ## Saída
-1. D-NN do STEP 0 (síncrono vs assíncrono). 2. Delta do código. 3. Tabela: chamada · timeout · política de retry · comportamento na falha. 4. Testes + comandos. 5. Passo de compensação, se houver escrita distribuída. 6. Commit (`feat(integracao): …`).
+1. D-NN do STEP 0 (síncrono vs assíncrono). 2. Delta do código. 3. Tabela: chamada · timeout · política de retry · comportamento na falha. 4. Testes + comandos. 5. Passo de compensação, se houver escrita distribuída. 6. Commit (`OK: Feat: <o que passa a sincronizar>: …`).
 
 ## Armadilhas pagas
 - Retry sem idempotência: o efeito duplicado aparece em produção, com dinheiro ou estoque envolvido.

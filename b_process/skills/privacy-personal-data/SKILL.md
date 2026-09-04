@@ -69,7 +69,7 @@ Campo sem finalidade concreta é candidato a **não existir**. Proponha a remoç
 6. **O que não é apagável**, com o motivo (obrigação legal, integridade contábil).
 7. Terceiros que recebem dado, e o que cada um recebe.
 8. Trecho do `RUNBOOK.md`: procedimento de incidente e de pedido do titular.
-9. Commit (`feat(privacidade): …`).
+9. Commit (`OK: Feat: <o dado que passa a ser tratado>: …`).
 
 ## Armadilhas pagas
 - **Coletar "porque pode ser útil":** vira obrigação de guardar, proteger, exportar e apagar — para sempre, sem nenhum benefício.

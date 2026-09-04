@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Evidência mecânica sobre o uso do kit neste projeto.
 
-Uso: python scripts/evidencia.py [pasta] [--json]
+Uso: python scripts/evidencia.py [pasta] [--json] [--marco]
 
 **Por que este script existe.** O caso de referência do kit declara os próprios números
 como "relato, não medição", e numa avaliação recente o kit tirou 88 em economia de
@@ -14,9 +14,18 @@ semântica, nenhum número vindo do que um documento diz sobre si mesmo — e is
 não estilo: o kit já declarou "188 itens, 18 julgados" quando eram 284 e 26, e declarou
 "Passagens de revisão: 1" num registro com achados espalhados por 7 datas.
 
-**Este script não escreve nada.** Relata. E fecha dizendo, com todas as letras, o que ele
-NÃO consegue medir — porque relatório que não declara o próprio limite é exatamente o
-material com que se fabrica um 88 medido no lugar errado.
+**Este script não escreve nada, exceto com `--marco`.** Relata. E fecha dizendo, com todas
+as letras, o que ele NÃO consegue medir — porque relatório que não declara o próprio limite
+é exatamente o material com que se fabrica um 88 medido no lugar errado.
+
+`--marco` é a única exceção, e ela nasceu de uma medição embaraçosa: a última linha deste
+relatório pedia, por escrito, "guarde a saída de --json", e a taxa de cumprimento no único
+projeto real medido foi **zero em oito dias**. Um critério de conclusão congelado exigia a
+SÉRIE ("H7 depende de ver a tendência, não o número final") e não existia um único ponto
+intermediário — nem para provar a queda que salvaria, nem para provar a subida que condena.
+É a lição do próprio kit apontada para ele mesmo: *regra que a máquina não cobra é pedido,
+não regra.* Então o pedido virou comando: `--marco` grava `e_qa/evidencia_AAMMDD.json` e
+imprime o delta contra o marco anterior.
 """
 import json
 import re
@@ -46,7 +55,14 @@ SKILLS = "b_process/skills"
 TETOS_PADRAO = {CONTEXTO: 4000, DECISOES: 12000, BACKLOG: 12000}
 CONFIG = ".kit-config.json"
 JSON = "--json" in sys.argv
+MARCO = "--marco" in sys.argv
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
+# As quatro origens de um achado. `portão` é a que interessa medir: é a única afirmação
+# deste kit sobre o MUNDO ("o portão pegou N defeitos que ninguém tinha visto") e não sobre
+# o próprio processo ("o registro está completo"). Sem ela, todo número aqui é o kit se
+# elogiando por ter seguido a própria regra.
+ORIGENS = {"PORTÃO": "portão", "PORTAO": "portão", "REVISÃO": "revisão", "REVISAO": "revisão",
+           "DONO": "dono", "USUÁRIO": "usuário", "USUARIO": "usuário"}
 
 
 def achar_vault(p: Path) -> Path:
@@ -148,30 +164,67 @@ R["decisoes"] = {
 # --- Q-NN
 q = {}
 for col, ln in list(linhas_de_tabela(texto[DECISOES], "Q")) + list(linhas_de_tabela(texto[ARQUIVO_MORTO], "Q")):
-    q.setdefault(col[0], ln)
+    q.setdefault(col[0], (col, ln))
 # "RESPONDIDA", "fechada por", ou o título riscado com ~~: as três formas que a casa usa.
-respondidas = [i for i, ln in q.items()
+respondidas = [i for i, (col, ln) in q.items()
                if re.search(r"RESPONDIDA|fechada por|~~", ln, re.I)]
-R["questoes"] = {"total": len(q), "respondidas": len(respondidas),
-                 "abertas": sorted(set(q) - set(respondidas), key=lambda x: int(x[2:]))}
+abertas = sorted(set(q) - set(respondidas), key=lambda x: int(x[2:]))
+
+# Questão do dono cujo MARCO já passou.
+#
+# A primeira avaliação de campo registrou "2 questões com prazo estourado que o próprio kit
+# registrou e não cobrou". A tentação é contar dias — e ela está errada: as duas linhas reais
+# diziam "antes de T-10" e "antes de E-3". O que venceu não foi uma data, foi um MARCO: a
+# tarefa fechou e a pergunta ficou aberta. Um contador de calendário não pega nenhuma das
+# duas (o projeto inteiro durou 4 dias, menos que qualquer prazo razoável), e ainda cobraria
+# toda questão nova de um projeto curto.
+#
+# Isto mora AQUI, e não no check.py, de propósito: a fila é do DONO, e só ele a fecha. Aviso
+# no portão do agente seria cobrança sem saída — a espécie que o kit chama de ruído, e ruído
+# deixa de ser lido. Este relatório é o único lugar em que quem pode agir está lendo.
+fechados_no_backlog = set(re.findall(r"^\s*-\s*\[x\]\s*`?([A-Za-z]{1,2}-\d+)`?",
+                                     texto[BACKLOG], re.M | re.I))
+fechados_no_backlog = {i.upper() for i in fechados_no_backlog}
+vencidas = []
+for ident in abertas:
+    col = q[ident][0]
+    # Procura o marco em qualquer célula depois do ID, e ignora outros Q-NN: o marco é uma
+    # tarefa ou etapa, nunca outra pergunta.
+    marcos = {m.upper() for c in col[1:] for m in re.findall(r"\b([A-Za-z]{1,2}-\d+)\b", c)}
+    passados = sorted(m for m in marcos if not m.startswith("Q-") and m in fechados_no_backlog)
+    if passados:
+        vencidas.append((ident, ", ".join(passados)))
+R["questoes"] = {"total": len(q), "respondidas": len(respondidas), "abertas": abertas,
+                 "vencidas_por_marco": vencidas}
 
 # --- QA-NN
 qa = {}
+tem_coluna_origem = False
 for fonte in [texto[DECISOES], texto[ARQUIVO_MORTO]] + [ler(p) for p in extras]:
+    # "Coluna ausente" e "coluna vazia" são diagnósticos DIFERENTES e pedem ações
+    # diferentes — dizer um pelo outro é o relatório mentindo com número certo.
+    if re.search(r"^\|\s*#\s*\|.*\bOrigem\b", fonte, re.M | re.I):
+        tem_coluna_origem = True
     for col, ln in linhas_de_tabela(fonte, "QA"):
         qa.setdefault(col[0], (col, ln))
-sev, datas, abertos = Counter(), Counter(), []
+sev, datas, abertos, origem = Counter(), Counter(), [], Counter()
 for i, (col, ln) in qa.items():
     d = next((c for c in col if re.fullmatch(r"20\d\d-\d\d-\d\d", c)), None)
     s = next((c.upper() for c in col if c.upper() in
               ("CRÍTICO", "CRITICO", "ALTO", "MÉDIO", "MEDIO", "BAIXO")), "?")
     sev[s] += 1
+    # Procura a origem em QUALQUER célula, e não numa posição fixa: projeto que põe a
+    # coluna em outro lugar continua sendo lido. Sem a coluna, a chave é "não declarada" —
+    # que é diferente de zero, e o relatório diz isso em voz alta lá embaixo.
+    origem[next((ORIGENS[c.strip().upper()] for c in col
+                 if c.strip().upper() in ORIGENS), "não declarada")] += 1
     if d:
         datas[d] += 1
     if "aberto" in col[-1].lower():
         abertos.append((i, s, d))
 R["achados"] = {
-    "total": len(qa), "por_severidade": dict(sev),
+    "total": len(qa), "por_severidade": dict(sev), "por_origem": dict(origem),
+    "tem_coluna_origem": tem_coluna_origem,
     # "Passagens de revisão" era campo escrito à mão, e envelheceu: um projeto declarava 1
     # com achados em 7 datas. Datas distintas é a mesma pergunta, medida.
     "passagens_medidas": len(datas), "datas": sorted(datas),
@@ -237,7 +290,12 @@ if tem_git:
         "pulos_detalhe": [f"{c['h']} {c['d']} {c['s'][:80]}" for c in pulos[:5]],
         "pct_citam_id": round(100 * cita / len(commits), 1) if commits else 0.0,
         "mistura": dict(tipos),
-        "pct_so_processo": round(100 * tipos["so_processo"] / len(commits), 1) if commits else 0.0,
+        # `None`, e não `0.0`, quando o vault É a raiz do repositório: ali não existe
+        # "produto" do qual separar o processo, e um zero seria a leitura mais elogiosa
+        # possível de algo que nem foi medido. O relatório já dizia isso em texto; o JSON
+        # dizia 0.0 — e é o JSON que a série de marcos compara, então a mentira viajava.
+        "pct_so_processo": (round(100 * tipos["so_processo"] / len(commits), 1)
+                            if commits and prefixo else None),
         "escopo": dict(sorted(modulos.items())),
         "dias_com_commit": len({c["d"] for c in commits}),
     })
@@ -270,6 +328,56 @@ if JSON:
 # ---------------------------------------------------------------- relatório
 def titulo(t):
     print(f"\n{t}\n" + "-" * len(t))
+
+
+def _pontos(r: dict) -> dict:
+    """Os números que fazem sentido comparar entre dois marcos. Deliberadamente poucos:
+    série de tudo é ruído, e o que se quer ver é a TENDÊNCIA de meia dúzia de coisas."""
+    return {
+        "commits só-processo (%)": (r.get("git") or {}).get("pct_so_processo"),
+        "achados": (r.get("achados") or {}).get("total"),
+        "achados de origem portão": ((r.get("achados") or {}).get("por_origem") or {}).get("portão"),
+        "decisões rejeitadas": (r.get("decisoes") or {}).get("rejeitadas"),
+        "skills com rastro": (r.get("skills") or {}).get("dispararam"),
+        "questões respondidas": (r.get("questoes") or {}).get("respondidas"),
+    }
+
+
+if MARCO:
+    pasta = raiz / "e_qa"
+    pasta.mkdir(exist_ok=True)
+    destino = pasta / f"evidencia_{date.today().strftime('%y%m%d')}.json"
+    anteriores = sorted(p for p in pasta.glob("evidencia_*.json") if p != destino)
+    destino.write_text(json.dumps(R, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"MARCO GRAVADO: {destino.relative_to(raiz)}")
+    if not anteriores:
+        print("  Primeiro marco deste projeto. Ele sozinho não é série — é o ponto zero.")
+        print("  Rode de novo ao fechar o próximo milestone, e aí haverá tendência.")
+    else:
+        velho_p = anteriores[-1]
+        try:
+            velho = json.loads(velho_p.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            velho = {}
+        print(f"  Comparando com {velho_p.name} (medido em {velho.get('medido_em', '?')}):")
+        antes, agora = _pontos(velho), _pontos(R)
+        for chave, novo in agora.items():
+            ant = antes.get(chave)
+            if novo is None and ant is None:
+                continue
+            if ant is None:
+                print(f"    {chave:<26} {novo}  (não havia medida antes)")
+                continue
+            if novo is None:
+                print(f"    {chave:<26} — deixou de ser medido (era {ant})")
+                continue
+            d = round(novo - ant, 1)
+            seta = "=" if d == 0 else ("+" if d > 0 else "")
+            print(f"    {chave:<26} {ant} -> {novo}   ({seta}{d if d else ''})")
+        print("  Um delta NÃO diz se melhorou: 'mais achados' pode ser mais revisão ou mais")
+        print("  defeito, e 'menos commits de processo' pode ser disciplina ou abandono.")
+        print("  Quem julga o sinal é você; o script só garante que a série exista.")
+    print()
 
 
 print(f"EVIDÊNCIA MECÂNICA — {R['projeto']} — medido em {R['medido_em']}")
@@ -314,11 +422,29 @@ titulo("Questões do dono (Q-NN) — o agente parou em vez de decidir sozinho")
 print(f"  abertas ao todo: {qq['total']}   respondidas: {qq['respondidas']}")
 if qq["abertas"]:
     print(f"  ainda esperando você: {', '.join(qq['abertas'])}")
+if qq["vencidas_por_marco"]:
+    print("  MARCO JÁ PASSOU e a pergunta continua aberta:")
+    for ident, marcos in qq["vencidas_por_marco"]:
+        print(f"    {ident:<7} o card {marcos} está fechado no BACKLOG")
+    print("    A tarefa andou sem a resposta — ou ela foi decidida sem você e ninguém")
+    print("    registrou, ou foi construída sobre um chute. As duas precisam de uma linha.")
 
 a = R["achados"]
 titulo("Achados (QA-NN)")
 print(f"  total: {a['total']}   abertos: {a['abertos']}   fechados: {a['fechados']}")
 print(f"  severidade: " + " · ".join(f"{k} {v}" for k, v in a["por_severidade"].items()))
+print(f"  origem:     " + " · ".join(f"{k} {v}" for k, v in a["por_origem"].items()))
+_nd = a["por_origem"].get("não declarada", 0)
+if _nd == a["total"] and a["total"] and not a["tem_coluna_origem"]:
+    print("    A coluna 'Origem' NÃO EXISTE na sua tabela, então nenhum achado a declara.")
+    print("    Isso não é 'o portão pegou zero': é 'ninguém sabe'. E é a diferença entre")
+    print("    medir o kit e o kit se elogiar por ter seguido a própria regra. Acrescente")
+    print("    a coluna (portão/revisão/dono/usuário); os antigos podem ficar em branco.")
+elif _nd == a["total"] and a["total"]:
+    print("    A coluna existe e está VAZIA — diagnóstico diferente do anterior, e a ação")
+    print("    também: aqui não falta estrutura, falta preencher no próximo achado.")
+elif _nd:
+    print(f"    ({_nd} sem origem declarada — provavelmente anteriores à coluna.)")
 print(f"  passagens de revisão MEDIDAS (datas distintas): {a['passagens_medidas']}")
 if a["abertos_detalhe"]:
     print("  abertos, do mais velho:")
@@ -381,4 +507,9 @@ print("     acima; o pulo feito fora do agente, ou com o hook desligado, segue i
 print("  4. Quanto de contexto uma sessão gastou de fato. Ele mede o TAMANHO do arquivo")
 print("     que a regra manda ler; quanto o agente carregou é comportamento, não arquivo.")
 print("  5. Qualidade. Um registro pode estar completo, datado, dentro do teto — e errado.")
-print("\n  Guarde a saída de --json: um projeto é um relato; vários viram medida.")
+print("  6. Se a ORIGEM declarada é verdadeira. Quem escreve 'portão' na linha é quem")
+print("     achou o defeito, e ninguém confere. O campo tira o número de irrespondível")
+print("     para autodeclarado — que é melhor, e não é o mesmo que verificado.")
+print("\n  `python scripts/task.py marco` grava este relatório em e_qa/evidencia_AAMMDD.json")
+print("  e mostra o delta contra o anterior. Um projeto é um relato; a série é a medida —")
+print("  e tendência não se reconstrói depois, só se acumula.")

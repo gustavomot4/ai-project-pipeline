@@ -26,7 +26,16 @@ status: rascunho
 
 ## Achados de QA (QA-NN — citados no commit: `fix: QA-NN …`)
 > Preenchido pelas sessões de [[b_process/skills/guardrails-review/SKILL|guardrails-review]]. Relatório completo de cada passagem em `e_qa/<n>_qa_pass<NN>_report_<AAMMDD>_<HHMM>.md`; aqui fica só a linha rastreável.
+>
+> **`Sev.`** é `Crítico` · `Alto` · `Médio` · `Baixo`, e é do EFEITO, nunca do esforço.
+> **`Origem` = quem achou:** `portão` (o `scripts/check.py` ou um hook reprovou) · `revisão`
+> (uma passagem de `guardrails-review`) · `dono` (você viu usando) · `usuário` (chegou de fora).
+> É **um campo por achado, escrito no instante em que a linha nasce** — e é o único número
+> deste kit que não é ele se elogiando por seguir a própria regra: "o portão pegou N defeitos
+> que ninguém tinha visto" é afirmação sobre o mundo, não sobre o processo. Sem a coluna, esse
+> número não é zero: é irrespondível, e um kit que não sabe se o próprio portão pega alguma
+> coisa está vendendo a parte que ele mais anuncia sem nenhuma medida atrás.
 
-| # | Data | Sev. | Onde | O que quebrava | Correção | Fechado em |
-|---|---|---|---|---|---|---|
-| QA-01 | <data> | <Crítico/Alto/Médio/Baixo> | `arquivo:linha` | <invariante quebrada> | <o que mudou> | _(aberto)_ |
+| # | Data | Sev. | Origem | Onde | O que quebrava | Correção | Fechado em |
+|---|---|---|---|---|---|---|---|
+| QA-01 | <data> | <gravidade> | <origem> | `arquivo:linha` | <invariante quebrada> | <o que mudou> | _(aberto)_ |

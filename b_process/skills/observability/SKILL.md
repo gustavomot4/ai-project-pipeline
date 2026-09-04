@@ -63,7 +63,7 @@ O default do kit é monólito, e monólito também precisa disto. "É simples, d
 5. Trecho do `RUNBOOK.md`: o que fazer quando cada alerta tocar.
 6. Retenção, volume estimado e o que acontece quando encher.
 7. O que o **dono** roda e onde ele olha na máquina real.
-8. Commit (`chore(obs): …`).
+8. Commit (`OK: Chore: <o que passa a ser observavel>: …`).
 
 ## Armadilhas pagas
 - **Log em texto livre:** impossível filtrar ou agregar; descobre-se isso no primeiro incidente, que é o pior momento.

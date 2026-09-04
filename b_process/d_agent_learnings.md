@@ -46,6 +46,10 @@ status: atual
 - **Relatório de evidência sem limite declarado fabrica confiança:** medir bem a coisa errada foi como o kit tirou 88 em economia de contexto cobrando 4.000 caracteres ao lado de um arquivo de 191.591 sem teto. Todo relatório fecha dizendo o que NÃO mediu.
 - **Registro que muda de casa vira zero no relatório de quem assumiu o endereço:** e zero achados é a leitura mais elogiosa possível de um arquivo que nem foi lido. Procure, não presuma.
 - **Exceção que o template ensina, o script tem de respeitar:** o arquivador ia levar embora o card de EXEMPLO (`- [x] T-… — <tarefa>`) por ele ser "fechado". ID que não parseia é resposta legítima, não erro a contornar.
+- **Modelo que não bate com o cabeçalho é checagem que emudece pela porta de quem ESCREVE:** o modelo oficial de achado emitia 6 células contra 7 da tabela, e a checagem de prazo lia a última célula como "Fechado em" — todo achado nascia contado como fechado, e o portão ficava verde. Quando uma checagem lê por POSIÇÃO, quem gera a linha faz parte da checagem.
+- **A régua congelada é o melhor lugar para procurar melhoria:** cinco propostas novas morreram na medição enquanto o critério de conclusão, escrito e aceito antes dos dados, listava quatro itens de instrumentação com um só feito. Antes de inventar mecanismo, leia o que você já se comprometeu a medir e não mediu.
+- **Zero e "não medido" não podem compartilhar a mesma casa no JSON:** o relatório dizia "não medido" em texto e gravava `0.0` no arquivo — e é o arquivo que a série compara, então a mentira viajava para dentro da tendência. Ausência é `null`.
+- **Linha de exemplo do template encostada no teto e' armadilha para quem declarar o teto:** a linha de QA semeada estava a UM caractere do limite de 120, e acrescentar uma coluna a estourou — reprovando o projeto por uma linha que o proprio kit escreveu. Margem em template nao e' folga, e' requisito.
 
 ## Deste projeto
 - <data> — <lição em 1 linha>
