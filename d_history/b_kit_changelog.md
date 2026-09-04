@@ -84,7 +84,26 @@ lista quatro itens de instrumentação e tinha **um** feito.
   já explicava a coluna nova. Quem pegou foi `TestChavesDaConfig`, um teste que existe desde
   o v13.12 para outra coisa: margem em template não é folga, é requisito.
 
-- 14 testes novos (139 no total), entre eles a isca que reproduz o `6 != 8` do modelo e a
+- **As quatro buscas do vault ganharam um guarda.** Investigando se os 9 scripts podiam
+  virar menos arquivos, a medição achou 4 implementações de `achar_vault` — e elas divergem
+  com razão (o `check.py` reprova com duas pastas candidatas, o hook de escopo sobe a árvore
+  oito níveis porque não sabe de onde foi chamado). Testadas contra os três layouts reais,
+  **concordam nas três**. O teste novo congela esse acordo: quando o layout mudar de novo,
+  ele lembra que há quatro lugares para acertar. Foi exatamente esse o custo do v13.14, em
+  que o hook de escopo continuou comparando o NOME da pasta e passaria a bloquear toda
+  escrita na documentação. Ele descobre as cópias sozinho (script novo entra no teste sem
+  ninguém lembrar) e as duas sabotagens foram verificadas: esquecer a casa nova reprova com
+  o nome do script, e renomear a função reprova por "estou vigiando menos do que penso".
+
+- **A fusão dos scripts foi AVALIADA e REJEITADA**, com número: 12 linhas exatamente
+  duplicadas em 3.789 de código (0,3%); `runpy.run_path` não permite import de vizinho, então
+  um módulo comum quebraria o hook — e hook quebrado bloqueia todo comando; um arquivo único
+  custaria **+58 ms em toda chamada de ferramenta** (55 → 113 ms de imports); e `check.py`,
+  `evidencia.py` e `arquivar.py` rodam ao serem importados, então juntá-los exigiria
+  reestruturar 1.364 linhas de portão antes de começar. Fica registrado para não ser
+  reproposto: o que parecia duplicação é divergência deliberada, e agora é vigiada.
+
+- 16 testes novos (141 no total), entre eles a isca que reproduz o `6 != 8` do modelo e a
   contraprova de que o aviso de desalinhamento não engole o de prazo.
 
 ## [kit v13.15] — 2026-08-29

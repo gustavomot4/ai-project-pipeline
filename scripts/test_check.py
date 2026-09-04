@@ -2360,5 +2360,105 @@ class TestAsDuasCasasDoVault(unittest.TestCase):
                 self.assertNotIn("nao achei", r2.stdout.lower())
 
 
+class TestAsQuatroBuscasDoVault(unittest.TestCase):
+    """As QUATRO implementacoes de `achar_vault` tem de concordar onde devem concordar.
+
+    Elas divergem de proposito, e a divergencia e' legitima: o `check.py` REPROVA quando acha
+    duas pastas candidatas (o padrao pede uma so); o `evidencia.py` e o `arquivar.py` seguem
+    em frente; o `escopo_hook.py` SOBE a arvore oito niveis, porque roda como hook e nao sabe
+    de onde foi chamado. Nenhuma pode virar copia da outra.
+
+    O que elas NAO podem fazer e' discordar sobre onde o vault esta nos layouts que o kit de
+    fato usa. Isso ja custou um bug: no v13.14 o vault mudou de `*_Project_DOCs/` para
+    `e_doc/0_Context/`, e o hook de escopo continuou comparando o NOME da pasta em vez do
+    CAMINHO — passaria a bloquear toda escrita na documentacao, ou seja, a impedir o fecho de
+    sessao que o proprio kit exige. Quando o layout mudar de novo, este teste e' quem lembra
+    que ha quatro lugares para acertar, e nao um.
+
+    Por que um TESTE e nao um modulo compartilhado: o kit ja tem a licao "duplicata nao vira
+    verdade por ganhar um guarda — o certo e' matar a copia, um le do outro". Aqui matar a
+    copia e' impedido pelo mecanismo: o `.claude/settings.json` carrega o hook com
+    `runpy.run_path`, que NAO poe a pasta do script no caminho de busca, entao
+    `import _comum` levanta ModuleNotFoundError — e hook que quebra ao carregar bloqueia
+    TODA chamada de ferramenta (ja aconteceu com a trava do pulo). Quando matar a copia e'
+    impossivel, o guarda e' a unica opcao que sobra. E ele guarda COMPORTAMENTO, nao texto:
+    as quatro continuam livres para divergir no que devem.
+    """
+
+    ESPERADAS = 4
+
+    def buscas(self):
+        """Descobre TODA funcao `achar_vault` de `scripts/`, em vez de listar os arquivos a
+        mao: script novo que ganhar a sua propria copia entra no teste sozinho — que e' o
+        modo de falha que este arquivo existe para pegar."""
+        achadas = {}
+        for arq in sorted(Path(KIT / "scripts").glob("*.py")):
+            if arq.name == "test_check.py":
+                continue
+            src = arq.read_text(encoding="utf-8")
+            arvore = ast.parse(src)
+            alvo = next((n for n in arvore.body
+                         if isinstance(n, ast.FunctionDef) and n.name == "achar_vault"), None)
+            if alvo is None:
+                continue
+            # Namespace com o que a funcao possa precisar: os imports usuais e as constantes
+            # simples do proprio modulo (o hook de escopo usa BACKLOG).
+            ns = {"Path": Path, "sys": sys, "re": re, "os": os, "subprocess": subprocess}
+            for no in arvore.body:
+                if (isinstance(no, ast.Assign) and len(no.targets) == 1
+                        and isinstance(no.targets[0], ast.Name)
+                        and isinstance(no.value, ast.Constant)):
+                    ns[no.targets[0].id] = no.value.value
+            exec(compile(ast.Module(body=[alvo], type_ignores=[]), arq.name, "exec"), ns)
+            achadas[arq.name] = ns["achar_vault"]
+        return achadas
+
+    def montar_layouts(self, base: Path):
+        """Os tres layouts que existem de verdade, cada um com o vault que a resposta certa
+        aponta. O `c_backlog.md` nao e' enfeite: o hook de escopo so reconhece o vault se ele
+        estiver la."""
+        casas = {}
+        for rotulo, dono, dentro in (
+            ("casa nova (padrao da equipe)", "nova", "e_doc/0_Context"),
+            ("casa antiga (*_Project_DOCs)", "velha", "77777777_APP_Project_DOCs"),
+            ("o proprio kit (vault = raiz)", "kit", ""),
+        ):
+            raiz = base / dono
+            vault = raiz / dentro if dentro else raiz
+            (vault / "a_context").mkdir(parents=True)
+            (vault / "b_process").mkdir(parents=True)
+            (vault / "b_process/c_backlog.md").write_text("x", encoding="utf-8")
+            casas[rotulo] = (raiz, vault)
+        return casas
+
+    def test_encontrou_todas_as_copias(self):
+        achadas = self.buscas()
+        self.assertGreaterEqual(
+            len(achadas), self.ESPERADAS,
+            "o teste achou menos copias de achar_vault do que existem (" + str(sorted(achadas))
+            + "). Se uma foi renomeada, este guarda passou a vigiar menos do que pensa — "
+            "que e' a doenca da checagem que emudece.")
+
+    def test_as_quatro_concordam_nos_layouts_reais(self):
+        achadas = self.buscas()
+        with area_temporaria() as tmp:
+            casas = self.montar_layouts(Path(tmp))
+            for rotulo, (entrada, esperado) in casas.items():
+                for arq, funcao in achadas.items():
+                    with self.subTest(layout=rotulo, script=arq):
+                        try:
+                            devolveu = funcao(entrada)
+                        except SystemExit:
+                            self.fail(arq + " REPROVOU num layout legitimo (" + rotulo + ")")
+                        self.assertIsNotNone(
+                            devolveu, arq + " nao achou o vault em " + rotulo)
+                        self.assertEqual(
+                            Path(devolveu).resolve(), esperado.resolve(),
+                            arq + " discorda das outras em " + rotulo + ": achou "
+                            + str(devolveu) + ", esperado " + str(esperado)
+                            + ". Sao QUATRO copias de achar_vault e todas precisam saber do "
+                            "mesmo layout — foi assim que o v13.14 quebrou o hook de escopo.")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

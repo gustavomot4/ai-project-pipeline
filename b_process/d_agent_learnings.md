@@ -50,6 +50,7 @@ status: atual
 - **A régua congelada é o melhor lugar para procurar melhoria:** cinco propostas novas morreram na medição enquanto o critério de conclusão, escrito e aceito antes dos dados, listava quatro itens de instrumentação com um só feito. Antes de inventar mecanismo, leia o que você já se comprometeu a medir e não mediu.
 - **Zero e "não medido" não podem compartilhar a mesma casa no JSON:** o relatório dizia "não medido" em texto e gravava `0.0` no arquivo — e é o arquivo que a série compara, então a mentira viajava para dentro da tendência. Ausência é `null`.
 - **Linha de exemplo do template encostada no teto e' armadilha para quem declarar o teto:** a linha de QA semeada estava a UM caractere do limite de 120, e acrescentar uma coluna a estourou — reprovando o projeto por uma linha que o proprio kit escreveu. Margem em template nao e' folga, e' requisito.
+- **Quando matar a copia e' impossivel, o guarda e' a unica opcao — e ele guarda COMPORTAMENTO, nao texto:** a regra e' "mate a copia, um le do outro", mas o hook nao consegue importar vizinho (`runpy.run_path` nao poe a pasta do script no caminho de busca, e hook que quebra ao carregar bloqueia toda chamada de ferramenta). Ai o teste exige que as copias CONCORDEM onde devem, e as deixa divergir onde precisam.
 
 ## Deste projeto
 - <data> — <lição em 1 linha>
