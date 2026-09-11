@@ -60,7 +60,7 @@ Não vêm instalados, para o vault abrir sem downloads. Nada do pipeline depende
 Duas linhas, uma vez cada:
 
 ```
-python scripts/task.py hook       # uma vez: o portão passa a rodar sozinho em todo commit
+python scripts/task.py travas       # uma vez: o portão passa a rodar sozinho em todo commit
 python scripts/task.py check      # quando quiser conferir à mão
 python scripts/task.py            # sem argumento = check
 python scripts/task.py --help     # todas as tarefas

@@ -20,7 +20,7 @@ quanto a IA lê a cada sessão**. O resto é apoio para essas três.
 ```
 python scripts/new_project.py ../stf_pss_ms_meu_app --name "Meu App" --tipo ms
 cd ../stf_pss_ms_meu_app && git init
-python e_doc/0_Context/scripts/task.py hook
+python e_doc/0_Context/scripts/task.py travas
 ```
 
 Pronto: o portão passa a rodar em todo commit, e a mensagem passa a ser cobrada no

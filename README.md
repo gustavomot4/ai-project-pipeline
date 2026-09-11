@@ -24,7 +24,7 @@ Nenhuma ferramenta serve para tudo, e o kit fica mais útil quando você sabe on
 
 **Primeira vez aqui?** Comece por [[g_primeiros_passos|PRIMEIROS PASSOS]] — quinze minutos, e ele diz o que ignorar e quando *não* usar este kit.
 
-**A limitação honesta mais importante:** o kit tem **284** itens de checklist (118 no [[b_checklist|CHECKLIST]] + 166 nos `b_process/skills/`); `scripts/check.py` julga **43** deles (18 reprovam o commit, 25 avisam) — cerca de 15%. Estes números são **cobrados por `scripts/test_check.py`**: a frase mais honesta do kit não pode ser a que envelhece em silêncio (ela já tinha envelhecido uma vez, dizendo 188/18). O resto depende de você rodar a seção certa do [[b_checklist|CHECKLIST]]. Isto é um kit de disciplina com algumas travas automáticas — não um sistema que impede erro.
+**A limitação honesta mais importante:** o kit tem **284** itens de checklist (118 no [[b_checklist|CHECKLIST]] + 166 nos `b_process/skills/`); `scripts/check.py` julga **44** deles (19 reprovam o commit, 25 avisam) — cerca de 15%. Estes números são **cobrados por `scripts/test_check.py`**: a frase mais honesta do kit não pode ser a que envelhece em silêncio (ela já tinha envelhecido uma vez, dizendo 188/18). O resto depende de você rodar a seção certa do [[b_checklist|CHECKLIST]]. Isto é um kit de disciplina com algumas travas automáticas — não um sistema que impede erro.
 
 **A primeira evidência de que funciona, com o custo junto:** [[c_field_evaluation_tapgo_260813|avaliação de campo]] — um projeto real de 46 commits medido por sessão isolada, com o critério de sucesso hasheado ANTES dos dados. Nove hipóteses de nove no lado positivo (98% de commits com ID, ~0% de regeneração, 3 de 3 sabotagens do portão reprovadas) e o imposto declarado: **15% das sessões** foram administrar o orçamento do próprio kit, e a medição achou uma checagem que enxergava 12% do que dizia enxergar. É **n = 1**: ataca a falta de evidência, não a resolve.
 
@@ -32,7 +32,7 @@ Nenhuma ferramenta serve para tudo, e o kit fica mais útil quando você sabe on
 
 ## Como começar
 1. **Projeto novo:** `python scripts/new_project.py ../meu-app --name "Meu App" --code src` — monta o esqueleto inteiro do padrão: pasta de docs, pasta de código, README, `.gitignore`, `.gitattributes`.
-2. `cd ../meu-app && git init && python 77777777_*_Project_DOCs/scripts/install_hook.py` — todo commit passa a rodar o `check.py`. Sem isso, os portões automáticos viram opcionais.
+2. `cd ../meu-app && git init && python 77777777_*_Project_DOCs/scripts/task.py travas` — liga as quatro travas: todo commit passa a rodar o `check.py`, a mensagem é conferida, e o agente perde o direito de escrever fora do módulo e de pular o portão calado. Sem isso, os portões automáticos viram opcionais. Hook de git não viaja com o clone: quem clonar roda o mesmo comando.
 3. Instale as skills de [[b_process/skills/README|skills/]] na sua ferramenta de IA (ou deixe os `SKILL.md` à mão para colar).
 4. Siga o [[a_roadmap|ROTEIRO]]. Ele começa com [[b_process/skills/context-bootstrap/SKILL|context-bootstrap]], que entrevista você (≤5 perguntas) e devolve o [[a_context_source|CONTEXT]] preenchido.
 5. Escolha o perfil da stack em [[a_generic|profiles/]] e cole os blocos no [[a_context_source|CONTEXT]].
@@ -70,11 +70,12 @@ docs/             auditoria do próprio KIT — não vai para projetos novos
 LICENSE           MIT
 .github/workflows portão rodando em Linux e Windows a cada push
 scripts/
-  task.py         ponto de entrada único: check · check-all · evidencia · test · hook
-  check.py        o portão de higiene (15 falhas · 19 avisos)
+  task.py         ponto de entrada único: check · check-all · evidencia · travas · congelar · test
+  check.py        o portão de higiene (as contagens moram no cabeçalho dele)
   evidencia.py    mede o uso do kit no projeto a partir do git e dos arquivos
   test_check.py   testes de regressão dos scripts — só stdlib
-  install_hook.py instala o pre-commit
+  install_hook.py liga as travas (`--todas`: pre-commit, mensagem, escopo, pulo)
+  congelar.py     congela um arquivo: mudar o conteúdo reprova o check.py (e o commit, com pre-commit)
   new_project.py  cria projeto novo · `--upgrade` atualiza o processo de um existente
 ```
 Projeto que roda continuamente ganha ainda um `RUNBOOK.md` na entrega (exigido pela Fase 6).

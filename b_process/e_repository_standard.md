@@ -232,6 +232,6 @@ contexto-fonte. Quando o código tem README próprio, ele cobre só o técnico.
 - [x] `README.md` na estrutura da seção 7
 - [x] `INDEX.md` como nota-casa do vault
 - [x] `CLAUDE.md` na raiz, para a ferramenta carregar sozinha
-- [ ] `git init` e `python <docs>/scripts/install_hook.py` — **seus**, na máquina real
+- [ ] `git init` e `python <docs>/scripts/task.py travas` — **seus**, na máquina real (os hooks de git são por clone)
 - [ ] Escrever `a_context_source.md` (fase 0, skill `context-bootstrap`) **antes de qualquer código**
 - [ ] Primeiro commit só depois de `check.py` verde

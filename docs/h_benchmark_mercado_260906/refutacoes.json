@@ -1,0 +1,564 @@
+{
+ "GitHub Spec Kit": {
+  "nome": "GitHub Spec Kit",
+  "veredictos": [
+   {
+    "criterio": "C7",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Fui procurar e o mecanismo é mais forte que a justificativa: existem 46 arquivos tests/integrations/test_integration_<agente>.py herdando um mixin comum (test_integration_base_markdown.py) que assere registro no INTEGRATION_REGISTRY, pasta de destino e geração de arquivos .md, mais tests/test_agent_config_consistency.py que cruza o AGENT_CONFIG com os templates de issue e a documentação — tudo executado por pytest em .github/workflows/test.yml no gatilho pull_request, em ubuntu/windows/macOS x Python 3.13/3.14: quebrar ou dropar uma integração FALHA O CI, que é exatamente o exemplo de nota 4 da régua. Some-se o comando executável `specify integration switch <key>` (troca de agente em projeto existente), o escape hatch `--integration generic --commands-dir <path>` para agentes fora da lista, testes de paridade bash/PowerShell, licença MIT confirmada pela API (spdx MIT) e artefatos gravados como .md no repositório do próprio usuário. Não sobe para 5 porque não existe medição publicada de desfecho (custo ou qualidade de uma migração real)."
+   },
+   {
+    "criterio": "C9",
+    "nota_original": 4,
+    "veredicto": "rebaixar",
+    "nota_proposta": 3,
+    "motivo": "REBAIXO POR AUSÊNCIA DE MECANISMO QUE COBRE O CRITÉRIO, NÃO POR FALTA DE VERIFICAÇÃO — verifiquei a fundo e os fatos do pesquisador conferem (API: MIT, criado 21/ago/2025, v1.0.0 em 21/ago/2026, v1.0.4 em 02/set/2026, 133.699 estrelas, 12.031 forks), e ainda achei automação que ele nem citou: CI matricial bloqueante em todo PR (test.yml, lint.yml), CodeQL, security.yml, dependabot.yml semanal, stale.yml em cron, release/publish-pypi automatizados, actions pinadas por SHA e até testes do próprio workflow. Mesmo assim a nota não é 4: nenhuma dessas máquinas cobra o que o critério mede — CI verde é controle de qualidade da contribuição, não garantia de continuidade da manutenção (o repo pode ser arquivado amanhã com todos os checks verdes), e a evidência oferecida na justificativa (estrelas e forks) é adoção, que a régua desqualifica explicitamente. O contraponto que confirma a dependência de disciplina humana: 149 issues + 170 PRs abertos (319 itens pela API) em um projeto de 12 meses, com um bot que fecha pendências por temporizador de 180 dias em vez de resolvê-las."
+   }
+  ],
+  "fontes": [
+   "https://github.com/github/spec-kit",
+   "https://api.github.com/repos/github/spec-kit",
+   "https://api.github.com/repos/github/spec-kit/releases",
+   "https://raw.githubusercontent.com/github/spec-kit/main/.github/workflows/test.yml",
+   "https://raw.githubusercontent.com/github/spec-kit/main/.github/workflows/lint.yml",
+   "https://raw.githubusercontent.com/github/spec-kit/main/.github/workflows/stale.yml",
+   "https://raw.githubusercontent.com/github/spec-kit/main/.github/dependabot.yml",
+   "https://raw.githubusercontent.com/github/spec-kit/main/.github/workflows/bug-assess.md",
+   "https://raw.githubusercontent.com/github/spec-kit/main/tests/integrations/test_integration_base_markdown.py",
+   "https://raw.githubusercontent.com/github/spec-kit/main/tests/test_agent_config_consistency.py",
+   "https://api.github.com/repos/github/spec-kit/contents/tests/integrations",
+   "https://github.github.io/spec-kit/reference/integrations.html",
+   "https://github.github.io/spec-kit/reference/overview.html"
+  ]
+ },
+ "Cursor Rules e Memories": {
+  "nome": "Cursor Rules e Memories",
+  "veredictos": [
+   {
+    "criterio": "C3",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Mecanismo verificado na doc oficial de hooks: `.cursor/hooks.json` (projeto, usuário e camada enterprise em /etc/cursor/hooks.json) com beforeShellExecution, beforeReadFile, beforeMCPExecution, preToolUse e subagentStart, retornando {\"permission\":\"deny\"} ou exit code 2 para bloquear a ação — é portão de máquina real. Ressalva que não derruba o 4: o padrão é fail-open (falha/timeout do hook libera, salvo `failClosed:true`) e há bug reportado de JSON malformado que libera em silêncio."
+   },
+   {
+    "criterio": "C4",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "ATENÇÃO — a justificativa dada é factualmente falsa: a tabela de frontmatter de subagentes da Cursor tem apenas name, description, model, readonly e is_background; `tools`, `disallowedTools`, `permissionMode` e `maxTurns` NÃO existem na Cursor (são o esquema do Claude Code). A nota 4 se sustenta por outro mecanismo que eu achei: `readonly: true` é cobrado pelo cliente (\"no file edits, no state-changing shell commands\"), custom modes ligam/desligam ferramentas por modo, e permissions.json/.cursor/cli.json tem allow/deny para Shell/Read/Write/WebFetch/Mcp — mas o limite por papel é um booleano só, não o modelo rico que o pesquisador descreveu."
+   },
+   {
+    "criterio": "C6",
+    "nota_original": 4,
+    "veredicto": "rebaixar",
+    "nota_proposta": 3,
+    "motivo": "Não existe orçamento cobrado por máquina: a única fronteira que a doc de rules enuncia é \"Keep rules under 500 lines\", explicitamente uma best practice, sem limite técnico que valide, avise ou bloqueie. O peso por sessão fica na disciplina humana — e o estudo da ETH (12 repos, 5.694 PRs) mede o padrão comum (carregar tudo) em >20% de custo a mais e ~3% de perda de qualidade, ou seja, a evidência numérica que existe é de PESO, não de leveza. Isso é exatamente \"existe e funciona, exige disciplina humana\"."
+   },
+   {
+    "criterio": "C9",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Aqui a evidência de adoção é o próprio critério (C9 pergunta \"quem cuida, com que frequência, quantos usam\"), e ela é verificável por máquina: changelog versionado com endpoint próprio (cursor.com/changelog/2-4 = 22/01/2026, subagentes e skills) e entradas datadas em cadência de dias até 02/09/2026, fornecedor comercial (Anysphere) com planos Team/Enterprise e dashboard de admin. Rebaixar isto por \"ser adoção\" seria aplicar a regra de C5 no critério errado."
+   },
+   {
+    "criterio": "C10",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Sandbox de SO confirmado no blog de engenharia da Cursor: Seatbelt/sandbox-exec no macOS, Landlock (filesystem) + seccomp (syscalls) no Linux com overlayfs, e o sandbox Linux dentro de WSL2 no Windows — contenção de kernel, não recomendação. O CVE-2026-22708 citado é real (bypass da allowlist via built-ins export/typeset/declare, corrigido na 2.3), e o teto de 5 continua correto: \"um terço das requisições rodam sandboxed\" é adoção, não desfecho medido."
+   },
+   {
+    "criterio": "C11",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Verificado na doc de rules: Team Rules ficam \"stored on Cursor's servers\", \"sync automatically to all team members\", e \"Enforced rules are required for all members and can't be turned off in their settings\" — o desligamento é negado pela máquina, com precedência Team > Project > User; soma-se a camada enterprise de hooks.json em caminho de sistema, controlada pelo admin. Ressalva honesta: o que a máquina garante é a ENTREGA da regra, não a obediência do modelo a ela."
+   },
+   {
+    "criterio": "C12",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Doc de checkpoints confirma criação automática pela ferramenta (\"Agent automatically creates them before making significant changes, capturing the state of all modified files\") com timeline navegável e restore — sem disciplina humana no caminho. Os limites que o pesquisador descontou estão na doc, quase literais: \"Checkpoints are stored locally and separate from Git. Only use them for undoing Agent changes; use Git for permanent version control\"; acrescento que \"significant\" é julgamento do agente, não regra determinística."
+   }
+  ],
+  "fontes": [
+   "https://cursor.com/docs/agent/hooks — eventos de hook, permission allow/deny/ask, exit code 2, camadas projeto/usuário/enterprise",
+   "https://cursor.com/docs/hooks — failClosed e comportamento fail-open padrão",
+   "https://forum.cursor.com/t/beforeshellexecution-hook-malformed-json-response-silently-allows-command-instead-of-blocking/152669 — bug de fail-open com JSON malformado",
+   "https://cursor.com/docs/subagents — tabela de frontmatter (name, description, model, readonly, is_background); NÃO existem tools/disallowedTools/permissionMode/maxTurns",
+   "https://cursor.com/docs/cli/reference/permissions — permissions allow/deny para Shell/Read/Write/WebFetch/Mcp",
+   "https://cursor.com/docs/reference/permissions — permissions.json e escopo projeto vs global",
+   "https://forum.cursor.com/t/custom-modes-dont-disable-available-tools/85900 — bug: toggles de ferramenta em custom modes não desabilitam",
+   "https://cursor.com/docs/context/rules — 'Keep rules under 500 lines' como recomendação sem limite técnico; tipos always/auto-attached/agent-requested/manual",
+   "https://www.digitalapplied.com/blog/agents-md-eth-zurich-study-inference-costs-guide — estudo ETH Zurich, 12 repos / 5.694 PRs, ~3% de perda e >20% de custo ao carregar todas as regras",
+   "https://cursor.com/blog/agent-sandboxing — Seatbelt, Landlock+seccomp, WSL2 e fração de requisições sandboxed",
+   "https://www.sentinelone.com/vulnerability-database/cve-2026-22708/ — CVE-2026-22708, bypass de allowlist via shell built-ins, corrigido na 2.3",
+   "https://danusminimus.github.io/posts/The-Agent-Security-Paradox-When-Trusted-Commands-In-Cursor-Become-Attack-Vectors/ — detalhe técnico do bypass por envenenamento de variáveis de ambiente",
+   "https://cursor.com/help/customization/rules — Team Rules no servidor, sync automático, enforced vs optional, precedência Team > Project > User",
+   "https://cursor.com/docs/agent/chat/checkpoints — criação automática antes de mudanças significativas, restore e limite 'local e separado do Git'",
+   "https://cursor.com/changelog/2-4 — release 2.4 (22/01/2026) com subagentes e skills",
+   "https://cursor.com/changelog — entradas datadas em cadência alta até 02/09/2026"
+  ]
+ },
+ "Claude Code nativo (CLAUDE.md, Agent Skills, Hooks, subagen…": {
+  "nome": "Claude Code nativo (CLAUDE.md, Agent Skills, Hooks, subagentes)",
+  "veredictos": [
+   {
+    "criterio": "C3",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Achei o mecanismo literal em /docs/en/hooks: \"exit 2 blocks whether or not you print JSON: even a JSON permissionDecision of 'allow' can't override it\", com PreToolUse na tabela como \"Blocks the tool call\"; /docs/en/permissions confirma que \"A hook that exits with code 2 stops the tool call before permission rules are evaluated\" e que \"deny rules from any scope are evaluated before allow rules\". Ressalva registrada: exit 1 NAO bloqueia e hook que estoura o timeout tambem nao (\"don't count on a stalled hook to act as a gate\") — o portao e mecanico, mas so quando escrito com exit 2."
+   },
+   {
+    "criterio": "C4",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Em /docs/en/sub-agents, `tools` e allowlist, `disallowedTools` e denylist que aceita `mcp__*`, com precedencia documentada (\"disallowedTools is applied first, then tools is resolved against the remaining pool\"), e `Agent(worker, researcher)` restringe quais subagentes podem ser criados — \"If the agent tries to spawn any other type, the request fails\". Ressalva: o isolamento e de contexto e de superficie de ferramentas, nao de processo — /docs/en/sandboxing diz que \"subagents run in the same process as the parent session\"."
+   },
+   {
+    "criterio": "C6",
+    "nota_original": 4,
+    "veredicto": "rebaixar",
+    "nota_proposta": 3,
+    "motivo": "REBAIXADA APOS VERIFICACAO, nao por falta de busca: o que e automatico e so o primeiro arquivo (`/init` gera o CLAUDE.md analisando o repo), enquanto o custo recorrente — o proprio \"peso por sessao\" da justificativa — nao tem teto cobrado por maquina; /docs/en/memory apenas recomenda (\"target under 200 lines per CLAUDE.md file\") e carrega ate 4 MiB inteiro, e o unico limite executado e o do indice MEMORY.md da auto memory (200 linhas/25KB, com erro devolvido na escrita acima do teto). Manter o custo baixo depende de disciplina humana (revisar, aceitar os cortes do `/doctor`) e nao ha medicao publicada de custo de adocao."
+   },
+   {
+    "criterio": "C8",
+    "nota_original": 4,
+    "veredicto": "rebaixar",
+    "nota_proposta": 3,
+    "motivo": "REBAIXADA APOS VERIFICACAO, nao por falta de busca — conferi cada citacao e todas existem ao pe da letra (\"Claude treats them as context, not enforced configuration\" e \"there's no guarantee of strict compliance\" em /docs/en/memory; \"Sandboxing reduces risk but is not a complete isolation boundary\" em /docs/en/sandboxing; \"Not a replacement for version control\" em /docs/en/checkpointing). Mas isso e documentacao declarando um limite, e pela regua documentacao que apenas DIZ vale no maximo 3: nenhuma maquina confere se o limite declarado bate com o comportamento, e os sinais automaticos que achei (aviso na inicializacao quando uma regra de permissao nunca sera consultada, dialogo de settings invalidos, aba Dependencies do `/sandbox`) avisam, nao bloqueiam."
+   },
+   {
+    "criterio": "C9",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Confirmo o 4, mas a justificativa dada nao o sustentava: cadencia de patch e dezenas de milhares de issues sao evidencia de ADOCAO/atividade, que a regua desqualifica. O mecanismo que sustenta esta em /docs/en/setup: instalacao nativa \"automatically update in the background\", `minimumVersion` faz o updater \"refuse to install any version below this value\", o managed `requiredMinimumVersion`/`requiredMaximumVersion` faz o Claude Code \"refuse to start outside a version range\", e cada release tem manifest assinado em GPG com repositorios apt/dnf/apk verificados pelo gerenciador. Ressalva: Homebrew, WinGet, apt, dnf e apk nao tem auto-update; a garantia so vale no instalador nativo. Nao chega a 5: procurei e nao ha medicao publicada de desfecho de manutencao (regressao, MTTR)."
+   },
+   {
+    "criterio": "C10",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "/docs/en/sandboxing diz literalmente \"macOS: uses Seatbelt for sandbox enforcement\", \"Linux: uses bubblewrap for isolation\", filtro seccomp opcional para bloquear sockets Unix, proxy com allowlist de dominios (`strictAllowlist` nega em vez de perguntar) e a frase que fecha a questao: \"The operating system enforces the sandbox boundary on the running process, so it holds regardless of what the model chose to run\"; managed settings com `failIfUnavailable` impedem o start sem sandbox. Ressalvas registradas: por padrao o proxy nao inspeciona TLS (a doc admite caminho de domain fronting), a escotilha `dangerouslyDisableSandbox` vem ligada (so `allowUnsandboxedCommands:false` a fecha) e Windows nativo nao e suportado — no Windows so via WSL2."
+   },
+   {
+    "criterio": "C11",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Confirmado no caminho administrado: /docs/en/discover-plugins diz que plugins de escopo managed \"are installed by administrators via managed settings and can't be modified\", /docs/en/plugins acrescenta que \"--plugin-dir cannot override\" plugins que as managed settings forcam, e a precedencia e absoluta (\"no user, project, local, or --settings value overrides them\"). Ressalva que a justificativa nao fez: o caminho de time via `.claude/settings.json` versionado NAO e automatico — exige confiar na pasta e, desde a v2.1.195, um plugin de fonte externa \"doesn't load until the team member installs it\"; nesse caminho a distribuicao volta a ser disciplina humana, e o 4 vale pelo caminho MDM/managed."
+   },
+   {
+    "criterio": "C12",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Literal em /docs/en/checkpointing: \"Every user prompt creates a new checkpoint\", \"snapshots for the 100 most recent checkpoints in a session\" e \"saves checkpoints with the conversation, so you can still run /rewind after you resume a session\" — a captura acontece sem disciplina humana. Li a secao Limitations inteira e a cobertura e parcial: arquivos alterados por comandos bash nao sao rastreados, edicoes de subagente nao sao restauradas (salvo skill forkada em foreground), symlinks sao pulados, snapshots somem na varredura de retencao (~30 dias) e a doc diz \"Not a replacement for version control\". Mantenho 4 pelo mecanismo automatico e verificavel, com a cobertura parcial registrada."
+   }
+  ],
+  "fontes": [
+   "https://code.claude.com/docs/en/hooks",
+   "https://code.claude.com/docs/en/permissions",
+   "https://code.claude.com/docs/en/sub-agents",
+   "https://code.claude.com/docs/en/sandboxing",
+   "https://code.claude.com/docs/en/checkpointing",
+   "https://code.claude.com/docs/en/memory",
+   "https://code.claude.com/docs/en/setup",
+   "https://code.claude.com/docs/en/managed-settings",
+   "https://code.claude.com/docs/en/discover-plugins",
+   "https://code.claude.com/docs/en/plugins",
+   "https://www.anthropic.com/research/claude-code-expertise"
+  ]
+ },
+ "Aider (CONVENTIONS.md, repo map, auto-commit)": {
+  "nome": "Aider (CONVENTIONS.md, repo map, auto-commit)",
+  "veredictos": [
+   {
+    "criterio": "C1",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Mecanismo achado e é código, não prosa: o mapa é construído com tree-sitter via py-tree-sitter-languages, ranqueado por algoritmo de grafo sobre dependências entre arquivos e cortado para caber no orçamento de --map-tokens (padrão 1k) — ninguém mantém o mapa à mão, ele é rederivado do AST (aider.chat/2023/10/22/repomap.html; docs/repomap.html). Duas ressalvas honestas que NÃO derrubam a nota: o teto é elástico ('it does expand the repo map significantly at times') e em models.py o padrão é use_repo_map: bool = False, ligado só para modelos que o código julga capazes."
+   },
+   {
+    "criterio": "C5",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "O arnês é aberto, roda em Docker e é reprodutível por model+edit_format+commit_hash (benchmark/README.md), e o leaderboard publica custo e taxa de edição bem-formada. Decisivo: existem ablações do PRÓPRIO processo, não só ranking de modelo — 4 formatos de edição comparados para escolher o padrão (2023) e architect/editor com o MESMO modelo dos dois lados (Sonnet 77,4%→80,5%; GPT-4o 71,4%→75,2%). Corrijo a justificativa: o polyglot de 225 exercícios que o pesquisador citou é ranking de modelos, não evidência de processo; a nota se sustenta pelas ablações, não por ele. Não chega a 5 porque o desfecho é medido em exercícios Exercism sintéticos, não em uso real."
+   },
+   {
+    "criterio": "C6",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Entrada verificada em docs/install.html: pip install aider-install, aider-install, cd no repo e rodar — nenhum andaime, arquivo de config ou cerimônia de inicialização é pré-requisito (--git default True detecta o repo sozinho). O peso por sessão é medido por máquina e não por disciplina: /tokens reporta o contexto atual, e max_chat_history_tokens é calculado em código como 1/16 da janela de entrada, travado entre 1k e 8k (models.py), com /drop, /clear e /reset para descarregar."
+   },
+   {
+    "criterio": "C7",
+    "nota_original": 5,
+    "veredicto": "rebaixar",
+    "nota_proposta": 4,
+    "motivo": "Todos os fatos conferem e são reais no código, não promessa: Apache-2.0, roda em terminal sem IDE, camada de provedores que aceita 15+ serviços mais endpoints OpenAI-compatíveis e modelos locais via Ollama, e CONVENTIONS.md é markdown puro. Isso é um 4. Mas 5 exige medição PUBLICADA de desfecho em uso real, e não existe nenhuma: busquei estudo de desfecho específico do aider e só encontrei literatura genérica sobre assistentes de IA (METR e outros), nada sobre o processo do aider. O badge de '88% do código da última release escrito pelo próprio aider' é métrica de ATIVIDADE (volume de código), que a régua exclui explicitamente como prova de eficácia — assim como estrelas e downloads. Rebaixo por ausência comprovada de medição de desfecho, não por falta de verificação."
+   },
+   {
+    "criterio": "C8",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Confirmo a nota, mas por motivo diferente do alegado. A prosa do FAQ vale no máximo 3: 'not optimized for quick performance in very large repos' é limite declarado e não cobrado por nada. O que salva o 4 é o código: em aider/models.py o campo use_repo_map: bool = False é o padrão do ModelSettings e só vira True para modelos específicos, ou seja, a máquina efetivamente NEGA o recurso ao modelo que o FAQ diz que ficaria 'overwhelmed and confused' — limite declarado e depois imposto pela ferramenta. Some-se o teto automático de histórico (1/16 da janela, travado em 1k-8k) e a contagem publicada de 'exhausted context windows' como categoria de erro no leaderboard."
+   },
+   {
+    "criterio": "C12",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Padrões verificados em docs/config/options.html, todos ligados de fábrica: --auto-commits True, --dirty-commits True (commit prévio do que estava sujo, isolando o trabalho da IA), --attribute-author True, --attribute-committer True e --attribute-co-authored-by True. /diff, /reset e /undo existem, e /undo é guardado por máquina — 'Undo the last git commit if it was done by aider', isto é, verifica a autoria antes de desfazer. É rastreabilidade imposta pela ferramenta, não convenção de equipe. Não sobe a 5: nenhuma medição publicada de desfecho."
+   }
+  ],
+  "fontes": [
+   "https://aider.chat/docs/repomap.html",
+   "https://aider.chat/2023/10/22/repomap.html",
+   "https://raw.githubusercontent.com/Aider-AI/aider/main/aider/models.py",
+   "https://aider.chat/docs/faq.html",
+   "https://aider.chat/docs/benchmarks.html",
+   "https://github.com/Aider-AI/aider/blob/main/benchmark/README.md",
+   "https://aider.chat/2024/09/26/architect.html",
+   "https://aider.chat/2024/12/21/polyglot.html",
+   "https://aider.chat/docs/leaderboards/",
+   "https://aider.chat/docs/install.html",
+   "https://aider.chat/docs/usage/conventions.html",
+   "https://aider.chat/docs/usage/commands.html",
+   "https://aider.chat/docs/config/options.html",
+   "https://aider.chat/docs/git.html",
+   "https://aider.chat/docs/llms.html",
+   "https://github.com/Aider-AI/aider"
+  ]
+ },
+ "AWS Kiro": {
+  "nome": "AWS Kiro",
+  "veredictos": [
+   {
+    "criterio": "C1",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Achei o mecanismo em kiro.dev/docs/compaction/: medidor numérico no painel de chat, compactação disparada pelo runtime ao aproximar do limite, com compaction.excludeMessages e compaction.excludeContextWindowPercent (default 2 e 2, vencendo o mais conservador), e em kiro.dev/docs/tools/ que 'All read tools apply permissions fs_read capability rules'. Ressalva que enfraquece uma perna da justificativa: o .kiroignore é dependente de superfície (IDE completo, CLI só filtra busca V3, Web e Mobile sem suporte) e há bugs abertos de auto-compactação que não dispara em agentes personalizados (issue #5792)."
+   },
+   {
+    "criterio": "C3",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Achei o gate real: hooks são arquivos JSON autônomos em .kiro/hooks/<id>.json que ativam sozinhos ao iniciar a sessão, e apenas PromptSubmit, PreToolUse e PreTaskExecution têm 'Can block? Yes'; a semântica documentada é código 0 permite e código 2 bloqueia a execução da ferramenta devolvendo o STDERR ao LLM. Correção na justificativa do pesquisador: não é 'código diferente de zero' — qualquer outro código apenas avisa e DEIXA passar; e há bug aberto no Windows 11 em que o código 2 não bloqueia (issue #8264)."
+   },
+   {
+    "criterio": "C4",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Achei restrição dura, não dica: em kiro.dev/docs/custom-agents/subagents/ está que 'the sub-agent uses that agent's tools and permissions configuration. Tools not listed in the custom agent's config won't be available', o pai precisa da capacidade subagent e só invoca quem casa com o glob availableAgents, com prompt obrigatório para agentes fora de trustedAgents. Os arquivos ficam em .kiro/agents/*.json|md com blocos permissions (capability/match/effect) e model por agente."
+   },
+   {
+    "criterio": "C9",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Conferi o changelog oficial e ele bate com o alegado: IDE 1.0.437 e CLI 2.21.0 ambos em 1/set/2026, com IDE 1.0.395 em 27/ago e CLI 2.20.0 em 26/ago, ou seja liberações várias vezes por semana sob a AWS. Aviso obrigatório ao leitor: esta nota 4 se apoia em fato verificável por artefato de release datado, não em um portão que trave algo; e a parte 'rastreador público com N issues' é sinal de atividade, jamais de eficácia — a data de GA, aliás, é conflitante (AWS News Blog de nov/2025 versus post de GA de mai/2026)."
+   },
+   {
+    "criterio": "C10",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Achei o mecanismo e ele é mais forte do que o descrito: kiro.dev/docs/permissions/ lista doze capacidades (fs_read, fs_write, shell, web_fetch, web_search, mcp, subagent, skill, power, context, diagnostics, sandbox_network) mais meta-capacidades, efeitos deny/ask/allow com prioridade estrita em que 'a deny rule always wins regardless of scope', globs com exclude e comandos compostos (;, &&, ||, |) divididos antes da avaliação, 'preventing circumvention'. Não sobe para 5 porque não existe medição publicada de desfecho desse controle."
+   },
+   {
+    "criterio": "C11",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "O mecanismo existe: .kiro/hooks e .kiro/agents são versionados e os hooks 'activate automatically when sessions begin', então o gate chega igual a todos por git pull, e o Enterprise governa modelos, servidores MCP e extensões por registro central. Duas correções contra o pesquisador: a própria doc de governança admite que 'Both the toggle and the registry settings are enforced on the client side... can be circumvented by users', o permissions.yaml de workspace mora FORA do repositório (~/.kiro/workspace-roots/<hash>/), logo não viaja no git, e SCIM e logs de auditoria eu NÃO achei em página oficial — só em blogs de terceiros."
+   },
+   {
+    "criterio": "C12",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Achei em kiro.dev/docs/checkpoints/ que 'Each time you send a prompt to Kiro, it creates a checkpoint', sem opt-in, e que restaurar devolve o código e rebobina o contexto do agente junto. Limite documentado que o pesquisador citou corretamente: não rastreia edições feitas fora do agente nem 'file changes made by MCP tools or bash commands that it runs', então o rollback é parcial por desenho."
+   }
+  ],
+  "fontes": [
+   "https://kiro.dev/docs/compaction/",
+   "https://kiro.dev/docs/kiroignore/",
+   "https://kiro.dev/docs/tools/",
+   "https://kiro.dev/docs/hooks/",
+   "https://kiro.dev/docs/cli/hooks/",
+   "https://kiro.dev/docs/hooks/types/",
+   "https://github.com/kirodotdev/Kiro/issues/8264",
+   "https://github.com/kirodotdev/Kiro/issues/5792",
+   "https://kiro.dev/docs/custom-agents/configuration-reference/",
+   "https://kiro.dev/docs/custom-agents/creating/",
+   "https://kiro.dev/docs/custom-agents/subagents/",
+   "https://kiro.dev/docs/permissions/",
+   "https://kiro.dev/changelog/",
+   "https://kiro.dev/changelog/ide/1-0-437/",
+   "https://kiro.dev/enterprise/",
+   "https://kiro.dev/docs/enterprise/governance/mcp/",
+   "https://kiro.dev/docs/checkpoints/"
+  ]
+ },
+ "GitHub Copilot custom instructions": {
+  "nome": "GitHub Copilot custom instructions",
+  "veredictos": [
+   {
+    "criterio": "C4",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "A doc oficial do GitHub para custom agents diz textualmente que uma lista específica `tools: [...]` \"enables only those tools\", e a doc do VS Code confirma que ferramenta fora da lista \"is ignored\" — mais `agents: []` que \"prevent[s] any subagent use\": é negação real de chamada de ferramenta, não recomendação. Ressalva registrada: `handoffs` não é suportado no cloud agent do github.com e há bug aberto (microsoft/vscode#304574) de tools de MCP não honradas em custom agents no Copilot CLI."
+   },
+   {
+    "criterio": "C6",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "A doc do VS Code diz verbatim que \"VS Code automatically detects a `.github/copilot-instructions.md` Markdown file in the root of your workspace and applies the instructions in this file to all chat requests\" — carregamento automático sem instalação, sem CLI e sem passo humano, e a seção References prova por resposta que o arquivo entrou. Ressalvas honestas: o pré-requisito é assento pago de Copilot (não é custo zero) e há bug aberto github/copilot-cli#713 de instruções não incluídas automaticamente no CLI."
+   },
+   {
+    "criterio": "C8",
+    "nota_original": 4,
+    "veredicto": "rebaixar",
+    "nota_proposta": 3,
+    "motivo": "As negativas existem e eu as confirmei verbatim na doc do VS Code (\"Custom instructions are not taken into account for inline suggestions as you type in the editor\"; \"no specific order is guaranteed\"; \"Nested AGENTS.md files is experimental\"), mas são PROSA: nada bloqueia, falha ou nega quando o limite é violado, e pela régua documentação que apenas declara vale no máximo 3. Isto NÃO é falta de verificação — verifiquei e o mecanismo é texto; o único elemento de máquina é a seção References, que mostra quais instruções foram usadas, e ela divulga o que aplicou, não declara o limite."
+   },
+   {
+    "criterio": "C9",
+    "nota_original": 5,
+    "veredicto": "rebaixar",
+    "nota_proposta": 4,
+    "motivo": "Todas as datas do pesquisador conferem (changelog github.blog: instruções de organização GA em 2026-04-02, firewall de organização em 2026-04-03, Agent Plugins 1.0 em 2026-08-12; repo oficial github/awesome-copilot com `.schemas` e CI), mas isso é cadência de release do fornecedor — atividade, não medição de DESFECHO em uso real. Procurei e não encontrei nenhum estudo publicado medindo qualidade, tempo ou defeito atribuíveis às custom instructions; o único RCT publicado (GitHub, 202 devs, +53,2% de aprovação em testes) mede o Copilot como produto, não os arquivos de instrução."
+   },
+   {
+    "criterio": "C10",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "A doc do GitHub confirma firewall ligado por padrão no cloud agent com allowlist recomendada e aviso automático no corpo do PR quando um destino é bloqueado, mais travamento pela organização (\"Enabled\"/\"Disabled\" tirando a decisão do repositório, changelog de 2026-04-03), e no IDE `chat.tools.terminal.autoApprove` com deny list que sempre força aprovação manual. Ressalva registrada da própria doc: o firewall \"only applies to processes started by the agent\" via Bash — não cobre servidores MCP nem setup steps, e \"sophisticated attacks may bypass the firewall\"."
+   },
+   {
+    "criterio": "C11",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "O arquivo de repositório chega a N pessoas pelo `git clone` e é aplicado automaticamente pelo produto sem passo de instalação por dev, e as instruções de organização estão GA desde 2026-04-02 valendo para Copilot Chat no github.com, code review e cloud agent — aplicação por máquina, não por disciplina. Dois furos que o pesquisador não viu e que quase derrubam a nota: no VS Code a camada de organização depende do setting por usuário `github.copilot.chat.organizationInstructions.enabled` e tem a MENOR prioridade da hierarquia (pessoal > repositório > organização), ou seja, o dev individual sobrepõe a política da empresa."
+   },
+   {
+    "criterio": "C12",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Confirmado nas release notes do VS Code 1.103 e na doc de checkpoints: o snapshot dos arquivos afetados é criado automaticamente antes de cada requisição, `chat.checkpoints.enabled` vem ligado por padrão, e restaurar remove as requisições seguintes do histórico e reverte os arquivos do workspace, com Redo. Ressalvas da própria doc: \"Checkpoints are temporary and don't replace Git version control\" e mudanças feitas por comandos de terminal não são revertidas."
+   }
+  ],
+  "fontes": [
+   "https://code.visualstudio.com/docs/copilot/customization/custom-chat-modes",
+   "https://code.visualstudio.com/docs/agent-customization/custom-agents",
+   "https://docs.github.com/en/copilot/reference/custom-agents-configuration",
+   "https://code.visualstudio.com/docs/copilot/customization/custom-instructions",
+   "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
+   "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/customize-the-agent-firewall",
+   "https://github.blog/changelog/2026-04-03-organization-firewall-settings-for-copilot-cloud-agent/",
+   "https://github.blog/changelog/2026-04-02-copilot-organization-custom-instructions-are-generally-available/",
+   "https://github.blog/changelog/2026-08-12-agent-plugins-1-0-in-vs-code-copilot-cli-and-the-copilot-app/",
+   "https://code.visualstudio.com/docs/chat/chat-checkpoints",
+   "https://code.visualstudio.com/updates/v1_103",
+   "https://code.visualstudio.com/docs/agents/run/approvals",
+   "https://github.com/github/awesome-copilot",
+   "https://github.com/microsoft/vscode/issues/304574",
+   "https://github.com/github/copilot-cli/issues/713",
+   "https://github.blog/news-insights/research/does-github-copilot-improve-code-quality-heres-what-the-data-says/"
+  ]
+ },
+ "OpenAI Codex CLI": {
+  "nome": "OpenAI Codex CLI",
+  "veredictos": [
+   {
+    "criterio": "C1",
+    "nota_original": 4,
+    "veredicto": "rebaixar",
+    "nota_proposta": 3,
+    "motivo": "O teto existe e é aplicado por código (project_doc_max_bytes, default 32 KiB), mas o próprio comentário do fonte diz que arquivos maiores são \"silently truncated\": nada bloqueia, nada falha, nada avisa — a issue #7138 mostra um usuário descobrindo o corte só por inspeção do código, e o pedido de aviso foi fechado como \"not planned\". Um orçamento cuja violação faz as regras do dono sumirem em silêncio é cap aplicado à máquina, não cobrança sobre o humano — classe estritamente mais fraca que \"bloqueia um commit / falha um CI\"."
+   },
+   {
+    "criterio": "C3",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Achei o mecanismo na doc de primeira mão (learn.chatgpt.com/docs/hooks): PreToolUse nega a chamada via permissionDecision \"deny\" ou exit 2 com razão no stderr, PermissionRequest nega com lógica \"deny to win\" entre múltiplos hooks, e requirements.toml impõe restrições que o config.toml local não sobrepõe. Nega ferramenta de verdade; sem medição publicada de desfecho, portanto 4 e não 5."
+   },
+   {
+    "criterio": "C4",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Subagents em GA com TOML em ~/.codex/agents/ e .codex/agents/ (carregado só em projeto confiável), herdando sandbox_mode, mcp_servers e [[skills.config]] enabled=false por agente — tudo isso a máquina cobra (um subagente read-only não escreve, um sem MCP anexado não chama a ferramenta). Correção ao pesquisador: NÃO existe allowlist de ferramentas por agente; a doc de subagents restringe papel por prosa (\"Do not make code changes\"), então o escopo cobrado é sandbox+MCP+skills, mais estreito do que \"escopo de ferramentas próprio\"."
+   },
+   {
+    "criterio": "C6",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "O README do openai/codex traz as quatro instalações de uma linha (npm -g @openai/codex, brew --cask codex, install.sh, install.ps1 via irm), Apache-2.0, e a frase de inclusão nos planos (\"as part of your Plus, Pro, Business, Edu, or Enterprise plan\"), mais modelos locais por --oss. O atrito citado é real e verificável (issue #5041: extensão VS Code bloqueando rede mesmo em danger-full-access, além do volume de troubleshooting de sandbox no Windows), e já está descontado na nota 4."
+   },
+   {
+    "criterio": "C7",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Licença Apache-2.0 confirmada no repositório, e a portabilidade é exercível, não prometida: flag --oss e qualquer endpoint compatível com OpenAI (Ollama, LM Studio, MLX), com AGENTS.md em padrão aberto multi-fornecedor. O lock-in apontado se confirma e limita a 4: hooks.json, agents TOML, config.toml e requirements.toml são formatos exclusivos do Codex, então a camada de processo não migra junto com os modelos."
+   },
+   {
+    "criterio": "C8",
+    "nota_original": 4,
+    "veredicto": "rebaixar",
+    "nota_proposta": 3,
+    "motivo": "As autodeclarações existem e são exatas — a doc diz do proxy \"It does not filter web search, app or connector tool calls, MCP server connections, browser or Computer Use activity\", do DNS \"it does not eliminate it\", dos hooks \"a useful guardrail, not a complete enforcement boundary\" —, mas isso é prosa: nada de máquina cobra o usuário a operar dentro dos limites declarados. Pior, a transparência é desigual: o corte silencioso de 32 KiB, que descarta as regras do dono, não está declarado na doc e só foi achado por leitura do fonte (issue #7138), então cai na regra \"documentação que apenas DIZ vale no máximo 3\"."
+   },
+   {
+    "criterio": "C9",
+    "nota_original": 5,
+    "veredicto": "rebaixar",
+    "nota_proposta": 4,
+    "motivo": "Confirmei os números (Apache-2.0, cadência alta, 122 mil estrelas hoje, e o anúncio da OpenAI de 4 milhões de desenvolvedores semanais em abril/2026), mas TODOS são adoção — exatamente o que a régua exclui como prova de eficácia. A única medição de desfecho que achei é de terceiros e mede a saída do modelo, não o processo desta ferramenta (estudo de 33.596 PRs de agentes, Codex com 82,6% de merge), e a telemetria do mesmo corpo de pesquisa aponta injeção de defeito +50% e tempo de review +41,5% em código assistido, ou seja, evidência mista que não sustenta o 5."
+   },
+   {
+    "criterio": "C10",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "É o mecanismo mais forte do conjunto e resiste ao ataque: Seatbelt/sandbox-exec no macOS, bwrap + Landlock + seccomp-BPF no Linux (nega incondicionalmente ptrace, process_vm_readv/writev e io_uring_*, e bloqueia toda família de socket exceto AF_UNIX em rede restrita), tokens write-restricted com SIDs sintéticos e ACLs no Windows, rede desligada por padrão em workspace-write e .git/.codex/.agents forçados a somente-leitura mesmo sob raiz gravável. Negação no kernel, não configuração; falta só medição publicada de desfecho para ser 5."
+   },
+   {
+    "criterio": "C11",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "A doc oficial de config confirma o mecanismo em primeira mão: \"your organization may also enforce constraints via requirements.toml (for example, disallowing approval_policy = 'never' or sandbox_mode = 'danger-full-access')\", com allowed_approval_policies / allowed_sandbox_modes / allowlist de MCP e distribuição por policies do workspace, MDM do macOS ou filesystem. A frase mais categórica de não-contorno (\"local config files cannot override managed policy values\") vem de fonte secundária, mas o exemplo de proibição na doc de primeira mão já implica a imposição."
+   }
+  ],
+  "fontes": [
+   "https://learn.chatgpt.com/docs/hooks",
+   "https://learn.chatgpt.com/docs/agent-approvals-security",
+   "https://learn.chatgpt.com/docs/config-file/config-basic",
+   "https://learn.chatgpt.com/docs/config-file/config-advanced",
+   "https://learn.chatgpt.com/docs/agent-configuration/subagents",
+   "https://github.com/openai/codex",
+   "https://github.com/openai/codex/issues/7138",
+   "https://github.com/openai/codex/issues/13386",
+   "https://developers.openai.com/codex/permissions",
+   "https://deepwiki.com/openai/codex/5.6-sandboxing-implementation",
+   "https://codex.danielvaughan.com/2026/05/14/codex-cli-windows-sandbox-engineering-restricted-tokens-acls-elevated-architecture/",
+   "https://codex.danielvaughan.com/2026/04/27/codex-cli-enterprise-managed-configuration-requirements-toml-admin-policies/",
+   "https://www.alphaxiv.org/abs/2601.15195",
+   "https://openai.com/index/scaling-codex-to-enterprises-worldwide/",
+   "https://www.neowin.net/news/openais-codex-hits-4-million-weekly-active-users-adding-1-million-in-just-two-weeks/",
+   "https://github.com/openai/codex/issues/5041"
+  ]
+ },
+ "Ecossistema ADR (adr-tools, MADR, Log4brains)": {
+  "nome": "Ecossistema ADR (adr-tools, MADR, Log4brains)",
+  "veredictos": [
+   {
+    "criterio": "C6",
+    "nota_original": 5,
+    "veredicto": "rebaixar",
+    "nota_proposta": 4,
+    "motivo": "Achei automação real e verificável (adr-tools: `adr new -s 9` numera sozinho e vira o status do ADR superado; MADR: `npm install madr && cp node_modules/madr/template/*`), mas nada trava commit nem falha CI no SEU repo, e o 'zero runtime / zero dependência' é falso para 2 dos 3 membros — Log4brains exige Node LTS + npm + Next.js + .log4brains.yml + package.json (licença Apache-2.0, não MIT/CC0) e adr-tools exige shell POSIX, sem Windows nativo (INSTALL.md manda usar Git Bash ou WSL). A única medição publicada em uso real vai CONTRA a nota: o estudo MSR do IEEE Access (2023, >900 repos do GitHub) achou adoção baixa e ~50% dos repos com ADR parados em 1 a 5 registros ('tentado, não adotado'), e o experimento controlado de templates (arXiv 2604.27333, 33 alunos) colocou MADR ABAIXO de Nygard em score geral (mediana ~0,7 vs ~0,8; p=0,002; Cliff's delta 0,64) justamente por overhead. Rebaixo por AUSÊNCIA VERIFICADA da medição de desfecho de custo — busquei docs, repos, CI e literatura; não é falta de verificação."
+   },
+   {
+    "criterio": "C7",
+    "nota_original": 5,
+    "veredicto": "rebaixar",
+    "nota_proposta": 4,
+    "motivo": "Confirmei o artefato portátil (markdown puro versionado, legível sem ferramenta nenhuma; Log4brains consome ADR criado pelo adr-tools), mas nada NO ecossistema cobra isso por máquina: MADR entrega só um `.markdownlint` inicial e o CI do próprio repo (lint.yaml, markdownlint-cli2 + heylogs) linta ESTILO dos templates dele, não os seus registros; validação por esquema existe apenas fora do ecossistema e de terceiros (GitHub Action + JSON Schema do structured-madr, regras ADR do mdbook-lint). E a camada de ferramenta não é portátil como a de arquivo: adr-tools não roda em Windows nativo, Log4brains prende a Node/Next.js e à sua config, e o próprio formato faz drift (MADR 3.0 fundiu as seções de consequências; 4.0 introduziu front matter YAML), então um registro antigo não passa no checador novo. Zero medição publicada de desfecho de portabilidade em uso real — rebaixo por AUSÊNCIA VERIFICADA dessa medição, não por falta de verificação."
+   }
+  ],
+  "fontes": [
+   "https://github.com/npryce/adr-tools",
+   "https://raw.githubusercontent.com/npryce/adr-tools/master/INSTALL.md",
+   "https://github.com/thomvaill/log4brains",
+   "https://api.github.com/repos/thomvaill/log4brains",
+   "https://adr.github.io/madr/",
+   "https://raw.githubusercontent.com/adr/madr/develop/.github/workflows/lint.yaml",
+   "https://api.github.com/repos/adr/madr",
+   "https://ieeexplore.ieee.org/document/10155430/",
+   "https://rebekkaa.github.io/files/2024_ECSA.pdf",
+   "https://arxiv.org/html/2604.27333v1",
+   "https://github.com/zircote/structured-madr",
+   "https://joshrotenberg.com/mdbook-lint/rules/adr/index.html"
+  ]
+ },
+ "pipeline-projetos-IA (kit artesanal de processo sobre Claude Code)": {
+  "fontes": [
+   "C:\\Users\\maquina\\Desktop\\pipeline-projetos-IA\\scripts\\check.py (cabeçalho: 18 FALHAS que reprovam / ~24 AVISOS que não reprovam; linhas 167 TETOS_PADRAO, 399-412 orçamento do contexto, 1014-1045 FALHA 16, 1351-1356 sys.exit(1))",
+   "C:\\Users\\maquina\\Desktop\\pipeline-projetos-IA\\.git\\hooks\\pre-commit (chama check.py; FALHA ABERTA com exit 0 quando não acha Python)",
+   "C:\\Users\\maquina\\Desktop\\pipeline-projetos-IA\\.git\\hooks\\commit-msg + scripts\\mensagem_hook.py (regex PADRAO = ^(OK|NOK): (Feat|Fix|...): \\S.* — nenhuma exigência de D-NN/QA-NN)",
+   "C:\\Users\\maquina\\Desktop\\pipeline-projetos-IA\\.claude\\settings.json (único PreToolUse instalado é portao_hook.py, matcher Bash; escopo_hook.py NÃO está ligado)",
+   "C:\\Users\\maquina\\Desktop\\pipeline-projetos-IA\\scripts\\escopo_hook.py (seis ramos de `passa()` — falha aberta sem 'Em andamento', com ≠1 tarefa, sem **Módulo:**, sem **Pasta:**, com placeholder, com espaço no caminho)",
+   "C:\\Users\\maquina\\Desktop\\pipeline-projetos-IA\\scripts\\portao_hook.py (bloqueia --no-verify sem marcador SEM-PORTAO; docstring declara os contornos não fechados: core.hooksPath, hook desinstalado, git fora do agente)",
+   "C:\\Users\\maquina\\Desktop\\pipeline-projetos-IA\\scripts\\test_check.py (141 testes; test_readme_declara_os_numeros_reais linha 569, test_declara_o_que_nao_mede linha 1679)",
+   "C:\\Users\\maquina\\Desktop\\pipeline-projetos-IA\\scripts\\evidencia.py linhas 500-515 (seção 'O que este relatório NÃO mede', item 1: 'Se o kit AJUDOU... não existe' contrafactual)",
+   "git log --format=%s -30 no repo do kit: 20 mensagens fora do padrão + 5 merges isentos; o hook de mensagem só nasce em 'OK: Feat: Adotar o padrão da equipe STF PSS no kit (v13.13)', 6 commits atrás",
+   "C:\\Users\\maquina\\Desktop\\pipeline-projetos-IA\\CLAUDE.md (regras 1-7 e 'Uma skill de b_process/skills/' são prosa no prompt, sem cobrança)",
+   "C:\\Users\\maquina\\Desktop\\pipeline-projetos-IA\\.kit-config.json (padrao_equipe.commit=true, branch=false, repositorio=false — cobrança é opt-in por projeto)"
+  ],
+  "nome": "pipeline-projetos-IA (kit artesanal de processo sobre Claude Code)",
+  "veredictos": [
+   {
+    "criterio": "C1 — contexto e escala",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "Verifiquei o mecanismo no código: check.py mede o arquivo, compara com TETOS[CONTEXTO]=4000 e sai com 1, e o pre-commit bloqueia — e a FALHA 16 ainda exige um D-NN para ELEVAR o teto, fechando a fuga óbvia. Não vai a 5 porque o teto cobra o TAMANHO DO ARQUIVO, não o que o agente carregou (limite que o próprio evidencia.py declara, item 4), e ninguém mediu se 4.000 caracteres melhoraram algo."
+   },
+   {
+    "criterio": "C2 — memória de decisão",
+    "nota_original": 4,
+    "veredicto": "rebaixar",
+    "nota_proposta": 3,
+    "motivo": "O que a máquina cobra é integridade referencial do PONTEIRO — FALHA 10 (ID citado que não existe) e FALHA 11 (ID duplicado) —, enquanto o ATO de registrar não é cobrado por nada: o mensagem_hook.py não exige ID nenhum na mensagem (regex só pede `OK|NOK: Tipo:`) e 'ID prometido no CHANGELOG e nunca registrado' é AVISO, que não reprova. A diferença de um ponto para o ecossistema ADR não se sustenta: em ambos o conteúdo — a rejeição, o porquê, a cobertura de 86,6% — é disciplina humana; a única decisão que a máquina obriga a registrar é a elevação de teto (FALHA 16), um caso, não a memória de decisão."
+   },
+   {
+    "criterio": "C3 — portão automático",
+    "nota_original": 4,
+    "veredicto": "confirmada",
+    "nota_proposta": 4,
+    "motivo": "É o único critério em que a evidência é do TIPO certo: li três travas que retornam código de bloqueio — pre-commit → check.py exit 1 (18 FALHAS), commit-msg → exit 1 fora do padrão, e PreToolUse → exit 2 no `--no-verify` sem marcador SEM-PORTAO, com 141 testes verdes. Fica em 4 e não sobe: a instalação do hook não é cobrada (num clone novo não há hook, e 'portão não instalado' é AVISO emitido pelo script que não está rodando), ele falha aberto sem Python, e '0 pulos declarados' não é '0 pulos' — o próprio portao_hook.py lista os contornos que deixou abertos."
+   },
+   {
+    "criterio": "C4 — papéis especializados",
+    "nota_original": 4,
+    "veredicto": "rebaixar",
+    "nota_proposta": 3,
+    "motivo": "A máquina valida o ESQUEMA DO DOCUMENTO da skill (FALHA 6 e FALHA 14: name/description e seções Contexto/Limites/Saída), não o papel em execução — e o único script que restringiria de verdade, o escopo_hook.py, NÃO está ligado no .claude/settings.json deste repositório (só o portao_hook.py está) e, mesmo instalado, falha aberto em seis condições declaradas e limita por PASTA vinda de um card escrito à mão, não por papel. 'Carregue UMA skill' é prosa no CLAUDE.md, 'sessão sem skill declarada' é AVISO, 11 das 24 nunca dispararam e só 4 de 187 commits tocam apenas produto: catálogo de papéis quase todo não exercitado no que ele foi feito para construir."
+   },
+   {
+    "criterio": "C8 — honestidade sobre limites",
+    "nota_original": 4,
+    "veredicto": "rebaixar",
+    "nota_proposta": 3,
+    "motivo": "Existe cobrança real e me surpreendeu — test_readme_declara_os_numeros_reais reprova quando a cobertura publicada diverge da contagem do check.py e proíbe a capa de digitar o número, e test_declara_o_que_nao_mede reprova se o relatório perder a seção de limites —, mas o que a máquina cobra é a frescura de UM número e a PRESENÇA de uma string ('NÃO mede', 'AJUDOU'); nenhum teste pode verificar se a lista de limites é completa ou verdadeira. Quem escolhe quais limites declarar, escreve o teste que confere a declaração e se dá a nota é a mesma pessoa: a prática é honesta acima da média (os números CONTRA foram ele quem publicou), mas honestidade sustentada por disciplina do autor é 3 pela régua — a mesma lógica que rebaixou C2 por um mecanismo parcial se aplica aqui."
+   }
+  ]
+ }
+}

@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""Instala o pre-commit que roda scripts/check.py antes de cada commit.
+"""Liga as travas do kit: o pre-commit (check.py) e o commit-msg; com --todas, também as
+duas do Claude Code.
 
-    python scripts/install_hook.py            # instala
-    python scripts/install_hook.py --remover   # desinstala
+    python scripts/install_hook.py            # instala o pre-commit e o commit-msg
+    python scripts/install_hook.py --todas    # e mais as duas travas do Claude Code
+    python scripts/install_hook.py --escopo --portao   # só as travas de agente
+    python scripts/install_hook.py --remover   # desinstala (com --todas, as quatro)
 
-Por que isto existe: o kit tem 188 itens de checklist e apenas 16 têm trava
-automática. O resto dependia de você lembrar de rodar o script.
+Por que isto existe: a maior parte do checklist do kit não tem trava automática (as
+contagens moram no README e no cabeçalho do check.py). O resto dependia de você lembrar
+de rodar o script.
 Um portão que só funciona quando alguém lembra não é portão. Com o hook, a
 higiene passa a ser o padrão e pular vira ato deliberado (`git commit --no-verify`).
 """
@@ -228,16 +232,10 @@ def trava_de_agente(aqui: Path, topo: Path, remover: bool, flag: str) -> int:
     return 0
 
 
-def main() -> int:
-    aqui = Path(__file__).resolve().parent          # .../scripts
-    raiz = aqui.parent                              # a pasta de documentação (ou o kit)
-    topo = topo_do_repo(raiz)
-    for flag in TRAVAS:
-        if flag in sys.argv:
-            if topo is None:
-                print("ERRO: não é um repositório git. Rode `git init` primeiro.")
-                return 1
-            return trava_de_agente(aqui, topo, "--remover" in sys.argv, flag)
+def ganchos_de_git(aqui: Path, raiz: Path, topo, remover: bool) -> int:
+    """O pre-commit e o commit-msg — as travas que moram no git e valem para qualquer
+    ferramenta. Era o corpo do `main`; virou função para o `--todas` chamá-la junto com as
+    travas de agente."""
     hooks = dir_hooks(raiz)
     if hooks is None or topo is None:
         print("ERRO: não é um repositório git (ou o git não está no PATH). Rode `git init` primeiro.")
@@ -245,7 +243,7 @@ def main() -> int:
     hooks.mkdir(parents=True, exist_ok=True)
     hook = hooks / "pre-commit"
 
-    if "--remover" in sys.argv:
+    if remover:
         msg = hooks / "commit-msg"
         if msg.exists() and MARCA in msg.read_text(encoding="utf-8"):
             msg.unlink()
@@ -294,6 +292,36 @@ def main() -> int:
     print(f"OK: hook de MENSAGEM instalado em {msg}")
     print("   Formato cobrado: `OK|NOK: Tipo: Descricao` (padrao da equipe).")
     return 0
+
+
+def main() -> int:
+    aqui = Path(__file__).resolve().parent          # .../scripts
+    raiz = aqui.parent                              # a pasta de documentação (ou o kit)
+    topo = topo_do_repo(raiz)
+    remover = "--remover" in sys.argv
+    todas = "--todas" in sys.argv
+    # QA-17: o laço devolvia na PRIMEIRA trava pedida, então `--escopo --portao` ligava só
+    # o escopo e dizia OK — a segunda ficava de fora em silêncio. Agora cada trava pedida é
+    # instalada, e `--todas` pede as quatro de uma vez: o benchmarking de set/2026 achou UMA
+    # de quatro no único projeto real, porque ligar tudo exigia três comandos que nenhum
+    # passo de instalação mandava rodar.
+    travas = [flag for flag in TRAVAS if todas or flag in sys.argv]
+    if travas and topo is None:
+        print("ERRO: não é um repositório git. Rode `git init` primeiro.")
+        return 1
+    codigo = ganchos_de_git(aqui, raiz, topo, remover) if (todas or not travas) else 0
+    for flag in travas:
+        codigo = max(codigo, trava_de_agente(aqui, topo, remover, flag))
+    if todas and not remover:
+        if codigo == 0:
+            print("   O pre-commit e o commit-msg valem para ESTE clone: hook de git não viaja com o")
+            print("   repositório. As travas de agente ficam no .claude/settings.json — commite-o e elas vão junto.")
+        else:
+            # Fechar com a frase de sucesso depois de um ERRO foi achado da revisão: o dono lia
+            # "as travas valem para este clone" e acreditava que as quatro estavam ligadas.
+            print("   ATENÇÃO: nem todas as travas ficaram ligadas — veja o ERRO acima.")
+            print("   `task.py evidencia` mostra, no topo, quais estão ligadas neste clone.")
+    return codigo
 
 
 if __name__ == "__main__":

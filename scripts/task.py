@@ -34,15 +34,27 @@ TAREFAS = {
     "strict":    ([PY, str(AQUI / "check.py"), "--avisos-reprovam"],
                   "Igual ao check, mas avisos também reprovam.", True),
     "hook":      ([PY, str(AQUI / "install_hook.py")],
-                  "Instala o pre-commit — sem isto o portão só roda quando você lembra.", False),
+                  "Instala os ganchos de git (pre-commit e commit-msg) — sem isto o portão só roda "
+                  "quando você lembra. As quatro travas: `travas`.", False),
     "escopo":    ([PY, str(AQUI / "install_hook.py"), "--escopo"],
                   "Liga a trava de escopo: escrita fora da pasta do módulo em andamento é "
                   "recusada (Claude Code). Desligar: `escopo --remover`.", False),
     "portao":    ([PY, str(AQUI / "install_hook.py"), "--portao"],
                   "Liga a trava do pulo: `git commit --no-verify` sem 'SEM-PORTAO: <motivo>' "
                   "é recusado (Claude Code). Desligar: `portao --remover`.", False),
+    "travas":    ([PY, str(AQUI / "install_hook.py"), "--todas"],
+                  "Liga as QUATRO travas de uma vez (pre-commit, mensagem, escopo, pulo). "
+                  "Hook de git não viaja com o clone: rode uma vez em cada clone. Desligar as "
+                  "quatro: `travas --remover`.", False),
+    "congelar":  ([PY, str(AQUI / "congelar.py")],
+                  "Congela arquivos (`congelar <arquivo> ...`, caminho relativo a onde você "
+                  "está): mudar o conteúdo passa a reprovar no check.py — e o commit, com o "
+                  "pre-commit ligado. Sem argumento, confere. "
+                  "Desistir deixa rastro: "
+                  '--liberar <arquivo> "<motivo>".', False),
     "unhook":    ([PY, str(AQUI / "install_hook.py"), "--remover"],
-                  "Remove o pre-commit deste kit.", False),
+                  "Remove os ganchos de git deste kit (pre-commit e commit-msg). As travas de "
+                  "agente ficam: `travas --remover` tira as quatro.", False),
     "arquivar":  ([PY, str(AQUI / "arquivar.py")],
                   "Lista as decisões que ninguém vivo cita (relata; só escreve com --aplicar).", False),
     "arquivar-backlog": ([PY, str(AQUI / "arquivar.py"), "--backlog"],
@@ -57,6 +69,13 @@ TAREFAS = {
     "test":      ([PY, str(AQUI / "test_check.py")],
                   "Testes de regressão dos scripts (encoding, worktree, git ausente).", True),
 }
+
+
+# Tarefa que recebe CAMINHO do usuário roda na pasta de quem chamou; as outras, no vault.
+# Rodar o `congelar` no vault fazia `task.py congelar README.md`, chamado de uma subpasta ou da
+# raiz de um projeto, congelar OUTRO arquivo de mesmo nome — a revisão adversarial desta versão
+# pegou isso antes do primeiro commit. O congelar.py acha o vault pelo próprio arquivo.
+MANTEM_CWD = {"congelar"}
 
 
 def ajuda() -> int:
@@ -88,7 +107,7 @@ def main() -> int:
             print("   `test` é do repositório do KIT — ele testa os próprios scripts.")
             print("   Num projeto, o portão é `check` (e `check-all` antes de entregar).")
         return 1
-    return subprocess.run(cmd, cwd=AQUI.parent).returncode
+    return subprocess.run(cmd, cwd=None if pedido in MANTEM_CWD else AQUI.parent).returncode
 
 
 if __name__ == "__main__":

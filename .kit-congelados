@@ -1,0 +1,7 @@
+# Arquivos congelados: o CONTEUDO deles nao muda mais, e o check.py reprova se mudar.
+# Hash = sha256 do conteudo com todo CR antes de LF removido (ponto fixo do git: disco,
+# blob e clone do CI concordam); binario (NUL nos primeiros 8000 bytes) vai cru.
+# Nao edite a mao: use `python scripts/task.py congelar`. Append-only - a ultima linha
+# de cada arquivo vale, e liberar tambem deixa rastro.
+CONGELADO | 07179f33ffaad154eea55b89f6bd1fdc9b6d850b7f56e53fa307e1cf74a5d957 | 2026-09-10 | docs/f_criterio_conclusao_tapgo_260827.md
+CONGELADO | 9d46b98b78b67cfb5d752eaba42ca9f4ffb5f530bc14ac18e9027ec9cae27181 | 2026-09-10 | docs/h_benchmark_mercado_260906/criterios-congelados.txt
