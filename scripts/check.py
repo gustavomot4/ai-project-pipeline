@@ -22,6 +22,7 @@ FALHAS (código 1)
                                        16. Teto de orçamento elevado sem registro no DECISIONS
                                        17. Registro declarado em .kit-config.json acima do teto
                                        18. Linha de registro acima do limite declarado
+                                       19. Congelado editado/ausente, ou registro adulterado
 
 AVISOS (não reprovam; com --avisos-reprovam, reprovam)
   frontmatter ausente · placeholders · templates em rascunho · nota órfã ·
@@ -778,7 +779,8 @@ if DIR_HOOKS is not None:
     if not armado:
         avisos.append(
             "Portão automático NÃO instalado — este check só roda quando você lembra, e "
-            "commit sem saída nenhuma parece commit aprovado. Instale: python scripts/install_hook.py"
+            "commit sem saída nenhuma parece commit aprovado. Instale: python scripts/task.py travas "
+            "(as quatro travas)"
         )
 if achados_seg:
     falhas.append("Possível segredo versionado: " + "; ".join(dict.fromkeys(achados_seg))[:400])
@@ -1340,6 +1342,67 @@ if any(_liga.values()) and TEM_GIT:
             "cd = cross-domain) — renomear repositório é decisão do dono; o aviso existe "
             "para que a divergência seja consciente, não descoberta na revisão."
         )
+
+# 19. Arquivo congelado editado depois do congelamento — ou o registro que o protege, adulterado.
+#
+# O kit já congelava documento — à mão, com o hash no changelog e um `python -c` para
+# conferir. O primeiro congelado real (o critério de conclusão do TAP GO) teve o hash
+# calculado sobre a cópia CRLF do Windows; o `eol=lf` normalizou o commit, e a instrução
+# escrita dentro do próprio documento passou a acusar de adulteração um arquivo intacto.
+# Ninguém viu, porque ninguém rodou. A conferência mora agora aqui, onde roda sozinha a
+# cada commit — e o formato do registro mora no `congelar.py`: este bloco só pergunta.
+#
+# Confere o REGISTRO também, e não só os arquivos: a revisão adversarial desta versão mostrou
+# que comentar a linha, recongelar com o hash novo sem LIBERADO, ou apagar o registro, passavam
+# verdes — e recalcular o hash e anexar é exatamente o que um agente faz ao ler "não bate".
+def _vizinho(nome: str):
+    """Carrega um script irmão como módulo, sem depender do sys.path nem do `runpy`, e sem
+    gravar bytecode: conferência que escreve no repositório altera o que confere."""
+    import importlib.util
+    arq = Path(__file__).resolve().parent / nome
+    if not arq.is_file():
+        return None
+    sys.dont_write_bytecode = True
+    spec = importlib.util.spec_from_file_location(f"_kit_{arq.stem}", arq)
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    return modulo
+
+
+_reg_cong = raiz / ".kit-congelados"
+if _reg_cong.exists() or TEM_GIT:
+    _cong = _vizinho("congelar.py")
+    if _cong is None:
+        if _reg_cong.exists():
+            falhas.append(
+                ".kit-congelados existe mas scripts/congelar.py não — os congelados NÃO foram "
+                "conferidos. Atualize o processo: new_project.py <projeto> --upgrade, a partir do kit."
+            )
+    else:
+        try:
+            _erros_cong = list(_cong.conferir_registro_no_git(raiz))
+            _situacoes, _erros_leitura = _cong.conferir(raiz)
+            _erros_cong += list(_erros_leitura)
+        except Exception as _e:  # conferência que morre esconderia todas as outras FALHAs
+            _situacoes = []
+            _erros_cong = [f"a conferência morreu ({type(_e).__name__}: {_e}) — os congelados "
+                           "NÃO foram conferidos"]
+        for _erro in _erros_cong:
+            falhas.append(f".kit-congelados: {_erro}")
+        _editados = [c for c, s in _situacoes if s == "editado"]
+        _ausentes = [c for c, s in _situacoes if s == "ausente"]
+        if _editados:
+            falhas.append(
+                "Arquivo congelado editado depois do congelamento: " + ", ".join(_editados)
+                + " — mudar um congelado não é correção, é documento novo. Desfaça a edição, "
+                "ou escreva outro arquivo, datado, dizendo o que mudou e por quê (e congele "
+                'esse). Desistir: task.py congelar --liberar <arquivo> "<motivo>".'
+            )
+        if _ausentes:
+            falhas.append(
+                "Arquivo congelado ausente: " + ", ".join(_ausentes)
+                + " — apagar um congelado apaga a prova de que o critério veio antes do dado."
+            )
 
 if avisos:
     print("AVISOS:")

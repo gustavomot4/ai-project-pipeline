@@ -1,0 +1,70 @@
+# Critérios do benchmarking — rodada 2 — CONGELADOS antes de pesquisar concorrente
+Escrito em 2026-09-05, antes de abrir a documentação de qualquer ferramenta desta rodada.
+Este arquivo é hasheado (sha256) e o hash é mostrado ao dono antes do primeiro WebSearch.
+
+## A assimetria de evidência (a coisa mais importante deste documento)
+O kit do dono eu MEDI: rodei o portão, rodei a suíte de testes, contei os registros.
+Os concorrentes eu NÃO consigo medir — não tenho projeto real feito com nenhum deles.
+Logo:
+  - nota do kit  = [reproduzido] (comando e saída colados)
+  - nota dos outros = [derivado] (li a documentação) ou [suposto] (memória)
+Um benchmark que mede um lado e lembra do outro FAVORECE o lado medido, porque
+defeito só aparece em uso. Isto vale para o kit E contra ele: o 3 que eu der a um
+concorrente pode ser um 4 que a documentação não mostrou.
+Esta ressalva vai no documento final, em destaque, e não em nota de rodapé.
+
+## Régua (0 a 5) — mesma para todo mundo
+0 = não existe · 1 = só menção · 2 = existe, manual e frágil
+3 = existe e funciona, exige disciplina humana
+4 = existe e é cobrado por máquina · 5 = cobrado por máquina E medido em uso real
+
+Nota 4 exige mecanismo automático VERIFICÁVEL na documentação. Se a doc só DIZ que faz,
+o máximo é 3. Nota 5 exige medição de uso real publicada; quase ninguém tem.
+
+## Os 12 critérios
+
+### Bloco A — organização do trabalho
+C1  Contexto e escala — controla o que o agente lê, com orçamento cobrado, e continua
+    funcionando quando o projeto cresce (arquivamento, poda) ou vira peso morto?
+C2  Memória de decisão — registra decisões E as rejeições/alternativas, de forma durável
+    e legível por humano fora da ferramenta?
+C3  Portão automático — bloqueia mecanicamente (commit, CI, hook), ou só recomenda?
+C4  Papéis especializados — vários agentes/modos com escopo e limites próprios?
+
+### Bloco B — prova e custo
+C5  Prova de eficácia — existe medição de que funciona, ou só relato e depoimento?
+C6  Custo de adoção — quanto custa começar e quanto pesa por sessão? (5 = leve)
+C7  Portabilidade — funciona em qualquer ferramenta/IDE/modelo, ou prende a um fornecedor?
+C8  Honestidade sobre limites — declara por escrito o que NÃO faz e onde falha?
+
+### Bloco C — o mundo real, fora do projeto de uma pessoa
+C9  Manutenção e comunidade — quem cuida, com que frequência, quantos usam?
+C10 Segurança e isolamento — o que o agente pode executar é limitado por mecanismo
+    (sandbox de SO, allowlist de permissão, aprovação por ação)?
+C11 Distribuição em equipe — instalar, versionar e atualizar em N pessoas sem que cada
+    uma tenha uma versão diferente do processo?
+C12 Desfazer e recuperar — dá para reverter com precisão o que o agente fez, por passo?
+
+## Regra de imparcialidade e teste de falseamento
+- SETE dos doze critérios (C5, C6, C7, C9, C10, C11, C12) foram escritos
+  esperando que o kit PERCA. C10, C11 e C12 são novos nesta rodada exatamente por isso:
+  a rodada 1 não tinha nenhum critério de segurança, de equipe nem de recuperação, e por
+  isso não podia falsear nada.
+- C1 e C10 da rodada 1 foram FUNDIDOS em C1: mediam a mesma coisa por dois ângulos e
+  davam ao kit dois pontos pelo mesmo mecanismo.
+- C2 e C8 continuam sendo os dois critérios mais parecidos com auto-retrato do kit. Ficam,
+  porque são legítimos, mas o documento final precisa DIZER isso ao leitor e recomendar
+  desconto nessas duas colunas.
+- Se o kit ganhar em tudo, o benchmark está errado e eu digo isso no documento.
+
+## Conflito de interesse (vai no documento)
+- Quem escreve os critérios é o mesmo agente que ajudou a construir o kit avaliado.
+- A pesquisa roda dentro do Claude Code, que é uma das ferramentas avaliadas (como linha
+  de base). O avaliador é cliente de um dos avaliados.
+- O dono do kit é quem pediu o benchmark e é o beneficiário do resultado.
+
+## Erro de categoria a evitar
+Claude Code, Copilot, Codex CLI, Gemini CLI, Cursor e Aider são FERRAMENTAS de agente;
+o kit RODA EM CIMA de uma delas. Comparar os dois como pares é comparar o andar com o
+alicerce. Eles entram no placar como LINHA DE BASE, marcados como tal, e o texto precisa
+dizer que somar as notas deles contra as nossas é leitura errada.

@@ -9,7 +9,7 @@ status: atual
 
 ## Antes de começar (15 minutos, você sozinho)
 1. Crie o repositório de código do projeto (vazio) — separado deste vault.
-2. `python scripts/install_hook.py` — sem isso, os portões automáticos só rodam se você lembrar.
+2. `python scripts/task.py travas` — liga as quatro travas; sem isso, os portões automáticos só rodam se você lembrar. Hook de git não viaja com o clone: cada clone roda uma vez.
 3. Instale as skills (`b_process/skills/*/`) na sua ferramenta, ou deixe os `SKILL.md` à mão para colar.
 4. Escolha o perfil da stack: [[b_web_nextjs|web-nextjs]] · [[c_data_python|dados-python]] · [[a_generic|genérico]]. Os blocos dele entram no [[a_context_source|CONTEXT]] na Fase 0.
 5. Responda em uma frase: **quem usa isso e o que muda na vida dessa pessoa?** Se você não consegue, a Fase 0 vai extrair — mas o projeto começa mais caro.

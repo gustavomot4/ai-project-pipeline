@@ -8,6 +8,129 @@ status: atual
 > `docs/` não é copiada para projetos novos (`scripts/new_project.py` a exclui) — por isso o histórico do kit vive aqui e nunca polui o changelog do projeto.
 > Regra de evolução: lição que aparece em 2+ projetos vira regra do kit e ganha uma entrada aqui. Ver [[README]] → "Como o kit evolui".
 
+## [kit v13.17] — 2026-09-11
+**O kit passa a dizer o que está ligado, e congelar deixa de depender de alguém lembrar.**
+Um benchmarking contra 13 alternativas de mercado (`docs/h_benchmark_mercado_260906.pdf`)
+motivou esta rodada — e, relido contra este changelog e contra o projeto real, errou em
+quatro afirmações sobre o próprio kit, corrigidas junto. A régua congelada apontou o caminho
+de novo: o item 4 da seção 4 do critério do TAP GO — o recorte de controle com hash, o único
+experimento capaz de responder "o kit ajuda?" — seguia aberto, e dependia exatamente de um
+congelamento que funcionasse.
+- **Skill:** evolution-auditor (avaliação com portão escrito antes de implementar); a
+  implementação veio na mesma sessão, a pedido do dono
+
+- **QA-18 — o primeiro congelado do kit acusaria a si mesmo de adulteração.** O critério do
+  TAP GO foi congelado em 27/08 com o hash `a9f129bd…` e uma instrução escrita dentro dele:
+  "se o número não bater, este arquivo foi editado depois do congelamento". Medido agora: o
+  disco e o blob do git dão `07179f33…`, e `a9f129bd…` é **exatamente o mesmo blob com
+  CRLF** — o hash saiu da cópia do Windows antes de o `eol=lf` normalizar o commit. O
+  documento está íntegro; a instrução manda concluir o contrário. Ninguém viu porque ninguém
+  rodou: verificação que ninguém executa é portão que emudeceu antes de nascer.
+
+- **`scripts/congelar.py` e a FALHA 19** — o conserto do QA-18 e a peça que faltava ao
+  recorte. `task.py congelar <arquivo> ...` grava em `.kit-congelados` o sha256 do conteúdo
+  com o fim de linha no **ponto fixo do git** (toda sequência de CR antes de LF vira LF; binário
+  vai cru), e o `check.py` reprova se o conteúdo mudar ou o arquivo sumir. O portão confere
+  também o **registro**: linha de congelamento comentada, recongelado com outro hash sem
+  LIBERADO no meio, registro apagado ou linha antiga editada (os dois últimos contra o que o
+  git já guardou) reprovam — recalcular o hash e anexar é o remendo que um agente faz ao ler
+  "não bate". Desistir é permitido e deixa rastro (`--liberar <arquivo> "<motivo>"`, o contrato
+  do `SEM-PORTAO:`). Arquivo que o `.gitignore` esconde não se congela (o CI o daria como
+  apagado para sempre); registro com BOM passa e em cp1252 reprova com mensagem, sem traceback;
+  vários arquivos de uma vez é tudo ou nada; o caminho é relativo a quem chama, também pelo
+  `task.py`. O `check.py` e o `evidencia.py` carregam o `congelar.py` em vez de copiar a regra.
+  Os dois congelados reais do kit estão registrados — o critério do TAP GO (`07179f33…`) e os
+  critérios do benchmarking (`9d46b98b…`) —, e um teste confere a ponte: a versão CRLF do
+  critério de hoje reproduz o `a9f129bd…` de agosto. Projeto novo recebe o script, não o
+  registro do kit, que aponta para `docs/`.
+
+- **"O kit instalado neste clone", no topo do `evidencia`.** Versão, as quatro travas
+  (ligada, desligada, ou não verificável sem git — `null`, nunca `false`) e os congelados.
+  Medido: **no único projeto real roda 1 trava de 4**, só o pre-commit; no kit, 3 de 4, sem a
+  de escopo. Nada avisava — e todo número do relatório tinha sido produzido com uma trava, não
+  com quatro. Lê o JSON do `settings.json` e do `settings.local.json`: uma permissão que cita
+  `portao_hook.py` não é trava. `travas ligadas` entra na série do `marco`. A lente de
+  travas da revisão endureceu o censo: a trava só conta se o script que o comando executaria
+  **existe** (o comando falha aberto e sairia 0 calado); `disableAllHooks` desliga as de
+  agente; sem repositório, o `.claude` lido é o do vault, e não o da raiz do disco; um
+  `settings.json` ilegível vira "não verificada", e não "desligada"; e "o portão reprova o
+  próximo commit" só aparece com o pre-commit ligado — sem ele, o commit passa.
+
+- **QA-17 — `install_hook.py --escopo --portao` ligava só o escopo, e dizia OK.** O laço
+  devolvia na primeira flag, na instalação e na remoção. Consertado, e `--todas`
+  (`task.py travas`) liga as quatro de uma vez; quando alguma falha, ele diz, em vez de fechar
+  com a frase de sucesso. README, INDEX, roteiro, padrão do repositório, primeiros passos, guia
+  do Obsidian e o `new_project.py` passam a mandar rodar `task.py travas`: ligar tudo exigia
+  três comandos que nenhum passo de instalação citava.
+
+- **QA-19 — o README dizia "15 falhas · 19 avisos" com 18 e 25 no cabeçalho.** A frase de
+  cobertura é testada e estava certa; a linha da lista de scripts não era, e envelheceu
+  sozinha. Saiu o número (fonte única: o cabeçalho do `check.py`). Mesma família do
+  "188/18" do README e das "14 falhas e 16 avisos" da capa: número mantido à mão fora do
+  alcance de um teste. O docstring do `install_hook.py` ainda dizia "188 itens, 16 com trava",
+  e saiu junto.
+
+- **A revisão adversarial, antes do primeiro commit, derrubou o código desta mesma versão.**
+  Quatro lentes, cada uma reproduzindo numa cópia temporária, levantaram 34 achados. Os quatro
+  de severidade alta eram reais: CR-CR-LF passava no check local e reprovava no CI, porque o git
+  tira UM CR por CRLF e a normalização tirava um só; `task.py congelar` rodava no vault e
+  congelava — ou liberava — **outro** arquivo de mesmo nome; e o portão confiava no registro
+  como estava, então comentar a linha ou recalcular o hash soltava o congelado calado; e o censo de
+  travas dava `[x]` a uma trava cujo script não existia. Todos
+  consertados, cada um com o teste que reproduz o cenário (o do CR-CR-LF faz commit e `git
+  clone` de verdade). O que a revisão **confirmou**: o caminho padrão do `install_hook` saiu
+  byte a byte idêntico ao de antes; as oito sabotagens planejadas foram pegas pelo teste que
+  existe para cada uma; e os testes passam num checkout limpo em Linux e em Windows. E um dos
+  meus próprios testes tinha o defeito que o script existe para evitar — escrevia com
+  `write_text`, que no Windows já grava CRLF, e a conversão virava CR-CR-LF.
+  Uma quinta lente, só de documentação, conferiu cada afirmação escrita contra o código e o
+  dado, e achou 18 imprecisas — a mais grave na própria errata do benchmarking, que dizia que
+  o `--upgrade` nunca tinha rodado no projeto real (rodou uma vez, em 28/08, e parou ali).
+  Todas corrigidas, menos uma pré-existente (QA-27, abaixo).
+
+- **Pré-existentes, achados pela mesma revisão e só registrados (regra 4: não se conserta de
+  carona):** **QA-20** — com um pre-commit de outra origem, o `install_hook` devolve antes de
+  instalar o commit-msg, sem dizer que o pulou. **QA-21** — a trava do pulo instalada no
+  formato antigo (caminho relativo, o que já deixou uma sessão sem executar nenhum comando) é
+  dada como "já instalada" e não é reescrita. **QA-22** — o `--upgrade` num vault
+  `e_doc/0_Context` sugere rodar `0_Context/scripts/check.py`, que não existe. **QA-23** — o `new_project.py`
+  copia para o vault do projeto o `.claude/settings.json` do kit, com o caminho absoluto da
+  máquina do kit como reserva. **QA-24** — o pre-commit conta como armado se o texto
+  `check.py` aparecer em qualquer lugar do hook, mesmo comentado (no `check.py` e, por
+  coerência, no censo). **QA-25** — o `install_hook.py` recusa um `settings.json` salvo com
+  BOM como "JSON inválido". **QA-27** — o docstring do `mensagem_hook.py` manda instalar com
+  `install_hook.py --mensagem`, flag que não existe; e `--mensagem --remover` cai no
+  `--remover` e apaga também o pre-commit.
+
+- **Errata do benchmarking, no próprio documento.** Quatro afirmações sobre o kit estavam
+  erradas: "sem caminho de atualização" (o `--upgrade` existe desde a v9); "a cópia divergiu"
+  (os tetos elevados são configuração declarada — a deriva real é de versão: o projeto está na
+  v13.12, sem o conserto do QA-15 da v13.16, o do modelo de achado); "13,7 min de custo de adoção" (é a suíte do mantenedor; o
+  portão custa de 2 a 5 s por commit, em duas medições); "três travas em uso" (no projeto real, uma). Três favoreciam
+  os concorrentes, uma o kit; o total foi de 28 para 29 de 60. Os revisores do benchmarking
+  não pegaram nenhuma: não receberam este changelog.
+
+- **Avaliadas e REJEITADAS, com o motivo:**
+  métricas de desfecho no `evidencia` (o recorte não existe; instrumentar a medida de um
+  experimento que não começou é ordem invertida — candidata depois dele) ·
+  podar as 11 skills que nunca dispararam (skill carrega sob demanda, então a não usada custa
+  ~0 por sessão; n=1; "nunca disparou" tem duas causas) ·
+  gerir o comprimento de sessão (um preprint de autor único, sem mecanismo mensurável) ·
+  acelerar a suíte (não é custo de adoção: projeto não roda a suíte) ·
+  registrar os bloqueios do portão (mesmo mecanismo do `trend.py`, já morto; e a coluna
+  `Origem` do v13.16 já responde "o portão pegou algo?").
+
+- **Para o dono, e não para o código:** (1) **questão** — o contexto-fonte mistura
+  instrução (sustentada pelo estudo do ETH sobre arquivos de contexto) e panorama de estado
+  (não sustentado); mudar é redesenho do artefato central, e a decisão é sua. (2) rodar
+  `new_project.py <tapgo> --upgrade` — leva o conserto do QA-15 da v13.16 (o modelo de achado),
+  que o projeto real ainda não tem. (3) `task.py travas` no tapgo e no kit. (4) fechar o recorte da seção 3 e congelá-lo
+  com `task.py congelar`.
+
+- 45 testes novos (186 no total), entre eles a isca da FALHA 19, o CR-CR-LF que
+  sobrevive ao commit e ao clone, a ponte com o hash de agosto, o registro adulterado de quatro
+  jeitos e o `--escopo --portao` que ligava só um.
+
 ## [kit v13.16] — 2026-09-04
 **O kit ganha a única medida que não é sobre ele mesmo — e conserta o defeito que escondia
 todos os próprios achados.** Uma revisão adversarial de cinco propostas de melhoria matou

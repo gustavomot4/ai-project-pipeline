@@ -10,7 +10,7 @@ status: atual
 
 ## Começar
 1. Projeto novo: `python scripts/new_project.py ../meu-app --name "Meu App" --code src`
-2. `cd ../meu-app && git init && python 77777777_*_Project_DOCs/scripts/task.py hook` — a higiene passa a rodar sozinha em todo commit
+2. `cd ../meu-app && git init && python 77777777_*_Project_DOCs/scripts/task.py travas` — a higiene passa a rodar sozinha em todo commit, e as outras três travas ligam junto
 3. Abra o [[a_roadmap|ROTEIRO]] e siga da Fase 0
 
 > **Todos os comandos moram em um lugar só:** `python scripts/task.py --help`.
@@ -67,5 +67,9 @@ Antes de entregar, `python scripts/task.py check-all`: no dia a dia a varredura 
 O projeto que precisar de **teto maior** ou de um **registro extra de IDs** (por exemplo os `QA-NN` em `a_context/d_qa.md`) declara isso em **`.kit-config.json`**, no vault — e nunca editando o `scripts/check.py`. Editar o portão congela o projeto na versão em que a edição foi feita: ele para de receber as correções do kit e passa a medir a si mesmo com uma régua que não é mais a régua. Formato: `{"tetos": {"a_context/c_decisions.md": 20000}, "registros": ["a_context/d_qa.md"]}`. Subir teto continua exigindo um `D-NN` que registre a elevação.
 
 `python scripts/task.py portao` liga a **trava do pulo**: `git commit --no-verify` sem `SEM-PORTAO: <motivo>` na mensagem é recusado. Pular o portão continua permitido — pular em silêncio, não, porque era o único contorno que não deixava rastro nem para a medição do próprio kit. Com o marcador, o motivo fica no histórico e o `evidencia` conta os pulos. Desligar: `portao --remover`.
+
+`python scripts/task.py travas` liga as **quatro de uma vez** — pre-commit, mensagem, escopo e pulo. Hook de git não viaja com o clone, então cada clone roda isto uma vez; o `evidencia` diz, no topo, quantas travas **este** clone tem ligadas, porque todo número abaixo dele foi produzido com elas, e não com as que o kit oferece.
+
+`python scripts/task.py congelar <arquivo>` congela um documento: o critério escrito antes do dado, o recorte fechado antes da primeira tarefa. Mudar o conteúdo dele passa a reprovar no `check.py` — e o commit, com o pre-commit ligado. O hash ignora os CR antes de cada LF (o ponto fixo do git) e, em binário, é do arquivo cru: Windows e CI concordam. Desistir é permitido e deixa rastro: `congelar --liberar <arquivo> "<motivo>"`.
 
 `python scripts/task.py test` roda os testes de regressão dos próprios scripts — os mesmos que o CI roda em Linux **e Windows**, porque os dois bugs de encoding que o kit já pagou não reproduzem no Linux.

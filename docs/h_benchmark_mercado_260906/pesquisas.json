@@ -1,0 +1,1709 @@
+[
+ {
+  "nome": "BMAD-METHOD",
+  "o_que_e": "É um conjunto de instruções em markdown que instala no seu projeto uma \"equipe\" de agentes de IA com papéis fixos — analista, gerente de produto, arquiteto, UX, scrum master, desenvolvedor e QA — cada um com seu roteiro de trabalho. Em vez de você pedir código direto para a IA, você passa por etapas: primeiro um documento de requisitos (PRD), depois um documento de arquitetura, que são fatiados em histórias pequenas, e só então o agente desenvolvedor implementa uma história por vez. A ideia é que o documento vire a fonte da verdade e o código seja consequência dele; o preço disso é um processo longo e caro em tokens.",
+  "categoria": "framework de processo multiagente, distribuído como pacote npm e plugin/skills para IDEs de agente",
+  "notas": [
+   {
+    "criterio": "C1",
+    "nota": 3,
+    "porque": "controla leitura via trilhas (Quick Flow/Full Flow), sharding de documentos e bmad-project-context escrevendo em AGENTS.md, mas nenhum orçamento é contado ou cobrado — e a issue #892 (aberta) mostra que o sharding não economiza contexto porque o documento inteiro tem precedência e não é removido; a própria doc hoje desaconselha sharding",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C2",
+    "nota": 3,
+    "porque": "PRD, arquitetura, épicos e stories ficam em markdown versionado no repo, legíveis fora da ferramenta e duráveis, mas não encontrei mecanismo de ADR nem campo que registre alternativas rejeitadas e o porquê da rejeição",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C3",
+    "nota": 3,
+    "porque": "no fluxo padrão os portões são passos de workflow julgados pelo LLM — a issue #2003 documenta story com stub vazio e TODO marcada como resolvida e teste que passou sem verificar o requisito; só o bmad-loop (beta) e o sprint_plan.py aplicam gates em código real",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C4",
+    "nota": 4,
+    "porque": "doze agentes nomeados com escopo próprio (Mary/analista, John/PM, Sally/UX, Winston/arquiteto, Amelia/dev, TEA/testes), carregados por máquina como skills e plugins, com override por .customize.yaml que sobrevive ao upgrade",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C5",
+    "nota": 1,
+    "porque": "não encontrei estudo controlado, benchmark ou telemetria de desfecho; há 52,7k estrelas, depoimentos e uma comparação independente que mediu custo e prazo (US$200, 6 dias) mas não qualidade, e há contraprova em issue de agente entregando stub vazio aprovado",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C6",
+    "nota": 1,
+    "porque": "instalar é um comando, mas o peso por sessão é severo e documentado: 82,1k e 96,5k tokens num único passo de análise (#1235), 100k tokens sem entrega (#1188), ~US$200 por ciclo completo, 12 a 16 horas antes da primeira linha de código e ~2 meses para dominar",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C7",
+    "nota": 4,
+    "porque": "MIT, instalador compila nativamente para mais de 30 plataformas de IDE (Claude Code, Cursor, Copilot, Codex, Antigravity) mais web bundles para Gemini e ChatGPT, validado em Claude, GPT, Gemini e Grok; sem trava de fornecedor, só dependência de Node/npm/git/uv",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C8",
+    "nota": 2,
+    "porque": "o README e a doc principal não declaram custo em tokens, modos de falha nem quando não usar; a honestidade escrita existe só no componente bmad-loop, que assume beta aberto, quebras pré-1.0, incompatibilidade com monorepo e o limite de ser machine-local",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C9",
+    "nota": 4,
+    "porque": "52,7k estrelas, ~6k forks, 2.203 commits, releases estáveis quase semanais na linha v6 ao longo de 2026, npm, Discord e CI própria (husky, eslint, CodeRabbit) — mas issues estruturais como #2003 e #892 seguem abertas sem resposta do mantenedor e a organização gira em torno de um autor",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C10",
+    "nota": 2,
+    "porque": "o BMAD não traz sandbox de SO, allowlist nem aprovação por ação — herda o que o IDE hospedeiro impõe e ainda amplia a superfície ao exigir uv e rodar scripts Python; o único isolamento próprio é git worktree por story no bmad-loop, que isola mudança, não execução",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C11",
+    "nota": 4,
+    "porque": "pacote npm versionado com npx bmad-method install e canal @next, marketplaces de plugin do Claude Code e do Codex, módulos com eixos de versão distintos e --set para config; a deriva possível é cada pessoa instalar @latest ou @next em momentos diferentes, sem política de organização que force a versão",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C12",
+    "nota": 3,
+    "porque": "o bmad-loop comita por story (squash das iterações), roda cada story em worktree isolado, reverte ao baseline em tentativa falha e guarda snapshots imutáveis em _bmad/render/ — mas isso é o orquestrador opcional em beta; no fluxo interativo padrão sobra git manual mais o checkpoint do IDE",
+    "evidencia": "derivado"
+   }
+  ],
+  "forcas": [
+   "Papéis especializados de verdade e empacotados: doze agentes nomeados com workflows próprios, entregues como skills e plugins versionados, com override por .customize.yaml que sobrevive ao upgrade",
+   "Portabilidade e distribuição maduras: MIT, compila para mais de 30 IDEs de agente, com pacote npm e marketplace de plugin no Claude Code e no Codex — o time instala e atualiza por comando",
+   "O bmad-loop traz orquestração determinística em Python de verdade: gates de dependência que recusam despachar a story no preflight e no dispatch, orçamento de retry, worktree por story e reversão automática ao baseline quando a verificação falha"
+  ],
+  "fraquezas": [
+   "Peso por sessão alto e documentado pelos próprios usuários: 82,1k e 96,5k tokens num único passo de análise, ~US$200 por ciclo completo, 12 a 16 horas de planejamento antes da primeira linha de código",
+   "Os portões do fluxo padrão são julgados pelo LLM, não cobrados por máquina — há registro de story entregue com stub vazio e comentário TODO passando como resolvida, e de review que força um mínimo artificial de três achados",
+   "A documentação principal não declara custo, limites nem quando não usar, e a própria solução de contexto (sharding) foi desaconselhada pela doc enquanto uma issue aberta afirma que ela nunca economizou contexto"
+  ],
+  "criticas_encontradas": [
+   "Issue #1235 'Performance: Excessive Token Usage in Workflows' (jan/2026, fechada): um único passo do create-story consumiu 82,1k tokens analisando a arquitetura e 96,5k analisando o PRD, num projeto com PRD de ~1400 linhas e arquitetura de ~4800 linhas; causa apontada é análise irrestrita dos documentos em vez de extração de trechos com limite de contexto",
+   "Issue #1188 'Wasting tokens and gaps in workflows' (dez/2025, fechada): usuário relata queimar 100 mil tokens e não entregar nada, porque validate-create-story é quebrado por desenho e exige três sessões de contexto separadas (create-story, validate, apply-fixes) para uma única tarefa lógica; sem resposta visível do mantenedor",
+   "Issue #2003 'Structural Gaps and Contradictions of the BMAD Method V.6 Stable' (ABERTA, sem resposta do mantenedor): documenta contradição entre prometer acessibilidade a não-técnicos e exigir decisões de arquitetura, e dá evidência concreta do Epic 1 — story 1.2 renomeou um comando IPC em vez de implementar o probe HTTP exigido e foi reaberta como HIGH; story 1.3 adicionou asserção de CSS inútil e o teste passou sem verificar o requisito; story 1.5 inseriu stubs vazios com TODO e foi marcada como resolvida",
+   "Issue #1332: o workflow de code review força um mínimo de três achados, gerando crítica artificial, ciclos de revisão sem fim e fadiga do desenvolvedor",
+   "Issue #892 'Sharding does not save any context' (ABERTA, sem resposta): o /shard-doc não remove o documento monolítico e a regra de precedência carrega o documento inteiro quando ambos existem, anulando o propósito do sharding; a doc oficial hoje desaconselha sharding como prática padrão",
+   "Comparação independente de três ferramentas spec-driven (ranthebuilder.cloud) sobre o BMAD v6.0.3: 'complexity tax' de doze agentes com curva íngreme, precisa do /bmad-help só para navegar, fluxo completo levou 6 dias (2 de planejamento + 4 de implementação) e custou US$200; trabalho paralelo tem atrito porque o diretório de saída é compartilhado por padrão",
+   "Relato de uso no DEV Community ('patience required'): 12 a 16 horas antes da primeira linha de código, o party mode com dois modelos esgotou janela de contexto e créditos, e um desalinhamento de arquitetura (NestJS em AWS Lambda) virou espiral de 6 horas de depuração",
+   "Críticas recorrentes em análises independentes: excessivo para projetos pequenos ou correções isoladas; fluxo altamente prescritivo que exige PRD e arquitetura completos antes de qualquer código, ruim para trabalho exploratório; ~2 meses para dominar técnicas avançadas, bem acima do Spec Kit; estimativa de 10 a 15 vezes o tempo de um MVP tradicional",
+   "Limite arquitetural assumido na doc do bmad-loop: a interface é machine-local — uma story parada numa máquina é confirmada só ali e desconhecida para as outras, então o PM nunca vê a dúvida de escopo, o designer nunca vê a lacuna de UX e o revisor de segurança nunca vê o achado; tudo cai no desenvolvedor",
+   "Churn de versão como custo real: migração quebrando de .bmad para _bmad na v6, fase alpha longa (relatos citam alpha.12 a alpha.23 com comportamento diferente entre elas) e publicação automática no tag next a cada push no main"
+  ],
+  "fontes": [
+   "https://github.com/bmad-code-org/BMAD-METHOD",
+   "https://raw.githubusercontent.com/bmad-code-org/BMAD-METHOD/main/README.md",
+   "https://github.com/bmad-code-org/BMAD-METHOD/issues/1235",
+   "https://github.com/bmad-code-org/BMAD-METHOD/issues/1188",
+   "https://github.com/bmad-code-org/BMAD-METHOD/issues/2003",
+   "https://github.com/bmad-code-org/BMAD-METHOD/issues/892",
+   "https://github.com/bmad-code-org/BMAD-METHOD/issues/1332",
+   "https://github.com/bmad-code-org/bmad-loop",
+   "https://docs.bmad-method.org/",
+   "https://deepwiki.com/bmad-code-org/BMAD-METHOD",
+   "https://ranthebuilder.cloud/blog/i-tested-three-spec-driven-ai-tools-here-s-my-honest-take/",
+   "https://dev.to/arch4g/my-experience-using-the-bmad-framework-on-a-personal-project-patience-required-28aa",
+   "https://www.bmadcode.com/bmad-method-v6-2-1-rebuilt-code-review-smarter-quick-dev-and-a-growing-global-community/"
+  ],
+  "incertezas": [
+   "Não rodei o BMAD em projeto real; nenhuma nota é reproduzida, todas são derivadas de leitura de repositório, doc e issues",
+   "npmjs.com e Medium devolveram HTTP 403 — não confirmei downloads semanais do pacote bmad-method, número de contribuidores nem o total de issues abertas",
+   "As issues #1235 e #1188 aparecem como fechadas, mas não consegui confirmar se foram de fato corrigidas na v6 stable ou apenas encerradas por idade; o consumo real de tokens da versão atual fica em aberto",
+   "Não encontrei mecanismo de registro de alternativas rejeitadas (estilo ADR). Pode existir dentro do workflow de arquitetura ou do 'Party Mode' sem estar documentado publicamente — 'não encontrei' não é 'não existe'",
+   "Não confirmei se o Skill Validator com '19 regras determinísticas' e o validate-file-refs.js rodam no projeto do usuário ou apenas no CI do próprio repositório BMAD; isso muda a leitura do C3 entre 3 e 4",
+   "Contagem de estrelas diverge entre fontes (52,7k lido no repositório contra ~49k citado em análise de junho/2026); tratei o número do repositório como o corrente",
+   "Não encontrei política de organização que force uma versão única do BMAD num time (o equivalente a um lockfile de processo); a avaliação do C11 assume que o controle é o comando de instalação de cada pessoa",
+   "Não encontrei documentação de sandbox, allowlist ou aprovação por ação própria do BMAD; assumi que ele herda o modelo de permissão do IDE hospedeiro, mas não confirmei se algum módulo (TEA, bmad-loop) impõe restrição adicional de execução"
+  ]
+ },
+ {
+  "nome": "GitHub Spec Kit",
+  "o_que_e": "É um kit oficial do GitHub que obriga o agente de IA a escrever documentos antes de escrever código. Você instala um comando (`specify`) no seu projeto e ele cria uma sequência de etapas em forma de comandos de barra: primeiro uma \"constituição\" com os princípios inegociáveis do projeto, depois a especificação do que se quer, depois o plano técnico, depois a lista de tarefas, e só então a implementação. Tudo isso vira arquivos markdown dentro do próprio repositório, que a equipe pode ler e revisar no Git. A ideia é trocar o \"pedir e torcer\" por um processo escrito em fases.",
+  "categoria": "framework de processo (spec-driven development) com CLI de scaffolding, prompts em markdown e catálogo de extensões/presets/bundles",
+  "notas": [
+   {
+    "criterio": "C1",
+    "nota": 2,
+    "porque": "Organiza contexto em artefatos por feature, mas não há nenhum orçamento cobrado: a issue #1401 (aberta) mede 18,6k tokens de comandos carregados em toda sessão, ~93% da janela padrão do Cursor, e não existe arquivamento nem poda — usuários perguntam nas issues #620/#803/#835 se devem apagar ou mover specs concluídas para _archive/ e não há resposta do produto.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C2",
+    "nota": 3,
+    "porque": "constitution.md em .specify/memory/ mais spec/plan/tasks são markdown durável no Git, legível fora da ferramenta, e a extensão assess registra evidência contrária e decisão go/kill; mas o laço central não tem log de alternativas rejeitadas e o próprio guia admite que manter isso alinhado \"requires discipline\".",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C3",
+    "nota": 2,
+    "porque": "O \"portão\" /speckit.analyze é um prompt, não um script: o template diz literalmente \"Recommend resolving before implement\" — recomenda, não bloqueia; a referência de extensões afirma que hooks não podem negar nem retornar código de falha; o único script que sai com erro é check-prerequisites, que só confere existência de arquivo, não conformidade.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C4",
+    "nota": 3,
+    "porque": "Cada comando de fase tem escopo próprio e explícito (specify proíbe stack, plan trata de stack), e os bundles empacotam personas versionadas (product manager, business analyst, security researcher, developer) instaláveis por um comando — mas são setups de ferramental para humanos, sem limite imposto ao agente, e delegação a subagentes ainda é pedido em aberto (Discussion #912).",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C5",
+    "nota": 3,
+    "porque": "Existe medição pública de desfecho: o preprint arXiv 2605.01160 (Farrag, 2026) acompanhou 14 engenheiros em 3 times por 4 meses e reporta lead time 8-12→6-9 dias, hotfixes 3-5→1-2, rollbacks 2-4→0-1, churn 12-18%→6-10% — porém o próprio autor declara que não é experimento controlado, sem grupo de controle, retrospectivo e com \"approximate ranges rather than point estimates\", e medições independentes contradizem (Scott Logic mediu ~10x mais lento que o fluxo normal do autor).",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C6",
+    "nota": 2,
+    "porque": "Instalar é trivial (uv tool install + specify init), mas o peso por sessão é alto e medido: 18,6k tokens de comandos sempre carregados, 2.577 linhas de markdown para ~989 linhas de código no teste da Scott Logic, 45-90 min de autoria de spec por feature média segundo o próprio estudo-piloto, e 90 min contra 12 min do OpenSpec na mesma tarefa em comparação independente.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C7",
+    "nota": 4,
+    "porque": "Licença MIT, 30+ integrações de agentes (Copilot, Claude, Cursor, Codex, Gemini, Windsurf) e — o que mais importa — os artefatos são markdown puro no seu repositório, que sobrevive à troca de ferramenta; desconta que os arquivos de comando são gerados por agente (trocar de agente exige re-init), a qualidade varia por integração (issue #865: comandos não funcionam no Copilot) e exige Python 3.11+, uv e Git.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C8",
+    "nota": 2,
+    "porque": "Há ressalvas escritas pontuais — o README se enquadra como \"Experimental Goals\", avisa que extensões da comunidade não são auditadas (\"Review source code before installation and use at your own discretion\") e admite que o dogfooding é parcial — mas não existe seção alguma declarando o que a ferramenta NÃO faz nem onde falha, e a issue de segurança #1325 foi fechada como \"not planned\" sem explicação pública.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C9",
+    "nota": 4,
+    "porque": "Mantido pela própria organização GitHub, MIT, criado em ago/2025, v1.0.0 em ago/2026 e v1.0.4 em set/2026 com lançamentos quase diários, 133,6k estrelas e 12k forks pela API — mas com 313 issues e 169 PRs abertos, e uma avaliação independente mediu backlog de 94 PRs com mediana de 62 dias e taxa de fechamento de issues de 36,8%.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C10",
+    "nota": 1,
+    "porque": "Não traz sandbox, allowlist nem aprovação por ação — delega tudo ao agente hospedeiro e, pior, a integração escreve chat.tools.terminal.autoApprove aprovando automaticamente todo script em .specify/scripts/, ou seja, afrouxa o portão de permissão do host; a issue #1325 apontou isso mais um eval $(get_feature_paths) explorável por nome de branch e foi fechada como \"not planned\". O que existe de mecanismo é só cadeia de suprimento (catálogo HTTPS-only, comunidade discovery-only, instalação confinada à raiz do projeto).",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C11",
+    "nota": 3,
+    "porque": "A metade do empacotamento é real e cobrada por máquina: bundle.yml fixa versão de cada componente, specify bundle validate faz checagem estrutural e de referências, build gera .zip versionado e o catálogo tem política install-allowed vs discovery-only; a metade da atualização está quebrada — a issue #2319 relata que _install_shared_infra() pula arquivos existentes mesmo com --force, de modo que ninguém recebe correções de scripts/templates após o primeiro init, que é exatamente a divergência entre N pessoas que o critério mede.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C12",
+    "nota": 1,
+    "porque": "Não há checkpoint nem snapshot por passo no núcleo: o que se ganha é uma branch numerada por feature e o conselho documentado de \"commit first so you can review the full diff\" — ou seja, git manual; commit intermediário só existe como extensão da comunidade (\"checkpoint\"), não auditada, e uma revisão independente aponta que mudar de rumo faz cada comando regenerar o documento inteiro sem mostrar o que mudou.",
+    "evidencia": "derivado"
+   }
+  ],
+  "forcas": [
+   "Portabilidade real do resultado: os artefatos são markdown comum versionado no seu próprio repositório, sob MIT, com 30+ integrações de agentes — se você abandonar o Spec Kit amanhã, os documentos continuam úteis e legíveis.",
+   "Distribuição em equipe genuinamente empacotada: bundles com manifesto que fixa versão por componente, validação estrutural por comando, artefato .zip versionado e catálogos com política de instalação — bem acima da média de mercado, ainda que a atualização esteja com bug aberto.",
+   "Respaldo institucional e ritmo de manutenção incomuns: mantido pela própria GitHub, 133,6k estrelas, v1.0.0 estabilizada e releases quase diários até set/2026."
+  ],
+  "fraquezas": [
+   "O portão não é portão: /speckit.analyze é um prompt que \"recomenda\" resolver antes de implementar, e a documentação de extensões afirma que hooks não podem bloquear nem falhar — a constituição é um LLM julgando outro LLM contra um markdown, e as três revisões independentes que li relatam justamente código que não obedece à spec.",
+   "Peso por sessão alto e sem orçamento cobrado: 18,6k tokens de comandos carregados sempre (~93% da janela padrão do Cursor), 2.577 linhas de markdown para ~989 linhas de código num teste real, e nenhum mecanismo de arquivamento ou poda quando o projeto cresce.",
+   "Isolamento negativo: além de não ter sandbox próprio, a integração grava auto-aprovação de terminal para os scripts do .specify/, afrouxando a proteção que o agente hospedeiro daria — e a issue que apontou isso, junto com um caminho de injeção de comando por nome de branch, foi fechada como \"not planned\"."
+  ],
+  "criticas_encontradas": [
+   "Discussion #1784, \"SpecKit creates the illusion of work, generating a bunch of text\": o autor relata que \"kilobytes of text\" afogam o contexto e o LLM passa a ignorar requisitos aleatoriamente, com centenas de testes desnecessários que passam sem validar funcionalidade; um apoiador concede \"most of the time I keep deleting half the stuff\".",
+   "Scott Logic (Colin Eberhardt, CTO), refazendo uma feature real: 57 min de agente + 5,5 h de revisão humana e 2.577 linhas de markdown para ~989 linhas de código, contra 8 min de agente + 24 min de revisão no fluxo iterativo normal dele — cerca de 10x mais lento. Veredito: \"Spec Kit drags you right back into the past!\" e \"I don't consider it a viable process... in its purest form\".",
+   "ranthebuilder.cloud testou três ferramentas SDD e deu ao Spec Kit a MENOR nota, 2,77/5 (contra 4,00 do OpenSpec): \"the gap was implementation: produced code didn't faithfully map to spec intent\", \"the tool doesn't tell you where you are or what to do next\", e sinalizou \"known upgrade issues\" que sobrescrevem customizações.",
+   "Issue #1401 (ABERTA, sem resposta de mantenedor): os comandos consomem 18,6k tokens da janela de contexto em toda sessão, ~93% no Cursor padrão, 29% no Copilot — \"users who have spec-kit installed but aren't actively using it for a particular task are paying this cost with no benefit\".",
+   "Issue #1325 (FECHADA como \"not planned\"): auto-aprovação cega de execução de scripts via chat.tools.terminal.autoApprove e injeção de comando por eval $(get_feature_paths) com nome de branch malicioso.",
+   "Issue #2319: o caminho de upgrade documentado é enganoso — _install_shared_infra() pula scripts e templates já existentes mesmo com --force, então correções upstream nunca chegam a quem já inicializou o projeto.",
+   "Comparação independente de custo/tempo: a mesma tarefa (dashboard de CRM) levou 12 min com OpenSpec, 90 min com Spec Kit e 5,5 h com BMAD — Spec Kit é bem mais pesado que as alternativas leves.",
+   "Crítica estrutural recorrente de \"waterfall reinventado\": o preprint arXiv 2606.04967, que compara seis frameworks numa taxonomia de seis dimensões, conclui que nenhum cobre bem todas e destaca riscos recorrentes de \"specification drift, excessive trust in generated artifacts, and platform dependencies\"."
+  ],
+  "fontes": [
+   "https://github.com/github/spec-kit",
+   "https://raw.githubusercontent.com/github/spec-kit/main/README.md",
+   "https://raw.githubusercontent.com/github/spec-kit/main/templates/commands/analyze.md",
+   "https://raw.githubusercontent.com/github/spec-kit/main/CHANGELOG.md",
+   "https://api.github.com/repos/github/spec-kit",
+   "https://github.github.io/spec-kit/",
+   "https://github.github.io/spec-kit/reference/extensions.html",
+   "https://github.github.io/spec-kit/guides/evolving-specs.html",
+   "https://github.com/github/spec-kit/discussions/1784",
+   "https://github.com/github/spec-kit/issues/1401",
+   "https://github.com/github/spec-kit/issues/1325",
+   "https://blog.scottlogic.com/2025/11/26/putting-spec-kit-through-its-paces-radical-idea-or-reinvented-waterfall.html",
+   "https://ranthebuilder.cloud/blog/i-tested-three-spec-driven-ai-tools-here-s-my-honest-take/",
+   "https://arxiv.org/abs/2605.01160",
+   "https://arxiv.org/pdf/2605.01160",
+   "https://arxiv.org/abs/2606.04967"
+  ],
+  "incertezas": [
+   "Não li diretamente as issues #2319, #620, #803, #835, #865 e #916 — o conteúdo delas veio de trechos de resultados de busca, não de leitura da página. O mecanismo do bug de upgrade (_install_shared_infra pulando arquivos existentes) é citação de snippet e merece confirmação no código-fonte antes de virar argumento decisivo.",
+   "Números de saúde do projeto conflitam entre fontes: a API do GitHub retorna 313 issues abertas e o CHANGELOG mostra releases quase diários até set/2026, enquanto a revisão do ranthebuilder mediu 533 issues abertas, 37 commits em 90 dias e 36,8% de fechamento. Provavelmente são recortes temporais diferentes, mas não consegui datar a medição dele.",
+   "C5 é a nota que menos confio. O estudo-piloto é preprint de autor único (Universidade de East London), não revisado por pares, retrospectivo, sem grupo de controle, e o próprio autor admite que confundidores temporais (modelos melhorando durante o período) não podem ser excluídos. Se a régua exigir revisão por pares, essa nota cai para 2.",
+   "Não encontrei nenhuma telemetria ou medição de desfecho publicada pela própria GitHub sobre o Spec Kit — só o blog de lançamento. Toda evidência de eficácia que achei é de terceiros.",
+   "Não confirmei se versões recentes (v1.0.x) mitigaram o consumo de contexto da issue #1401 nem se a auto-aprovação de terminal ainda é escrita pelo init atual; li a issue, não o código da integração de hoje.",
+   "Não testei a ferramenta. Todas as notas são leitura de documentação, código de template, issues e relatos de terceiros — nenhuma é reprodução em projeto real."
+  ]
+ },
+ {
+  "nome": "Cursor Rules e Memories",
+  "o_que_e": "É o sistema de \"instruções permanentes\" do editor Cursor. Você guarda arquivos de texto numa pasta `.cursor/rules` (extensão `.mdc`) dizendo como o agente de IA deve trabalhar naquele projeto, e um cabeçalho em cada arquivo decide quando aquela regra entra: sempre, só quando você mexe em certos arquivos, ou quando o próprio modelo julga que precisa. Junto vem o recurso de \"Memories\", em que o Cursor anota sozinho fatos que apareceram nas conversas (você aprova antes de salvar) para lembrar deles depois — mas essas anotações ficam só na sua máquina/conta, não no repositório, e a equipe não as vê. Como está embutido no editor, ele traz de brinde coisas que um arquivo de regras sozinho não faz: checkpoints para desfazer o que o agente mexeu, hooks que podem barrar comandos, subagentes com ferramentas limitadas e um sandbox de sistema operacional.",
+  "categoria": "arquivo de regras embutido numa IDE de agente proprietária (formato .mdc + camada de memória automática + plataforma do editor)",
+  "notas": [
+   {
+    "criterio": "C1",
+    "nota": 3,
+    "porque": "Há mecanismo real de seleção de contexto (globs, alwaysApply, agent-requested) executado pela máquina, mas o orçamento não é cobrado: a doc só recomenda \"mantenha regras abaixo de 500 linhas\", não há teto validado, nem poda/arquivamento de regras ou de memórias.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C2",
+    "nota": 2,
+    "porque": "Regras são markdown versionado em git (durável e legível fora da ferramenta), mas não há nenhuma estrutura para decisão nem campo algum para alternativa rejeitada; Memories guardam fatos soltos, sem diff, sem blame e sem rollback, conforme análise independente.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C3",
+    "nota": 4,
+    "porque": "`.cursor/hooks.json` define beforeShellExecution, beforeReadFile, beforeMCPExecution e subagentStart, que retornam permission \"allow\"/\"deny\"/\"ask\" (exit code 2 bloqueia a ação) — portão de máquina de verdade; as regras em si, porém, não são cobradas, só entram no prompt.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C4",
+    "nota": 4,
+    "porque": "Subagentes em `.cursor/agents/` aceitam `tools`, `disallowedTools`, `permissionMode` e `maxTurns` no frontmatter, e custom modes deixam ligar/desligar ferramentas por modo — a restrição é aplicada pela máquina, não por instrução em prosa.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C5",
+    "nota": 1,
+    "porque": "Não encontrei nenhuma medição de desfecho publicada pela Cursor sobre regras ou memórias; o único estudo controlado do mecanismo (Gloaguen et al., ETH Zurich, 138 issues reais, 4 agentes) é sobre arquivos de contexto de repositório em geral e conclui que eles NÃO melhoram a taxa de sucesso e encarecem a inferência em mais de 20%.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C6",
+    "nota": 4,
+    "porque": "Começar é quase de graça — criar uma pasta com arquivos .mdc, ou pedir ao próprio Cursor que gere as regras — mas regras `alwaysApply` pagam token em todo prompt e o estudo da ETH mede >20% de custo extra para esse tipo de contexto.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C7",
+    "nota": 2,
+    "porque": "O conteúdo é markdown e portanto copiável, e o Cursor também lê AGENTS.md (portátil), mas o frontmatter .mdc, os modos de anexação, Memories, checkpoints, hooks e subagentes são todos proprietários do Cursor; a própria empresa já quebrou o formato antes ao migrar de `.cursorrules` para `.cursor/rules`.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C8",
+    "nota": 3,
+    "porque": "A documentação declara por escrito vários limites (regras não valem para Tab nem para Inline Edit; checkpoints são locais, separados do git e não rastreiam edições manuais; hooks de usuário não valem para cloud agents), mas não admite em lugar nenhum que a aderência às regras é probabilística, que é a queixa mais comum do fórum.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C9",
+    "nota": 4,
+    "porque": "Fornecedor comercial (Anysphere) com changelog versionado e cadência alta (1.0, 1.2, 2.0, 2.4 com subagentes e skills), documentação dedicada, planos Team/Enterprise e ecossistema enorme de regras de terceiros; contra: código fechado e mudanças unilaterais de formato.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C10",
+    "nota": 4,
+    "porque": "Sandbox de SO de verdade — Seatbelt no macOS, Landlock+seccomp no Linux, WSL2 no Windows — mais allowlist e aprovação por ação; não dou 5 porque há bypasses documentados (CVE-2026-22708 via builtins do shell, GHSA-82wg-qcm4-fp2w via variáveis de ambiente) e o denylist foi descontinuado na 1.3 depois de provado inconsertável.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C11",
+    "nota": 4,
+    "porque": "Team Rules ficam no servidor da Cursor, sincronizam sozinhas para todos os membros e o admin pode marcá-las como \"enforced\", caso em que o membro não consegue desligar; hooks têm camadas Enterprise (via MDM), Team, Project e User com precedência definida — mas Memories não distribuem nada, são pessoais e invisíveis para a equipe.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C12",
+    "nota": 4,
+    "porque": "Checkpoints são snapshots automáticos criados pela máquina antes de mudanças do agente, com timeline navegável e restore por requisição; perde pontos porque são locais, separados do git, não rastreiam edições manuais e há relatos de fórum de restore que apaga o histórico posterior e falha em sessões longas.",
+    "evidencia": "derivado"
+   }
+  ],
+  "forcas": [
+   "A plataforma dá de graça o que um kit de processo em arquivos não consegue dar: sandbox de SO real, hooks que negam chamada de ferramenta com exit code 2, subagentes com lista de ferramentas proibidas e checkpoints automáticos.",
+   "Distribuição em equipe resolvida no nível certo: Team Rules ficam no servidor, sincronizam sozinhas e o admin pode torná-las obrigatórias, sem depender de cada pessoa clonar a versão certa do processo.",
+   "Custo de entrada quase zero e seleção de contexto por glob, em vez de despejar tudo em todo prompt."
+  ],
+  "fraquezas": [
+   "As regras não são cobradas por nada: entram no prompt e competem com o resto do contexto — o fórum está cheio de casos de `alwaysApply` ignorado, inclusive uma regressão confirmada na 3.1.x, e de glob-attach instável no modo agente.",
+   "Memories são o oposto de memória de decisão: pessoais, não versionadas, fora do repositório, sem diff, sem blame e sem rollback — quem entra na equipe começa do zero e cada pessoa acumula um conjunto diferente.",
+   "Prisão de fornecedor: formato .mdc, memórias, checkpoints, hooks e subagentes só existem dentro do Cursor, e a própria empresa já quebrou o formato antes ao aposentar o `.cursorrules`."
+  ],
+  "criticas_encontradas": [
+   "Estudo independente da ETH Zurich (Gloaguen et al., 2026, benchmark com 138 issues reais de 12 repositórios e 4 agentes) conclui que arquivos de contexto de repositório não melhoram a taxa de sucesso em geral e aumentam o custo de inferência em mais de 20%; os gerados por LLM chegam a reduzir o sucesso em 2–3%.",
+   "Fórum oficial da Cursor: múltiplas threads de regras ignoradas — 'Always apply mode for cursor rules are completely ignored', 'Agent no longer receives Cursor rules in chats', 'Cursor Agent Knowingly Ignored Global Rules' — com relato de agente admitindo ter violado a regra depois de citá-la.",
+   "Regressão confirmada: na versão 3.1.x regras com `alwaysApply: true` eram tratadas como opcionais e puladas, corrigido só na 3.2; e queixas antigas e recorrentes de regras anexadas por glob não dispararem no modo agente.",
+   "Backslash Security demonstrou que o denylist de auto-run do Cursor era contornável por base64, subshell, script e obfuscação de aspas, com o argumento de que para todo comando na lista existem infinitos equivalentes fora dela; a Cursor não corrigiu — descontinuou o recurso na versão 1.3.",
+   "Vulnerabilidades de allowlist de terminal: CVE-2026-22708 (builtins como export/cd/eval escapavam do parser, que só rastreava executáveis externos) e o advisory GHSA-82wg-qcm4-fp2w (bypass via manipulação de variáveis de ambiente).",
+   "Bug report 'Restore Checkpoint permanently destroys change history': usuários relatam que o botão promete que dá para desfazer depois, mas o desfazer não aparece ou não funciona; relatos de indentação corrompida e mais de 200 erros de linter após restore, e a resposta da equipe foi que não conseguiu reproduzir.",
+   "Feedback sobre Memories no fórum acusa o recurso de exigir compartilhamento de código para funcionar, com um usuário chamando de dark pattern amarrar utilidade a coleta de dados, e outros apontando risco de chaves de API e dados de servidor irem junto.",
+   "Análise independente (localskills.sh) resume que Memories são 'a forma mais fraca para qualquer coisa que importe a mais de uma pessoa': cegueira de onboarding, divergência silenciosa entre membros e ausência total de auditoria.",
+   "Comparações independentes apontam que manter regras específicas do Cursor virou imposto de manutenção para equipes que usam mais de uma ferramenta em 2026, já que o mesmo processo precisa existir também em AGENTS.md/CLAUDE.md."
+  ],
+  "fontes": [
+   "https://cursor.com/docs/rules",
+   "https://cursor.com/docs/context/rules",
+   "https://cursor.com/help/customization/rules",
+   "https://cursor.com/docs/agent/chat/checkpoints",
+   "https://cursor.com/docs/hooks",
+   "https://cursor.com/blog/agent-sandboxing",
+   "https://cursor.com/docs/subagents",
+   "https://cursor.com/changelog/1-0",
+   "https://cursor.com/docs/agent/modes",
+   "https://localskills.sh/blog/cursor-memories-guide",
+   "https://www.backslash.security/blog/cursor-ai-security-flaw-autorun-denylist",
+   "https://github.com/cursor/cursor/security/advisories/GHSA-82wg-qcm4-fp2w",
+   "https://danusminimus.github.io/posts/The-Agent-Security-Paradox-When-Trusted-Commands-In-Cursor-Become-Attack-Vectors/",
+   "https://forum.cursor.com/t/0-51-memories-feature/98509",
+   "https://forum.cursor.com/t/restore-checkpoint-permanently-destroys-change-history/129652",
+   "https://forum.cursor.com/t/always-apply-mode-for-cursor-rules-are-completely-ignored-cursor-picks-incorrect-rules-when-requested-for-specific-ones/123635",
+   "https://vibeanswers.com/cursor/rules-not-being-followed/",
+   "https://www.sri.inf.ethz.ch/publications/gloaguen2026agentsmd",
+   "https://www.alphaxiv.org/abs/2602.11988"
+  ],
+  "incertezas": [
+   "Não consegui abrir a página oficial de Memories: `cursor.com/docs/agent/chat/memories` devolve 404 e `docs.cursor.com/en/context/memories` redireciona para a raiz da doc. O que sei sobre armazenamento (por projeto, no nível individual), aprovação de memórias geradas em background e o toggle em Settings vem do changelog 1.0, do fórum e de uma análise independente — não da página de referência.",
+   "Não encontrei nenhum limite de tamanho, número de regras ou de memórias que seja VALIDADO pela ferramenta. As 500 linhas são recomendação escrita; não achei prova de que algo trunque, avise ou recuse além disso.",
+   "Não encontrei mecanismo de poda ou expiração de memórias acumuladas. Não sei o que acontece com um projeto de dois anos de memórias — pode existir e eu não ter achado.",
+   "Custom modes estão em beta com teto de 5 e há relato de fórum de que sumiram na 2.1.0; não confirmei se continuam existindo na versão atual. A nota de C4 se apoia principalmente em subagentes (`.cursor/agents/`), que a doc atual descreve com `tools`/`disallowedTools`.",
+   "O estudo da ETH Zurich mede arquivos de contexto de repositório (AGENTS.md/CLAUDE.md), não o mecanismo de anexação por glob do Cursor especificamente. Trato como a melhor evidência disponível para C5, não como medição do Cursor.",
+   "A doc do sandbox não deixa claro se ele está ligado por padrão ou é opt-in, nem qual a cobertura fora do macOS; a única cifra pública que achei é 'um terço das requisições em plataformas suportadas' roda em sandbox, e essa é uma medida de uso, não de eficácia do isolamento.",
+   "Não verifiquei em primeira mão as CVEs contra a versão atual — não sei se os bypasses de allowlist foram fechados desde então.",
+   "Não rodei nada disso num projeto real: todas as notas são leitura de documentação, changelog, fórum e análises de terceiros."
+  ]
+ },
+ {
+  "nome": "Claude Code nativo (CLAUDE.md, Agent Skills, Hooks, subagentes, plugins)",
+  "o_que_e": "É o conjunto de recursos que já vem dentro do próprio Claude Code, sem instalar framework nenhum: um arquivo CLAUDE.md com as regras do projeto que o agente lê no começo de toda sessão; \"skills\", que são arquivos de instrução carregados só quando fazem falta; \"hooks\", que são scripts seus que o programa executa sozinho em momentos fixos (antes de uma ferramenta rodar, depois de um arquivo ser editado) e que podem barrar a ação; \"subagentes\", que são trabalhadores separados com ferramentas limitadas e contexto próprio; e \"plugins\", que empacotam tudo isso para instalar e versionar em várias pessoas. Junto vem um sistema de permissões (listas de permitir/perguntar/negar por ferramenta e por caminho) e um sandbox de sistema operacional que limita quais arquivos e quais domínios de rede os comandos de shell podem tocar. A documentação é incomum por dizer, com todas as letras, onde cada peça falha: o CLAUDE.md é \"contexto, não configuração aplicada\", e o sandbox \"não é uma fronteira de isolamento completa\".",
+  "categoria": "plataforma/IDE de agente com camada de extensão nativa (arquivo de regras + skills + hooks + subagentes + plugins + permissões e sandbox)",
+  "notas": [
+   {
+    "criterio": "C1",
+    "nota": 3,
+    "porque": "há mecanismo real de escala (skills carregam só a descrição, regras com frontmatter `paths` só entram quando o arquivo casa, subagentes isolam contexto, `claudeMdExcludes`, `/context` mede, aba Stats do `/plugin` mostra custo e uso por skill, plugins sem uso em 10 sessões viram \"Not used recently\"), mas o orçamento do CLAUDE.md é conselho, não portão: as 200 linhas são \"target\" e o único corte por máquina é ignorar arquivo acima de 4 MiB; o `/doctor` apenas PROPÕE poda. O único teto cobrado de verdade é o do índice MEMORY.md (200 linhas / 25 KB), que devolve erro ao agente quando estoura.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C2",
+    "nota": 2,
+    "porque": "decisões duráveis existem em markdown legível fora da ferramenta (CLAUDE.md escrito por você; auto-memória grava notas do tipo `project` com carimbo `modified` em `~/.claude/projects/<projeto>/memory/`), mas não encontrei nenhum mecanismo para registrar alternativas rejeitadas nem qualquer esquema de decisão validado; e a auto-memória é local da máquina, explicitamente \"not shared across machines\", logo não é registro de equipe.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C3",
+    "nota": 4,
+    "porque": "o portão é mecânico: um hook PreToolUse que sai com código 2 (ou devolve `permissionDecision: \"deny\"`) bloqueia a chamada da ferramenta, e regra `deny` de permissão bloqueia em qualquer escopo — managed settings não podem ser sobrescritas nem por `--allowedTools`. Perde o 5 porque a própria doc avisa que o filtro `if` é \"best-effort\" e que hook em timeout NÃO bloqueia, e há issues abertas de hooks que simplesmente não disparam (#6305, #15441, #18547, #39468, #46808).",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C4",
+    "nota": 4,
+    "porque": "subagentes em `.claude/agents/*.md` têm limite cobrado por máquina, não por texto: `tools` é allowlist, `disallowedTools` é denylist (inclusive `mcp__*`), `Agent(tipo1,tipo2)` restringe quais subagentes ele pode abrir, mais `model`, `permissionMode`, `maxTurns`, `isolation: worktree` e teto de profundidade/concorrência; subagente de background perde a maior parte das ferramentas embutidas automaticamente.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C5",
+    "nota": 1,
+    "porque": "não encontrei nenhuma medição, própria ou independente, de que CLAUDE.md, skills ou hooks melhorem desfecho. O que a Anthropic publica é telemetria da ferramenta inteira e autorreportada (>80% do código mesclado escrito por Claude em maio/2026; taxa de merge de ~46% do agente de manutenção), e o único ensaio controlado que achei — o RCT da METR — aponta para o lado oposto: devs experientes 19% mais LENTOS com assistência de IA, achando que estavam 20% mais rápidos.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C6",
+    "nota": 4,
+    "porque": "começar custa quase nada: os mecanismos já vêm na ferramenta, `/init` gera o CLAUDE.md sozinho, e hook/skill/subagente são um arquivo markdown ou JSON. O peso por sessão é baixo mas real e a própria doc o assume: CLAUDE.md entra em TODA requisição, descrições de skills entram em toda requisição, e o painel `/plugin` mostra estimativa de custo de contexto por plugin antes de instalar.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C7",
+    "nota": 2,
+    "porque": "os arquivos são markdown puro e há ponte manual para fora (CLAUDE.md pode importar `@AGENTS.md`, `/init` lê regras de Cursor e Copilot, `/import` traz config de outro agente), mas a doc diz explicitamente \"Claude Code reads CLAUDE.md, not AGENTS.md\", e hooks, subagentes, plugins, marketplaces, modos de permissão e sandbox não funcionam em nenhuma outra ferramenta ou modelo. A ponte existe só na entrada, é manual e cobre apenas a camada de regras.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C8",
+    "nota": 4,
+    "porque": "é o ponto mais forte: a doc declara por escrito que memória é \"context, not enforced configuration\" e que \"there's no guarantee of strict compliance\"; que sandbox \"reduces risk but is not a complete isolation boundary\" com seção Limitations nomeando domain fronting, escalada via socket Unix e `enableWeakerNestedSandbox`; que \"don't count on a stalled hook to act as a gate\"; que checkpoint não rastreia mudanças por bash nem edições de subagente; e que plugin \"can execute arbitrary code on your machine\". Parte desses limites vira aviso de máquina (`claude doctor`, diálogo de settings inválidas, aba Errors).",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C9",
+    "nota": 4,
+    "porque": "mantido pelo fornecedor com cadência altíssima (a doc versiona comportamento por patch: v2.1.191, v2.1.211, v2.1.257…), repositório público de issues com numeração na casa das dezenas de milhares, marketplace oficial curado mais um comunitário com validação automática e pin por commit SHA. Não dá 5 porque o produto em si é fechado — o repo público é issues, docs e plugins, não o código —, então \"comunidade\" aqui não pode corrigir nada por conta própria.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C10",
+    "nota": 4,
+    "porque": "há isolamento de SO de verdade, não só allowlist: Seatbelt no macOS, bubblewrap + seccomp no Linux/WSL2, proxy com allowlist de domínios, mais regras `deny` de permissão que valem para todo escopo e managed settings que travam `bypassPermissions`. Não dá 5 porque a própria doc lista as brechas (proxy não inspeciona TLS por padrão → domain fronting; escape hatch `dangerouslyDisableSandbox`; fallback silencioso para SEM sandbox quando a dependência falta, a menos que se ligue `failIfUnavailable`), o sandbox só cobre Bash e filhos (Read/Edit/Write correm pelo sistema de permissões), Windows nativo não é suportado, e pesquisas independentes (Sonar, PromptArmor) demonstraram execução de código antes do prompt de confiança e auto-aprovação via hook malicioso.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C11",
+    "nota": 4,
+    "porque": "distribuição é cobrada por máquina: plugins de escopo `managed` instalados por administrador via managed settings \"can't be modified\", `extraKnownMarketplaces` no `.claude/settings.json` versionado, `strictKnownMarketplaces` e `allowManagedPermissionRulesOnly` fecham o que o dev pode acrescentar, CLAUDE.md de política em caminho gerenciado que \"cannot be excluded by individual settings\", versão no `plugin.json` com auto-update e pin por commit SHA, e `claude plugin validate` roda em CI. Não dá 5 por falta de medição publicada de uso real dessa política em equipes.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C12",
+    "nota": 4,
+    "porque": "checkpoint é automático, não depende de disciplina: a cada prompt do usuário o estado dos arquivos é fotografado (100 checkpoints por sessão, sobrevivem ao `--resume`) e `/rewind` restaura código, conversa ou os dois. Os buracos são grandes e declarados: arquivos alterados por comando bash NÃO são rastreados, edições de subagente (exceto fork em foreground) não são restauradas, symlinks e hard links são pulados, e a granularidade é por prompt, não por chamada de ferramenta — a própria doc diz que não substitui controle de versão.",
+    "evidencia": "derivado"
+   }
+  ],
+  "forcas": [
+   "Honestidade documentada acima da média do mercado: a doc afirma por escrito que CLAUDE.md é contexto e não configuração aplicada, que o sandbox não é fronteira completa de isolamento, e que hook em timeout não serve de portão — e ainda aponta o mecanismo certo (hook PreToolUse ou regra deny) para quem quer garantia de verdade.",
+   "É a única camada de processo avaliada que combina portão mecânico de chamada de ferramenta, isolamento de SO real (Seatbelt/bubblewrap+seccomp com allowlist de rede), limite de ferramentas por subagente e política de organização que o desenvolvedor não consegue sobrescrever.",
+   "Custo de adoção quase zero e escada de escala embutida: já vem na ferramenta, `/init` gera o arquivo de regras, e há progressão natural (regra → skill → hook → plugin) com medição de custo de contexto por skill e por plugin."
+  ],
+  "fraquezas": [
+   "A camada que carrega o processo (CLAUDE.md, skills) é a menos garantida de todas: entra como mensagem de usuário, sem compliance garantido, e a única saída documentada quando a regra precisa valer é reescrevê-la como hook — ou seja, boa parte do 'processo' continua sendo persuasão.",
+   "Não há registro de decisão digno do nome: nada captura alternativas rejeitadas, a auto-memória é local da máquina e não viaja para a equipe, e não encontrei esquema nem validação para esse tipo de conteúdo.",
+   "Trava total de fornecedor na camada de mecanismo: hooks, subagentes, plugins, marketplaces, permissões e sandbox não existem fora do Claude Code, e a ponte com AGENTS.md é manual e só de entrada."
+  ],
+  "criticas_encontradas": [
+   "Hooks que simplesmente não disparam, em várias frentes e com issues abertas no repositório oficial: #6305 (PreToolUse/PostToolUse não executam), #15441 (mesmo sintoma), #18547 (hooks de plugin registrados mas inertes na extensão do VS Code), #39468 (hooks em frontmatter de skill e de agente ignorados silenciosamente no Windows), #46808 (hooks não disparam quando o diretório é um git worktree). Para um mecanismo vendido como determinístico, isso é o pior tipo de falha: silenciosa.",
+   "A própria documentação desmente o marketing do arquivo de regras: 'Claude reads it and tries to follow it, but there's no guarantee of strict compliance'. O post 'Claude Code: 3 hard realities' (dev.to/choplin) relata o caso concreto de uma instrução no topo do CLAUDE.md pessoal sendo ignorada com frequência, e conclui que instruções do tipo 'sempre faça Z' são pouco confiáveis.",
+   "Ceticismo direto no Hacker News sobre a proliferação de abstrações: 'We really need some consolidation around commands, skills, subagents, and plugins... They are all just variations of \"insert a canned prompt\"', com o complemento de que não há consenso sobre qual usar. Outro comentário: 'skills have come to feel like the junk drawer in the kitchen where you just throw random stuff when you don't want to think about a better place'. E, sobre o /code-review ultra, 'the experience had no relation at all with the reliability or thoroughness claims'.",
+   "Segurança do modelo de plugins/hooks foi furada por pesquisa independente. Sonar demonstrou execução arbitrária de código ANTES do usuário clicar em 'trust', via `core.fsmonitor` no `.git/config` e via `apiKeyHelper` no `.claude/settings.json` (corrigido na v2.0.71, em dez/2025). PromptArmor demonstrou marketplace falso se passando por Anthropic e hook malicioso que reescreve `settings.local.json` ou auto-aprova comandos em PreToolUse, contornando o human-in-the-loop e exfiltrando arquivos com curl.",
+   "O sandbox tem falha aberta declarada pelo próprio fornecedor: por padrão o proxy não termina TLS, então código dentro do sandbox pode usar domain fronting para sair da allowlist; `allowUnixSockets` apontando para o socket do Docker equivale a acesso ao host; e se a dependência de sandbox faltar, o padrão é AVISAR e rodar sem sandbox, não falhar.",
+   "Degradação de contexto ('context rot') é a reclamação mais recorrente da comunidade: instruções antigas somem à medida que a janela enche, e relatos citam faixa confiável bem abaixo do 1M anunciado (algo em torno de 200–256K). Isso ataca justamente a premissa do CLAUDE.md sempre-ligado. Somam-se threads como 'Ask HN: Is it just me or is Claude Code getting worse?' e queixas sobre regressões nas atualizações de fevereiro.",
+   "Contraponto independente à eficácia: o RCT da METR com 16 devs experientes e 246 tarefas em repositórios maduros achou 19% de LENTIDÃO com ferramentas de IA, contra uma expectativa de 24% de ganho e uma percepção posterior de 20% de ganho. Não mede especificamente CLAUDE.md/skills/hooks, mas é o único desenho controlado que encontrei e vai na direção contrária dos números autorreportados pelo fornecedor."
+  ],
+  "fontes": [
+   "https://code.claude.com/docs/en/features-overview",
+   "https://code.claude.com/docs/en/hooks",
+   "https://code.claude.com/docs/en/permissions",
+   "https://code.claude.com/docs/en/sandboxing",
+   "https://code.claude.com/docs/en/memory",
+   "https://code.claude.com/docs/en/checkpointing",
+   "https://code.claude.com/docs/en/sub-agents",
+   "https://code.claude.com/docs/en/plugins",
+   "https://code.claude.com/docs/en/discover-plugins",
+   "https://news.ycombinator.com/item?id=48289950",
+   "https://dev.to/choplin/claude-code-3-hard-realities-nobody-talks-about-kp0",
+   "https://www.sonarsource.com/blog/claude-arbitrary-code-execution/",
+   "https://www.promptarmor.com/resources/hijacking-claude-code-via-injected-marketplace-plugins",
+   "https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/",
+   "https://github.com/anthropics/claude-code/issues/6305",
+   "https://github.com/anthropics/claude-code/issues/15441",
+   "https://github.com/anthropics/claude-code/issues/18547",
+   "https://github.com/anthropics/claude-code/issues/39468",
+   "https://github.com/anthropics/claude-code/issues/46808",
+   "https://thehackernews.com/2026/02/claude-code-flaws-allow-remote-code.html",
+   "https://the-decoder.com/claude-code-now-runs-daily-maintenance-on-anthropics-software-with-a-46-percent-merge-rate/"
+  ],
+  "incertezas": [
+   "Nenhuma nota é 'reproduzido': não rodei Claude Code num projeto real para verificar se o hook PreToolUse bloqueia de fato, se o sandbox segura, ou se o `/rewind` restaura o que promete. Tudo foi derivado da documentação oficial e de relatos de terceiros.",
+   "As issues do GitHub (#6305, #15441, #18547, #39468, #46808) foram lidas pelos títulos e resumos retornados na busca; não abri cada thread para confirmar se ainda estão abertas, se foram reproduzidas pela equipe, ou se já foram corrigidas em versão posterior. A gravidade real de 'hook não dispara' pode ser menor do que os títulos sugerem.",
+   "Não consegui confirmar a existência de qualquer estudo, telemetria ou benchmark que meça o efeito de CLAUDE.md, skills ou hooks sobre desfecho (defeito, retrabalho, tempo). Procurei e não achei — o que não prova que não exista internamente, apenas que não é público.",
+   "Os números da Anthropic sobre si mesma (>80% do código mesclado escrito por Claude; ~46% de taxa de merge do agente de manutenção; 8x mais código mesclado por engenheiro) vieram de reportagem secundária, não do relatório original. Trate-os como indicativos, não verificados na fonte.",
+   "Não verifiquei se as vulnerabilidades demonstradas pela PromptArmor (hook que reescreve settings.local.json, auto-aprovação em PreToolUse) foram corrigidas — o artigo não diz, e não achei resposta pública da Anthropic para esse caso específico. A correção que confirmei é a do achado da Sonar, na v2.0.71.",
+   "O artigo do The Hacker News e a peça 'TrustFall' da Dark Reading eu só li pelo resumo de busca, sem abrir a página; cito-os como sinal de que existe literatura crítica de segurança, não como fonte verificada linha a linha.",
+   "C6 e C7 usam a régua invertida declarada no enunciado (5 = muito leve / totalmente portátil), não a escada de 'cobrado por máquina'. Se a intenção for aplicar a escada de mecanismo também a eles, as notas mudam.",
+   "Não avaliei o Claude Agent SDK, o Cowork nem o Claude Code na web como caminhos alternativos de execução; a nota de C10 e C12 poderia mudar num desses contextos (a doc já indica, por exemplo, que sessões na nuvem não sobem language servers de plugin)."
+  ]
+ },
+ {
+  "nome": "Aider (CONVENTIONS.md, repo map, auto-commit)",
+  "o_que_e": "Aider é um programa de linha de comando, gratuito e de código aberto, que conversa com um modelo de IA e edita os arquivos do seu projeto direto no disco. Ele lê o repositório com um analisador de código (tree-sitter) e monta um \"mapa\" resumido das classes e funções, para o modelo saber o que existe no projeto sem precisar ler tudo. A cada alteração aceita, ele faz sozinho um commit no git com mensagem escrita pela própria IA, e o comando /undo desfaz o último commit dele — o git vira o botão de \"voltar atrás\". Regras de estilo do time ficam num arquivo de texto (CONVENTIONS.md) que você manda o Aider ler como material só-de-leitura.",
+  "categoria": "assistente de codificação em terminal (CLI de código aberto), com arquivo de convenções, mapa de repositório automático e commit por alteração",
+  "notas": [
+   {
+    "criterio": "C1",
+    "nota": 4,
+    "porque": "O repo map é derivado do código por tree-sitter com orçamento de tokens cobrado em código (--map-tokens, padrão 1k, com ranqueamento em grafo que corta o mapa para caber) e some o problema de memória velha, porque o mapa é regerado do código; mas há relatos verificados de estouro do orçamento (issue #752: 1.024 configurados, 16.419 medidos).",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C2",
+    "nota": 2,
+    "porque": "Existe registro durável e legível fora da ferramenta (.aider.chat.history.md e as mensagens de commit geradas), mas é transcrição bruta, sem estrutura para decisão nem para alternativa rejeitada, e ao restaurar é resumido/podado para caber no contexto.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C3",
+    "nota": 3,
+    "porque": "--auto-lint vem ligado por padrão e roda o linter sozinho após cada edição (e --test-cmd/--auto-test roda a suíte), mas a falha não bloqueia nada: ele apenas oferece corrigir; pior, o commit automático usa --no-verify por padrão (--git-commit-verify desligado), ou seja, pula os hooks de pre-commit do próprio repositório.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C4",
+    "nota": 3,
+    "porque": "Há modos com escopo real e limite no código — ask 'never make changes', help só informa, architect usa dois modelos com papéis separados (um projeta, outro aplica a edição) — mas são modos de sessão escolhidos pelo humano, sem conjunto de permissões próprio por papel.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C5",
+    "nota": 4,
+    "porque": "Publica benchmark de desfecho reprodutível com o arnês aberto (133 exercícios Exercism em Python; polyglot com 225 exercícios em 6 linguagens, com custo e taxa de erro) e ablações do próprio processo com modelo fixo variando formato de edição/mapa (47%/64% para 51%/71%); porém o leaderboard citado compara MODELOS, não o processo, e os exercícios não parecem código real.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C6",
+    "nota": 4,
+    "porque": "Começar é quase nada: pip install aider-install e rodar dentro de um repositório git, sem andaime nem cerimônia; o peso é por sessão, porque cada mensagem reenvia mapa + arquivos + histórico e a conta por token cresce — foi exatamente o motivo de abandono relatado por usuários.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C7",
+    "nota": 5,
+    "porque": "Apache 2.0, roda em terminal (independe de IDE), fala com praticamente qualquer LLM via litellm incluindo modelos locais, cobre 100+ linguagens, e o CONVENTIONS.md é markdown puro que serve a qualquer outra ferramenta; não há fornecedor obrigatório.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C8",
+    "nota": 4,
+    "porque": "O FAQ declara por escrito onde falha — 'not optimized for quick performance in very large repos', repo map desligado por padrão em modelos fracos porque eles 'get easily overwhelmed and confused', arquivos irrelevantes pioram o resultado, só um repositório por vez — e o doc de benchmark admite rodada única por custo; em compensação o README não lista limitação alguma e a página de convenções não traz ressalva.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C9",
+    "nota": 3,
+    "porque": "Adoção real e grande (≈48k estrelas, 183 contribuidores, Apache 2.0, Discord ativo), mas o ritmo caiu muito: ecosyste.ms registra 108 commits e 18 committers em 12 meses, último push em 2026-05-22, 1.838 issues abertas e concentração extrema no criador (11.987 de 12.461 commits, DDS 0,287).",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C10",
+    "nota": 2,
+    "porque": "Há aprovação por ação para shell (o modelo sugere, o humano roda com /run ou /test) mas nada mais: análise independente conclui 'no built-in sandboxing mechanism' e 'None. All tool use is unrestricted at the process level', com shell=True, acesso irrestrito ao disco e instalação de pacotes Python em tempo de execução; --yes-always remove até a aprovação.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C11",
+    "nota": 3,
+    "porque": "O .aider.conf.yml pode ser versionado na raiz do repositório e é carregado automaticamente por quem rodar ali (tem prioridade sobre o do home), e o CONVENTIONS.md viaja no próprio repositório; mas não encontrei política de organização, trava de versão da ferramenta nem impedimento a cada pessoa sobrescrever tudo por flag de linha de comando.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C12",
+    "nota": 4,
+    "porque": "Commit automático por alteração ligado por padrão, com commit prévio do que já estava sujo para isolar o trabalho da IA, atribuição em autor/committer e trailer Co-authored-by, /diff, /reset e /undo que 'undo the last git commit if it was done by aider' — mecanismo de máquina, granularidade por alteração; não chega a 5 porque desfaz só o último commit e não há medição publicada de uso.",
+    "evidencia": "derivado"
+   }
+  ],
+  "forcas": [
+   "Desfazer de verdade: commit automático por alteração, com mensagem gerada e atribuição no git, mais commit prévio do que já estava sujo — a IA nunca mistura o trabalho dela com o seu, e /undo reverte o último passo dela sem git manual.",
+   "Contexto derivado do código, não escrito à mão: o repo map por tree-sitter com ranqueamento em grafo e orçamento de tokens em código nunca fica desatualizado nem vira peso morto, porque é regerado a partir do próprio repositório.",
+   "Portabilidade total e prova pública acima da média do mercado: Apache 2.0, qualquer LLM (inclusive local), qualquer IDE, mais um arnês de benchmark aberto e resultados de desfecho publicados com custo e taxa de erro."
+  ],
+  "fraquezas": [
+   "Nenhum portão que bloqueie: o lint roda sozinho mas só oferece corrigir, e o commit automático usa --no-verify por padrão, ou seja, atropela os hooks de pre-commit que a equipe já tem no repositório.",
+   "CONVENTIONS.md não é carregado sozinho nem cobrado: precisa de /read, --read ou de uma linha no .aider.conf.yml, e nada verifica se a regra foi seguida — é texto no prompt, e a própria referência de opções não tem a flag --conventions-file que terceiros citam.",
+   "Zero isolamento (sem sandbox, sem allowlist, shell=True, instala pacote em tempo de execução) e manutenção desacelerando em cima de uma pessoa só, com 1.838 issues abertas."
+  ],
+  "criticas_encontradas": [
+   "Issue #752 (Aider-AI/aider, fechada): usuário configurou --map-tokens 1024 e o /tokens mostrou 16.419 tokens de repo map, ~16x o limite, confirmado pela fatura real da Anthropic.",
+   "Issue #3796 (fechada, abr/2025): o Aider anuncia 'Repo-map: using 4096 tokens' na abertura, mas o mapa real passa do dobro disso.",
+   "Hacker News, mike_hearn (fev/2025): 'Aider's repo maps in this project are full of random useless stuff. Maybe it works better for Python' — desligou o repo map e passou a usar resumos de módulo gerados por outro modelo.",
+   "Hacker News, thread 42185733 (nov/2024): usuário relata que nunca conseguiu gerar um repo map, independentemente da configuração.",
+   "Hacker News, mbanerjeepalmer (mai/2025): abandonou por atrito operacional — ficar adicionando e tirando arquivo do contexto na mão e alternando entre terminal e VS Code; o modo --watch trouxe problema de desempenho; migrou para o Roo, 'less solid but better-integrated'.",
+   "Hacker News, joshstrange (ago/2026): abandonou por custo — 'spent <$200 total before abandoning it due to cost'.",
+   "Hacker News, paretolaw (ago/2026): 'It feels like browser AI chat moved into a terminal, except now it's on your own dime, with no freemium', reclamando que ele não acessa arquivo sem você adicionar explicitamente.",
+   "Hacker News, thread 47739815: o próprio título pergunta se o Aider 'ainda é considerado', tratando-o como pioneiro superado pelos agentes de CLI mais novos.",
+   "Análise independente de sandbox (agent-safehouse.dev): 'Aider has no built-in sandboxing mechanism', 'All tool use is unrestricted at the process level', shell=True, acesso irrestrito ao disco e instalação de pacotes Python em tempo de execução como 'significant attack surface'.",
+   "Comportamento documentado que enfraquece o portão do time: o commit automático roda com --no-verify por padrão, pulando os hooks de pre-commit do repositório, a menos que se ligue --git-commit-verify.",
+   "Sinal de manutenção (ecosyste.ms, projeto 369932): 108 commits e 18 committers nos últimos 12 meses contra 12.461 commits históricos, último push em 2026-05-22, 1.838 issues abertas e Development Distribution Score 0,287 (quase tudo em uma pessoa).",
+   "Comparação de terceiro (morphllm, blog de fornecedor concorrente): código do Aider funciona sem edição humana em 71% dos casos contra 78% do Claude Code, sugerindo mais retrabalho manual — fonte interessada, tratar com desconfiança."
+  ],
+  "fontes": [
+   "https://aider.chat/docs/usage/conventions.html",
+   "https://aider.chat/docs/repomap.html",
+   "https://aider.chat/docs/git.html",
+   "https://aider.chat/docs/usage/modes.html",
+   "https://aider.chat/docs/usage/commands.html",
+   "https://aider.chat/docs/usage/lint-test.html",
+   "https://aider.chat/docs/config/options.html",
+   "https://aider.chat/docs/config/aider_conf.html",
+   "https://aider.chat/docs/faq.html",
+   "https://aider.chat/docs/benchmarks.html",
+   "https://aider.chat/docs/leaderboards/",
+   "https://aider.chat/HISTORY.html",
+   "https://github.com/Aider-AI/aider",
+   "https://github.com/Aider-AI/aider/releases",
+   "https://github.com/Aider-AI/aider/issues/752",
+   "https://github.com/Aider-AI/aider/issues/3796",
+   "https://github.com/Aider-AI/aider/issues/4363",
+   "https://pypi.org/pypi/aider-chat/json",
+   "https://summary.ecosyste.ms/projects/369932",
+   "https://agent-safehouse.dev/docs/agent-investigations/aider",
+   "https://hn.algolia.com/api/v1/search?query=aider&tags=comment",
+   "https://hn.algolia.com/api/v1/search?query=aider%20repo%20map&tags=comment",
+   "https://news.ycombinator.com/item?id=43960110",
+   "https://www.morphllm.com/comparisons/aider-vs-claude-code"
+  ],
+  "incertezas": [
+   "Não rodei o Aider em projeto nenhum: toda nota é leitura de documentação, repositório e fontes independentes, nunca reprodução.",
+   "A versão e a data do último lançamento não batem entre as fontes: a página de releases do GitHub mostrou v0.86.0 em 09/08/2025 como a mais recente, o PyPI reporta 0.86.2, e blogs de terceiros afirmam 12/02/2026. Não consegui conciliar com certeza, o que afeta a leitura de C9.",
+   "Não consegui abrir os fios do Hacker News direto (HTTP 429 repetido); as citações de comentários vieram da API do Algolia e dos títulos/resumos dos resultados de busca, então o contexto completo de cada comentário não foi verificado.",
+   "Não confirmei a ORDEM entre lint automático e commit automático — ou seja, se um lint que falha chega a impedir o commit ou se o commit já aconteceu. Isso muda C3 entre 3 e 4, e assumi a leitura conservadora (não bloqueia).",
+   "Não encontrei nenhum mecanismo de política de organização para equipes (registro de pacote, trava de versão, política central). Isso é 'não encontrei', não 'não existe'.",
+   "Os números de adoção (≈6,8M instalações pip, ≈15B tokens por semana) vêm do próprio README do projeto e não são auditados por terceiro.",
+   "A issue #4363 afirma que o Aider já suporta uma flag --conventions-file; a referência oficial de opções não lista essa flag. Considerei a referência oficial correta e a issue enganada, mas não descartei a possibilidade de ser uma flag nova não documentada.",
+   "Não achei nenhuma medição pública do repo map ou do CONVENTIONS.md em projeto real (defeito, tempo, retrabalho) — só benchmarks de exercícios Exercism. Por isso C5 ficou em 4 e não em 5, e a dúvida sobre 'prova do processo x prova do modelo' permanece aberta.",
+   "Não verifiquei se o /undo consegue reverter mais de um passo encadeando chamadas, nem o que acontece quando o commit do Aider já foi seguido por commits humanos."
+  ]
+ },
+ {
+  "nome": "Cline / Roo Code Memory Bank (incluindo checkpoints de workspace do Cline)",
+  "o_que_e": "É um jeito de dar \"memória\" a um assistente de programação que esquece tudo entre uma conversa e outra. Você mantém uma pasta com alguns arquivos de texto comum (markdown) — o que é o projeto, por que ele existe, o que está sendo feito agora, o que já ficou pronto, quais decisões foram tomadas — e instrui o assistente a ler todos esses arquivos no começo de cada tarefa e atualizá-los no fim. Não é um programa que você instala: é um texto de instrução que você cola na configuração do Cline (ou do Roo Code) e alguns arquivos que o próprio assistente cria. À parte disso, o Cline grava um \"ponto de restauração\" do seu projeto a cada ação que executa, para você conseguir voltar atrás no código sem perder a conversa.",
+  "categoria": "padrão de prompt / convenção de arquivos de contexto (memory bank) acoplado a duas IDEs de agente (Cline e Roo Code), mais o recurso de checkpoint da IDE",
+  "notas": [
+   {
+    "criterio": "C1",
+    "nota": 2,
+    "porque": "A regra literal é \"I MUST read ALL memory bank files at the start of EVERY task\": não há orçamento cobrado, e a documentação do Cline não traz nenhuma orientação de poda, arquivamento ou limite de tamanho — o custo só cresce com o projeto.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C2",
+    "nota": 3,
+    "porque": "O Roo Code Memory Bank tem decisionLog.md explicitamente para \"architectural choices and their rationale\" e o Cline tem systemPatterns.md/progress.md; são markdown legível fora da ferramenta, mas nada exige registrar as alternativas rejeitadas e o preenchimento depende da disciplina do agente e do dono.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C3",
+    "nota": 1,
+    "porque": "Nenhum portão: a própria documentação do Cline descreve o mecanismo como instrução de prompt, sem hook, sem CI, sem validação de schema — o \"MUST\" é texto, não trava.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C4",
+    "nota": 4,
+    "porque": "O Roo Code tem modos (Architect, Code, Ask, Debug, Orchestrator) com grupos de ferramentas e restrição fileRegex que a ferramenta REJEITA com FileRestrictionError; o Cline tem Plan/Act — o escopo é negado por máquina, não só recomendado.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C5",
+    "nota": 1,
+    "porque": "O post oficial do Cline sobre Memory Bank não traz nenhum número, benchmark ou telemetria de desfecho — só a promessa de não \"re-explicar o projeto\"; não encontrei nenhum estudo ou medição independente do efeito do padrão.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C6",
+    "nota": 3,
+    "porque": "Começar é quase de graça (colar um arquivo de instrução e pedir \"initialize memory bank\"), mas a sessão pesa: ler todos os arquivos em toda tarefa infla o contexto, e há relatos públicos de salto de gasto ($30 em janeiro para $230 em fevereiro na discussão #1727).",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C7",
+    "nota": 4,
+    "porque": "O núcleo são arquivos markdown comuns e um prompt — foi copiado para Cursor, Windsurf, Claude Code e outros, e Cline/Roo aceitam vários fornecedores de modelo; só a casca (.clinerules, .roomodes, YAML de modo) precisa ser refeita por IDE.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C8",
+    "nota": 2,
+    "porque": "A documentação admite que a memória zera e que tudo depende da qualidade dos arquivos, e a página de checkpoints avisa de lentidão em repositórios grandes, mas não há seção de \"o que isto NÃO faz\": nada sobre custo de token, nada sobre memory bank desatualizado, e o README do Roo Code Memory Bank não declara limitação alguma.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C9",
+    "nota": 4,
+    "porque": "O lado Cline é forte (67,5 mil estrelas, commit no mesmo dia da consulta, Apache 2.0, empresa por trás), mas o repositório comunitário roo-code-memory-bank está parado desde 15/05/2025 com 11 issues abertas e o próprio autor aponta para o sucessor Context Portal (ConPort).",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C10",
+    "nota": 4,
+    "porque": "O Auto Approve do Cline é avaliado por chamada de ferramenta, o agente marca comandos com requires_approval e destrutivos sempre pedem aprovação, o .clineignore bloqueia arquivos e o Roo Code restringe grupos de ferramentas por modo — mas é allowlist e aprovação por ação, não sandbox de SO ou contêiner, e o YOLO Mode desliga tudo isso.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C11",
+    "nota": 3,
+    "porque": ".clinerules e .roomodes vão no repositório e são lidos automaticamente por CLI, VS Code e JetBrains, e o Roo tem exportar/importar modo em YAML e marketplace; mas o memory bank em si costuma ir para o .gitignore (a própria issue #3312 pede isso), então o estado diverge por pessoa e não achei política de organização que imponha o processo.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C12",
+    "nota": 4,
+    "porque": "Os checkpoints do Cline gravam num repositório git sombra um snapshot APÓS CADA uso de ferramenta, incluindo arquivos não versionados, com diff e três modos de restauração (só arquivos, só tarefa, ambos) — é mecanismo real, por passo; perde o 5 por não haver medição publicada e por não desfazer efeitos colaterais de terminal.",
+    "evidencia": "derivado"
+   }
+  ],
+  "forcas": [
+   "Custo de entrada quase zero e portabilidade real: são arquivos markdown comuns mais um prompt, legíveis por humano e copiáveis para qualquer IDE ou modelo — o padrão vazou do Cline para praticamente todo o mercado.",
+   "Checkpoints do Cline são o melhor item do pacote: git sombra com snapshot a cada chamada de ferramenta, incluindo arquivos fora do git, com diff e restauração separada de arquivos e de conversa.",
+   "Os modos do Roo Code impõem escopo por máquina: a restrição fileRegex devolve FileRestrictionError e nega a edição, em vez de apenas pedir que o agente se comporte."
+  ],
+  "fraquezas": [
+   "Zero cobrança automática: nada verifica se o agente leu ou atualizou os arquivos; o \"MUST read ALL memory bank files\" é prompt, e há issue registrada de o Cline afirmar ter atualizado os arquivos e só imprimir o conteúdo no chat.",
+   "Não escala: ler todos os arquivos em toda tarefa é orçamento crescente, e a documentação não oferece poda, arquivamento nem teto de tamanho.",
+   "Sem prova de eficácia e sem honestidade sobre limites: o material oficial não traz um único número de desfecho e não declara por escrito onde o padrão falha (memory bank desatualizado, custo de token, divergência entre pessoas)."
+  ],
+  "criticas_encontradas": [
+   "Cline discussion #1727 — usuários relatam explosão de custo com o Memory Bank em uso: um deles saiu de $30 em janeiro para $230 em fevereiro fazendo trabalho semelhante; outro relata chamadas de $0,50 a $0,60 onde antes gastava centavos, suspeitando de falha de cache ao retomar tarefas. Nenhum mantenedor respondeu na thread.",
+   "Cline issue #1911 — bug em que o Cline diz ter atualizado os arquivos do memory bank mas não edita nada: \"No files are being edited or updated, but CLine is saying it has done so. The contents of the update is shown in the chat window instead.\" É exatamente a falha que um padrão sem portão automático não consegue detectar.",
+   "Roo-Code issue #3312 (pedido de embutir o memory bank na IDE) foi FECHADO COMO NOT PLANNED. O próprio pedido critica o estado atual: configurar instruções por modo, inicializar à mão e adicionar a pasta ao .gitignore — \"It works, but it is a tedious process and coders/programmers dont have time to do this.\"",
+   "O repositório comunitário roo-code-memory-bank está estagnado: último push em 15/05/2025 (mais de um ano antes desta consulta), 11 issues abertas, e o topo do README empurra o leitor para outro projeto, o Context Portal (ConPort) — um memory bank em banco SQLite via MCP, apresentado como substituto mais confiável e consultável do arranjo em arquivos.",
+   "Crítica independente de quem trocou de abordagem (dev.to, shinomontaz): depois de testar ferramenta de memory bank, o autor voltou para um único arquivo markdown, dizendo que \"a .md file could do 80% of what I needed\" e que a promessa de cortar uso de token era só \"partly true\"; reclama de complexidade organizacional (um banco grande que confunde projetos, ou um espaço por projeto, inconveniente).",
+   "Discussões de context bloat no próprio repositório do Cline (ex.: #4249, #4389) apontam que o contexto incha antes mesmo de o trabalho começar porque o agente lê muitos arquivos — e a regra do Memory Bank de ler TUDO em TODA tarefa é parte estrutural desse problema.",
+   "Material de terceiros que ensina o padrão já avisa do risco que a documentação oficial não declara: um memory bank desatualizado é pior que nenhum, porque passa a enganar ativamente o agente."
+  ],
+  "fontes": [
+   "https://docs.cline.bot/prompting/cline-memory-bank",
+   "https://docs.cline.bot/best-practices/memory-bank",
+   "https://cline.bot/blog/memory-bank-how-to-make-cline-an-ai-agent-that-never-forgets",
+   "https://docs.cline.bot/core-workflows/checkpoints",
+   "https://github.com/cline/cline/discussions/1727",
+   "https://github.com/cline/cline/issues/1911",
+   "https://api.github.com/repos/cline/cline",
+   "https://github.com/GreatScottyMac/roo-code-memory-bank",
+   "https://raw.githubusercontent.com/GreatScottyMac/roo-code-memory-bank/main/README.md",
+   "https://api.github.com/repos/GreatScottyMac/roo-code-memory-bank",
+   "https://github.com/RooCodeInc/Roo-Code/issues/3312",
+   "https://roocodeinc.github.io/Roo-Code/features/custom-modes",
+   "https://github.com/GreatScottyMac/context-portal",
+   "https://dev.to/shinomontaz/building-ai-workflow-and-project-context-from-memory-banks-to-simple-markdown-27np",
+   "https://docs.cline.bot/features/auto-approve",
+   "https://docs.cline.bot/customization/cline-rules"
+  ],
+  "incertezas": [
+   "Não rodei nada: todas as notas vêm de leitura de documentação, README, issues e API do GitHub. Não sei o que acontece de fato num projeto real ao longo de semanas — em particular, com que frequência o agente realmente relê e atualiza os arquivos.",
+   "Não encontrei nenhum estudo controlado, benchmark publicado ou telemetria de desfecho sobre o padrão memory bank (nem do Cline, nem do Roo, nem independente). Ausência de achado não é prova de que não exista.",
+   "Não consegui abrir a thread do Hacker News sobre memória de agente em arquivo (item 49508317 retornou HTTP 429), então a crítica de comunidade que reuni vem de GitHub e dev.to, não de HN.",
+   "Sobre C11: confirmei que o console administrativo do Cline Enterprise empurra configuração de provedor/modelo para a organização, mas NÃO confirmei se ele consegue impor .clinerules ou o próprio memory bank a N pessoas. Pontuei 3 assumindo que não.",
+   "O roo-code-memory-bank não tem aviso formal de descontinuação; a leitura de \"efetivamente sucedido pelo ConPort\" é minha inferência a partir do banner no README, do último push em maio de 2025 e do foco atual do autor.",
+   "Adoção real: tenho estrelas do GitHub (67,5 mil do Cline, 1,7 mil do roo-code-memory-bank), mas não achei número de instalações do marketplace nem quantas equipes de fato usam o memory bank — estrela não é uso.",
+   "Não verifiquei se a restrição fileRegex do Roo Code também cobre escrita de arquivo feita por comando de terminal (suspeito que não, o que abriria um furo no C4/C10), nem se os checkpoints do Roo Code têm a mesma granularidade por chamada de ferramenta que os do Cline."
+  ]
+ },
+ {
+  "nome": "AWS Kiro",
+  "o_que_e": "Kiro é um programa da Amazon (AWS) para escrever código com ajuda de inteligência artificial. A diferença dele para os concorrentes é que, antes de escrever qualquer linha de código, ele obriga a produzir três documentos: o que o sistema precisa fazer (requirements.md), como será construído (design.md) e a lista de tarefas na ordem certa (tasks.md) — só depois os agentes executam. Vem em três formatos (um editor próprio parecido com o VS Code, uma versão de linha de comando e uma versão no navegador), é pago por créditos de uso, e traz \"hooks\": automações que disparam sozinhas quando um arquivo é salvo ou antes de o agente usar uma ferramenta.",
+  "categoria": "IDE/CLI agêntica proprietária de fornecedor (AWS), com desenvolvimento orientado a especificação e cobrança por créditos",
+  "notas": [
+   {
+    "criterio": "C1",
+    "nota": 4,
+    "porque": "Medidor numérico de uso de contexto na interface, compactação automática ao se aproximar do limite (com parâmetros compaction.excludeMessages e compaction.excludeContextWindowPercent), .kiroignore que nega leitura de arquivos e steering com inclusão condicional por glob (fileMatch) — tudo avaliado por máquina; falta poda/arquivamento das specs antigas e a compactação é irreversível na sessão.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C2",
+    "nota": 2,
+    "porque": "O design.md é markdown durável em .kiro/specs/, versionável em git e legível fora da ferramenta, mas registra apenas a decisão tomada, não as alternativas rejeitadas — análise independente (DoiT) mostra que ele diz que PostgreSQL foi escolhido e não que DynamoDB foi avaliado e descartado; o registro de rejeições só existe se a equipe construir um hook de ADR por conta própria, e há relato de que os artefatos não se atualizam sozinhos (spec drift).",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C3",
+    "nota": 4,
+    "porque": "Hooks em .kiro/hooks/*.json com gatilhos declaradamente bloqueantes (PreToolUse, PromptSubmit, PreTaskExecution) cujo comando de shell interrompe o agente ao sair com código diferente de zero, somados a regras de permissão com efeito deny que negam a chamada de ferramenta — mecanismo verificável na documentação, com esquema JSON publicado.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C4",
+    "nota": 4,
+    "porque": "Agentes personalizados em .kiro/agents/ (JSON ou Markdown) com campo tools restringindo quais ferramentas existem, campo permissions com regras por capacidade, modelo próprio por agente, sub-agentes e Powers com includePowers — a restrição é aplicada por agente pelo runtime, não é só orientação em prosa.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C5",
+    "nota": 1,
+    "porque": "Só há afirmação de executivo da AWS (ganho de 15-30% em alguns times e 3-10x em outros) e estudos de caso do próprio fornecedor, como um recurso interno da Amazon entregue dois meses antes do previsto; não encontrei estudo controlado, benchmark publicado nem telemetria divulgada sobre desfecho (qualidade, defeito, tempo) do processo orientado a especificação.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C6",
+    "nota": 2,
+    "porque": "Exige trocar de IDE (fork do Code OSS) ou adotar a CLI, e o uso é medido em créditos comprados: o gratuito dá 50 créditos/mês, Pro custa US$20 por 1.000 e excedente sai a US$0,04 por crédito; a cerimônia das três specs antecede qualquer código, e há histórico de bug de medição com contas inesperadas e de tentativas fracassadas consumindo limite diário.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C7",
+    "nota": 2,
+    "porque": "Os artefatos (.kiro/ em markdown e JSON) são texto puro portátil no git, e há escolha de modelo (Claude, GPT-5.6, DeepSeek, GLM, Qwen), mas todo o runtime — workflow de spec, hooks, permissões — só executa dentro do Kiro, o código-fonte do produto é fechado (o repositório GitHub é apenas rastreador de issues) e o FAQ proíbe expressamente o uso através de harnesses de automação de terceiros.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C8",
+    "nota": 3,
+    "porque": "A documentação declara por escrito falhas reais — checkpoints não rastreiam alterações feitas fora do agente (edição manual, formatador, MCP, bash), compactação é via única e a íntegra não volta, execução paralela de agentes não suportada, lista do que não existe no GovCloud, uso de conteúdo do tier gratuito para melhoria do serviço —, mas está espalhada e a fraqueza central (specs que não se atualizam junto com o código) aparece em relatos de usuários, não em página própria do fornecedor.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C9",
+    "nota": 4,
+    "porque": "Mantido pela AWS com changelog público datado e liberações várias vezes por semana (IDE 1.0.437, CLI 2.21.0 e Kiro Web em GA em 1/set/2026), GA do produto em maio de 2026, rastreador público com cerca de 1,6 mil issues abertas e o Kiro Crew aberto sob Apache 2.0 em ago/2026 com números de adoção interna divulgados (39 mil builders da Amazon, ~500 contribuidores); pesa contra a fila de issues e relatos de que o entusiasmo esfriou após a fase de espera.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C10",
+    "nota": 4,
+    "porque": "Permissões baseadas em capacidades (fs_read, fs_write, shell, web_fetch, mcp, subagent) com efeitos deny/ask/allow em YAML, algoritmo deny-overrides, globs com exclude, comandos compostos separados por ;/&&/||/| e avaliados um a um, negações fixas em diretórios de configuração e aprovação por ação; a Web roda em sandbox isolado na nuvem, mas a documentação diz explicitamente que IDE e CLI usam prompts de permissão, não contêiner nem sandbox de sistema operacional.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C11",
+    "nota": 4,
+    "porque": "O diretório .kiro/ (specs, steering, hooks, agentes) é commitado no repositório e chega igual a todos por git pull, e o plano Enterprise acrescenta SSO (Okta, Entra ID, IAM Identity Center), SCIM, allowlist central de modelos que some do cliente, registro de servidores MCP e extensões, políticas de permissão e relatório de uso; a distribuição é pull (exige reiniciar sessão ou relogar) e o permissions.yaml de workspace mora fora do repositório, em ~/.kiro/workspace-roots/<hash>/, logo não viaja com o projeto.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C12",
+    "nota": 4,
+    "porque": "Checkpoint criado automaticamente a cada prompt enviado, com snapshot dos arquivos que o agente alterou pelas ferramentas nativas; restaurar devolve arquivos e rebobina o contexto da conversa, e o rewind bifurca a conversa sem tocar nos arquivos — tudo por máquina, sem depender de git manual; a própria documentação avisa que alterações feitas fora do agente (bash, MCP, formatador, edição manual) ficam de fora e podem ser perdidas na restauração.",
+    "evidencia": "derivado"
+   }
+  ],
+  "forcas": [
+   "Portão de verdade cobrado por máquina: hooks com gatilhos bloqueantes (PreToolUse, PromptSubmit, PreTaskExecution) que param o agente no código de saída, somados a permissões por capacidade com efeito deny que nega a chamada de ferramenta e a agentes com lista de ferramentas restrita.",
+   "Infraestrutura de operação madura que kits artesanais raramente têm: checkpoint automático por turno com rebobinagem de conversa, compactação automática com medidor de contexto, governança corporativa com SSO/SCIM e allowlist central de modelos e servidores MCP.",
+   "O processo mora em arquivos de texto dentro de .kiro/ no próprio repositório — specs, steering, hooks e agentes chegam iguais a toda a equipe por git, sem instalador paralelo."
+  ],
+  "fraquezas": [
+   "A especificação não guarda o que foi descartado: o design.md registra a escolha, não as alternativas rejeitadas nem o porquê, e há relato consistente de que requirements e design não se atualizam conforme o código anda (spec drift), transformando o artefato em documento morto.",
+   "Preso ao fornecedor e ao medidor: produto de código fechado, uso pago em créditos com excedente a US$0,04, tier gratuito de 50 créditos praticamente simbólico, histórico de bug de medição e conta-surpresa, e proibição explícita de usar através de harnesses de terceiros.",
+   "Nenhuma prova pública de desfecho: os ganhos citados são falas de executivo e estudos de caso do próprio fornecedor, sem estudo controlado, benchmark ou telemetria divulgada sobre qualidade, defeito ou tempo."
+  ],
+  "criticas_encontradas": [
+   "Uma semana após o preview público (jul/2025) a AWS impôs fila de espera para novos usuários e limite diário para os existentes, e retirou os preços do site dizendo que estava 'revendo a abordagem' — InfoWorld e The Register.",
+   "Desenvolvedores no Reddit (r/kiroIDE) pediram a remoção dos limites em posts como 'take my money and remove my limits' e disseram que as restrições estavam 'matando o fluxo de trabalho'; muitos tinham acabado de migrar do Cursor e voltaram à incerteza de preço.",
+   "A mudança de preços de agosto de 2025 pegou os primeiros adotantes de surpresa, com times pequenos projetando contas mensais na casa dos milhares; a AWS depois admitiu um bug de medição e suspendeu cobranças específicas.",
+   "Analista da Forrester (Charlie Dai) avaliou que 'confiança depende de clareza de preço e confiabilidade' e que a comunicação ruim empurra usuários para concorrentes transparentes.",
+   "Análise prática no DEV ('Brilliant, Broken, and Frustrating') relatou erros recorrentes de alto tráfego do modelo, tarefas travando e exigindo reinício manual, e queima do limite diário em tentativas fracassadas.",
+   "A mesma análise apontou código inchado — cerca de 20 arquivos e mais de 1.500 linhas com 'console.log gibberish' para algo que um humano resolveria em menos de 200 linhas — e quebra de retenção de contexto, misturando lógica de cache no DynamoDB com código de gestão de segredos de uma tarefa anterior.",
+   "Crítica estrutural registrada: 'requirements e design não se atualizam automaticamente', fazendo a spec divergir da implementação e quebrando o fluxo iterativo.",
+   "Análise independente da DoiT mostrou que o design.md diz que PostgreSQL foi escolhido, mas não que DynamoDB foi avaliado e rejeitado nem por quê — a decisão fica sem rastro do que foi descartado.",
+   "No Hacker News, queixas de falha de login OAuth ('missing state'), consumo alto de CPU/RAM em repouso, cansaço de trocar de IDE ('portei minhas regras por Copilot, Continue, Cursor, Cline, Aider, Roo Code e Claude Code'), e preocupação com o tier gratuito usar o conteúdo do usuário para melhoria do serviço.",
+   "Um comentarista do Hacker News relatou tentar gerar um bootloader e kernel x86 mínimo e afirmou que em nenhum momento a ferramenta conseguiu fazer algo funcionar.",
+   "O rastreador público acumula cerca de 1,6 mil issues abertas (eram 804 na época da reportagem do preview), com padrões recorrentes de faturamento/SSO, instabilidade da CLI v3 e erros de interface.",
+   "Comparações independentes concluem que, para iteração rápida e manutenção de legado, ferramentas reativas como Cursor e Copilot continuam superiores por menor atrito, e que a popularidade do Kiro esfriou após o longo período de fila.",
+   "Padrões de código e sugestões de recurso enviesados para AWS tornam a ferramenta desconfortável em projetos Azure ou GCP."
+  ],
+  "fontes": [
+   "https://kiro.dev/docs/",
+   "https://kiro.dev/docs/permissions/",
+   "https://kiro.dev/docs/hooks/",
+   "https://kiro.dev/docs/specs/",
+   "https://kiro.dev/docs/steering/",
+   "https://kiro.dev/docs/checkpoints/",
+   "https://kiro.dev/docs/compaction/",
+   "https://kiro.dev/docs/custom-agents/",
+   "https://kiro.dev/docs/enterprise/governance/model/",
+   "https://kiro.dev/faq/",
+   "https://kiro.dev/changelog/",
+   "https://kiro.dev/blog/new-pricing-plans-and-auto/",
+   "https://kiro.dev/blog/automate-your-development-workflow-with-agent-hooks/",
+   "https://github.com/kirodotdev/Kiro/issues",
+   "https://www.infoworld.com/article/4026642/aws-imposes-caps-on-kiro-usage-introduces-waitlist-for-new-users.html",
+   "https://www.theregister.com/2025/07/21/aws_kiro_usage_cap/",
+   "https://dev.to/aws-builders/brilliant-broken-and-frustrating-my-deep-dive-into-amazons-kiro-ai-ide-the-flawed-junior-gn5",
+   "https://news.ycombinator.com/item?id=44560662",
+   "https://www.doit.com/blog/your-ai-writes-the-code-who-owns-the-decisions",
+   "https://docs.aws.amazon.com/govcloud-us/latest/UserGuide/govcloud-kiro.html",
+   "https://www.infoq.com/news/2026/08/kiro-crew-coding-agents/",
+   "https://dev.to/aws-builders/why-kiro-looks-unassuming-organizing-design-philosophy-differences-in-the-age-of-claude-code-and-1dp9",
+   "https://www.techradar.com/pro/aws-is-already-limiting-access-to-its-new-kiro-ai-coding-tool-because-its-too-popular"
+  ],
+  "incertezas": [
+   "A página atual de specs que consegui ler fala em 'notação estruturada' e histórias de usuário com critérios de aceitação, mas não nomeia EARS explicitamente — a notação EARS aparece em análises de terceiros e no material de lançamento. Não confirmei se a documentação vigente ainda a exige ou se virou opcional.",
+   "Não encontrei se o permissions.yaml pode ser commitado no repositório do projeto; a documentação indica que o escopo de workspace mora em ~/.kiro/workspace-roots/<hash>/, fora do repositório, o que implica que as regras de permissão não viajam com o código — mas não achei declaração explícita a respeito.",
+   "Não encontrei nenhuma medição pública de desfecho (qualidade, defeito, tempo) sobre o processo orientado a especificação. Os números divulgados são de adoção (39 mil builders internos do Kiro Crew) ou falas de executivo, não de eficácia.",
+   "Não confirmei o estado atual do plugin para VS Code: a página do GovCloud diz que ele 'não está disponível' naquele ambiente, o que sugere existir fora dele, mas não achei a documentação desse plugin.",
+   "Não encontrei taxa de fechamento das ~1,6 mil issues abertas nem tempo médio de resposta, então não sei distinguir backlog de adoção alta de backlog de abandono.",
+   "Não verifiquei se o sandbox isolado da versão Web é contêiner de sistema operacional com limites declarados ou apenas isolamento lógico de sessão na nuvem."
+  ]
+ },
+ {
+  "nome": "Padrão aberto AGENTS.md",
+  "o_que_e": "É um acordo entre empresas de que todo projeto pode ter um arquivo de texto simples chamado AGENTS.md na raiz, escrito em Markdown, contando ao assistente de IA o básico do projeto: como instalar, como rodar os testes, que estilo de código usar. Funciona como um \"leia-me para robôs\" — em vez de cada ferramenta (Codex, Cursor, Copilot, Gemini CLI, Zed) exigir um arquivo com nome diferente, todas leem o mesmo. O ponto central, e mais incomum, é o que ele deliberadamente NÃO faz: não existe formato obrigatório, nem campos exigidos, nem validador. Você escreve o que quiser, com os títulos que quiser, e a ferramenta simplesmente joga aquele texto na conversa com o modelo. Não é um programa que você instala nem um processo que você segue — é só a combinação sobre o nome do arquivo.",
+  "categoria": "Padrão/formato aberto de arquivo de contexto para agentes de código (não é ferramenta nem framework de processo)",
+  "notas": [
+   {
+    "criterio": "C1",
+    "nota": 2,
+    "porque": "Define arquivos aninhados com precedência pela proximidade (implementado por Codex, Factory, Cursor), mas não há orçamento cobrado por máquina: nenhum limite de tamanho no padrão, nenhuma poda ou arquivamento; o estudo da ETH mediu +19-22% de tokens e relatos indicam que arquivos acima de ~500 linhas passam a ser parcialmente ignorados.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C2",
+    "nota": 1,
+    "porque": "O arquivo é Markdown durável e legível fora da ferramenta, mas o padrão não prevê registro de decisões nem de alternativas rejeitadas; as seções recomendadas são visão geral, setup, testes, estilo, estrutura, git, segurança e limites — nenhuma delas é log de decisão.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C3",
+    "nota": 1,
+    "porque": "O padrão é explicitamente orientação e não imposição: nenhum hook, CI ou bloqueio faz parte dele, e a própria literatura repete que a cobrança real continua sendo do CI e da proteção de branch; há relatos consistentes de instruções explícitas simplesmente ignoradas pelo agente.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C4",
+    "nota": 0,
+    "porque": "Não existe noção de papel, modo ou agente especializado: é um arquivo plano de instruções; o aninhamento separa por diretório, nunca por papel ou escopo de permissão.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C5",
+    "nota": 3,
+    "porque": "Caso raro no mercado: existe estudo controlado independente (ETH Zurich, 138 repositórios e SWE-Bench Lite, 4 agentes, 3 condições) medindo desfecho — mas o resultado é quase nulo (+4% de sucesso com arquivo escrito por humano, -3% com gerado por LLM, +20% de custo), então a medição é pública e séria porém não comprova eficácia.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C6",
+    "nota": 4,
+    "porque": "Custo de início praticamente zero: um arquivo de texto, sem instalação, dependência ou runtime; o peso por sessão, porém, é medido e não desprezível — +19% a +22% de tokens de inferência segundo o estudo da ETH.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C7",
+    "nota": 4,
+    "porque": "É a razão de existir do padrão e o item mais forte: 20+ ferramentas leem o mesmo arquivo, Markdown puro, sem fornecedor dono, sob a Linux Foundation; desconta que o Claude Code não lê nativamente (exige symlink ou import) e que a precedência entre arquivos aninhados difere por ferramenta, sem suíte de conformidade.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C8",
+    "nota": 2,
+    "porque": "O FAQ oficial declara por escrito que não há esquema, campos obrigatórios nem estrutura exigida — honestidade real sobre escopo — mas não encontrei no material oficial nenhuma seção de limitações, de modos de falha, nem aviso sobre o risco de injeção de prompt.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C9",
+    "nota": 4,
+    "porque": "Governança neutra de verdade: doado em dezembro de 2025 à Agentic AI Foundation sob a Linux Foundation, cofundada por OpenAI, Anthropic e Block, com apoio de Google, Microsoft, AWS e Bloomberg; adoção publicada de 60 mil+ repositórios e 24,2 mil estrelas. Não chega a 5 porque o repositório tem só 36 commits com 90 issues e 80 PRs abertos, e a v1.1 seguia não mesclada.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C10",
+    "nota": 0,
+    "porque": "O padrão não define nada sobre o que o agente pode executar — sem sandbox, allowlist, assinatura ou modelo de confiança — e é ele próprio superfície de ataque documentada: a Backslash demonstrou injeção via AGENTS.md no Codex CLI em modo exec levando a roubo silencioso de credenciais, e a Prompt Security mostrou sequestro de objetivo no VS Code Chat, já que o conteúdo entra como instrução e não como dado.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C11",
+    "nota": 3,
+    "porque": "Distribuição acontece pelo git: o arquivo mora no repositório, então quem clona recebe a mesma versão sem esforço — mecanismo real. Mas não há pacote, registro, pinagem de versão do processo nem política de organização, e manter N repositórios em dia depende inteiramente de disciplina humana.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C12",
+    "nota": 0,
+    "porque": "O padrão não oferece nada de desfazer: sem checkpoint, sem snapshot, sem commit por alteração; reverter é o que a ferramenta hospedeira porventura ofereça, mais git manual.",
+    "evidencia": "derivado"
+   }
+  ],
+  "forcas": [
+   "Portabilidade real e vendor-neutral: 20+ ferramentas leem o mesmo arquivo, sob governança da Linux Foundation (Agentic AI Foundation), cofundada por concorrentes diretos — é o item de menor risco de aprisionamento do mercado inteiro.",
+   "Custo de adoção quase nulo e adoção medida e publicada: um arquivo Markdown sem instalação, com 60 mil+ repositórios públicos e 24,2 mil estrelas, números que quase nenhum concorrente apresenta.",
+   "É a única alternativa avaliada com estudo controlado independente sobre desfecho (ETH Zurich, 138 repositórios, 4 agentes) — mesmo que o resultado seja desfavorável, existir a medição é uma força de transparência do ecossistema."
+  ],
+  "fraquezas": [
+   "Zero cobrança por máquina em toda a linha: nenhum portão, nenhum esquema, nenhum validador, nenhum limite de tamanho no padrão. É 100% texto que o modelo pode ignorar — e há relatos consistentes de que ignora.",
+   "Nada de segurança ou isolamento, e pior: o próprio arquivo é vetor de ataque documentado (injeção de prompt com exfiltração de credenciais no Codex CLI), porque o conteúdo entra na conversa como instrução confiável, sem assinatura nem revisão.",
+   "Não cobre o trabalho: sem memória de decisão, sem papéis, sem desfazer por passo. Resolve apenas 'onde o agente lê o contexto', deixando organização, prova e recuperação inteiramente por conta de outra ferramenta."
+  ],
+  "criticas_encontradas": [
+   "Estudo controlado da ETH Zurich (arXiv 2602.11988, 'Evaluating AGENTS.md'): arquivos escritos por humanos melhoraram sucesso em apenas ~4%, arquivos gerados por LLM PIORARAM em ~3%, e ambos aumentaram o custo de inferência em mais de 20% e o número de passos. Conclusão dos autores: o efeito é marginal e visões gerais genéricas do repositório — justamente o que os fornecedores recomendam — não ajudam.",
+   "Anthropic recusou suportar AGENTS.md no Claude Code: issue com mais de 4.500 votos fechada sem implementação. Discussão no Hacker News (215 comentários) acusa 'arrogância institucional' e diz que a empresa prefere CLAUDE.md como propaganda gratuita, forçando desenvolvedores a symlinks e hacks de .gitignore. Ironia registrada: a Anthropic cofundou a fundação que hospeda o padrão que não implementa.",
+   "Pesquisa de segurança da Backslash: 'AGENTS.md Injection in OpenAI Codex CLI: Silent Credential Theft' — commitar uma linha maliciosa num repositório público faz o Codex em modo exec executar instruções do atacante antes mesmo do pedido do usuário, sem análise estática nem política de acesso a caminhos. A Prompt Security documentou sequestro de objetivo equivalente no VS Code Chat, habilitado por padrão.",
+   "Threads do Hacker News intituladas 'Agents.md Are Useless' e 'Agents.md – Dumb Human' concentram ceticismo sobre o valor prático do formato.",
+   "Crítica recorrente de inchaço de contexto: arquivos acima de ~500 linhas passam a ter regras do fim da lista descartadas pelo modelo; Addy Osmani publicou 'Stop Using /init for AGENTS.md' argumentando que a geração automática produz exatamente o tipo de conteúdo que o estudo mostrou ser prejudicial.",
+   "Augment Code: 'um AGENTS.md bom é um upgrade de modelo; um ruim é pior que nenhuma documentação' — e não existe validador que distinga um do outro.",
+   "Ausência de validação formal citada como risco operacional: arquivos ficam obsoletos e propagam regras erradas indefinidamente, sem que nada avise.",
+   "Fragmentação de semântica entre ferramentas: Codex concatena da raiz para a folha, Factory usa o mais próximo primeiro, Cursor combina com regras explícitas tendo prioridade — o mesmo arquivo produz comportamentos diferentes, e não há suíte de conformidade."
+  ],
+  "fontes": [
+   "https://agents.md/",
+   "https://github.com/agentsmd/agents.md",
+   "https://arxiv.org/abs/2602.11988",
+   "https://www.infoq.com/news/2026/03/agents-context-file-value-review/",
+   "https://umesh-malik.com/blog/agents-md-ai-coding-agents-study",
+   "https://news.ycombinator.com/item?id=47034087",
+   "https://zeli.app/story/49367350",
+   "https://www.backslash.security/blog/openai-codex-injection-in-agents-md-exfiltrating-credentials",
+   "https://prompt.security/blog/when-your-repo-starts-talking-agents-md-and-agent-goal-hijack-in-vs-code-chat",
+   "https://aaif.io/blog/measuring-agents-md-what-five-runs-show-that-one-doesn-t",
+   "https://codersera.com/blog/agents-md-complete-guide-2026/",
+   "https://www.anthropic.com/news/donating-the-model-context-protocol-and-establishing-of-the-agentic-ai-foundation",
+   "https://openai.com/index/agentic-ai-foundation/",
+   "https://addyosmani.com/blog/agents-md/",
+   "https://www.augmentcode.com/blog/how-to-write-good-agents-dot-md-files",
+   "https://news.ycombinator.com/item?id=47481682",
+   "https://bestagent.dev/claude-md-vs-agents-md-2026/"
+  ],
+  "incertezas": [
+   "Suporte do Claude Code: as fontes se contradizem. Blogs de SEO afirmam que ele lê AGENTS.md nativamente entre '30+ ferramentas', enquanto fontes mais cuidadosas e a discussão do Hacker News dizem que não lê e que a issue foi fechada sem implementar. Adotei a segunda leitura por ter fonte primária (issue fechada), mas não confirmei na documentação oficial da Anthropic.",
+   "Uma fonte cita 'pesquisa Stack Overflow 2026' com 68% dos usuários de Codex relatando comportamento inesperado por AGENTS.md ignorado. Não consegui verificar essa pesquisa e suspeito de conteúdo gerado para SEO — não usei o número na pontuação.",
+   "Contagem de repositórios: o site oficial diz 60 mil+; fontes mais antigas dizem 20 mil. Não encontrei metodologia de contagem publicada nem busca de código independente que confirme.",
+   "Não consegui carregar o texto integral do FAQ oficial nem do README completo (o fetch retornou só trechos), então a avaliação de C8 sobre ausência de seção de limitações é baseada no que apareceu nos trechos e em terceiros — pode existir texto oficial de limites que não vi.",
+   "Não encontrei se a v1.1 do padrão (frontmatter YAML opcional com description e tags) foi mesclada depois de maio de 2026; se tiver sido, C1 e C8 podem subir.",
+   "As duas threads do Hacker News mais críticas ('Agents.md Are Useless' e 'Agents.md – Dumb Human') retornaram HTTP 429 e não pude ler os argumentos em detalhe — registrei apenas a existência e o título."
+  ]
+ },
+ {
+  "nome": "GitHub Copilot custom instructions",
+  "o_que_e": "É o jeito de \"ensinar as regras da casa\" ao GitHub Copilot escrevendo arquivos de texto simples dentro do próprio projeto: um arquivo geral (`.github/copilot-instructions.md`), arquivos que só valem para certas pastas (`*.instructions.md` com um filtro `applyTo`), receitas de tarefa reutilizáveis (`*.prompt.md`) e \"personagens\" com ferramentas limitadas (`*.chatmode.md` / `*.agent.md`). Como os arquivos ficam no repositório, todo mundo da equipe recebe as mesmas regras ao clonar o projeto, e o dono da organização ainda pode definir instruções e políticas que valem para todos os repositórios de uma vez. Importante: são instruções que influenciam o assistente, não travas — nada impede o Copilot de gerar código que as contradiz.",
+  "categoria": "Camada de personalização embutida em produto de fornecedor: arquivos de instrução versionados no repositório, mais política de organização/empresa e marketplace de plugins",
+  "notas": [
+   {
+    "criterio": "C1",
+    "nota": 3,
+    "porque": "O `applyTo` com glob é seleção real avaliada por máquina (carrega instrução só quando o arquivo bate), mas não há orçamento de tokens cobrado, nem poda nem arquivamento; a documentação não declara limite de tamanho e a própria comunidade descreve o arquivo sempre-ligado como 'imposto oculto em cada prompt'.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C2",
+    "nota": 2,
+    "porque": "Os arquivos são markdown em git, legíveis fora da ferramenta, e há memória de agente persistida em arquivo — mas nada é desenhado para registrar decisões, e não achei nenhum mecanismo para guardar alternativas rejeitadas; fica por conta do humano escrever prosa.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C3",
+    "nota": 2,
+    "porque": "As instruções são viés, não política: o Copilot não valida a própria saída contra elas, e o Copilot code review 'só deixa comentários, nunca aprova nem pede mudanças' e não bloqueia merge; o gate real (rulesets, required checks) é maquinaria genérica do GitHub, desconectada dos arquivos de instrução.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C4",
+    "nota": 4,
+    "porque": "Custom agents / chat modes trazem `tools` no frontmatter que restringe de fato quais ferramentas o agente pode chamar, além de modelo próprio e handoffs para encadear agentes — negação de chamada de ferramenta por máquina, não recomendação.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C5",
+    "nota": 2,
+    "porque": "Existe estudo controlado independente exatamente sobre este mecanismo (ETH Zurich, arXiv:2602.11988, SWE-bench + AgentBench de 138 tarefas), mas o desfecho é nulo a negativo: arquivos gerados por LLM baixam a taxa de sucesso ~3%, os escritos por humano sobem ~4% de forma inconsistente (Sonnet 4.5 cai >2%), com custo de inferência +20%. Medição há; prova de que funciona, não.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C6",
+    "nota": 4,
+    "porque": "Começar é um arquivo markdown na pasta `.github/`, sem instalação, sem CLI, sem dependência, em cima de uma assinatura que a equipe já tem; o peso por sessão é o custo real de anexar as instruções a cada requisição, medido em mais de 20% de aumento de inferência no estudo da ETH.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C7",
+    "nota": 3,
+    "porque": "Os arquivos são markdown puro e o Copilot lê também `AGENTS.md` e `CLAUDE.md`, o que ajuda na entrada — mas `applyTo`, prompt files, chat modes e instruções de organização são convenções do Copilot, exigem assinatura paga e nem sequer se comportam igual entre as superfícies do próprio produto (CLI ignora AGENTS.md quando há copilot-instructions.md; prompt files só em algumas IDEs).",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C8",
+    "nota": 4,
+    "porque": "A documentação declara negativas explícitas por escrito: 'Custom instructions are not taken into account for inline suggestions as you type in the editor', o aviso de não determinismo, a lista de instruções que 'may not have the intended results', matrizes de suporte por superfície e o buraco do firewall (não cobre MCP nem setup steps). Falha em não documentar bugs conhecidos, como o code review que ignora as instruções.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C9",
+    "nota": 5,
+    "porque": "Mantido por GitHub/Microsoft com changelog de várias entradas por mês (instruções de organização GA em abr/2026, firewall de organização, Agent Plugins 1.0 em ago/2026), repositório oficial `github/awesome-copilot` e adoção publicada: ~4,7 milhões de assinantes pagos em jan/2026, ~90% da Fortune 100, 50 mil+ organizações.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C10",
+    "nota": 4,
+    "porque": "O agente na nuvem roda em ambiente efêmero com firewall de negação por padrão e allowlist, configurável no repositório e agora também na organização; na IDE há aprovação por ação, allowlist de terminal e restrição de ferramentas por agente. Não é 5 porque a documentação admite que o firewall só cobre processos iniciados pela ferramenta Bash — não vale para servidores MCP nem para os setup steps — e não há medição publicada de eficácia.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C11",
+    "nota": 4,
+    "porque": "É o mais forte do mercado: os arquivos chegam a N pessoas pelo `git clone` sem passo de instalação, instruções de organização (GA abr/2026) valem para todos os repositórios, políticas de empresa cascateiam empresa→organização→repositório, e Agent Plugins 1.0 dá pacote versionado instalável de um marketplace (`copilot plugin install`). Não é 5 porque as instruções de organização só valem em GitHub.com — não alcançam VS Code nem JetBrains, onde a equipe trabalha — e a própria documentação de governança em escala não oferece mecanismo para replicar arquivos de instrução em N repositórios.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C12",
+    "nota": 4,
+    "porque": "Checkpoints de chat no VS Code são automáticos a cada requisição e ligados por padrão (`chat.checkpoints.enabled`): restauram o workspace e a conversa a um ponto anterior, com refazer; editar um pedido anterior reverte aquele e todos os seguintes. Não é 5 por serem só do VS Code e por bugs abertos de restauração incompleta (issue #307617: arquivos de memória do agente não são revertidos; #285271: agente continua editando após restaurar).",
+    "evidencia": "derivado"
+   }
+  ],
+  "forcas": [
+   "Distribuição em equipe sem passo de instalação e com política por cima: os arquivos chegam a todos pelo git, instruções de organização (GA abr/2026) valem para todos os repositórios, políticas de empresa cascateiam, e Agent Plugins 1.0 dá pacote versionado num marketplace.",
+   "Isolamento de execução real e configurável por organização: firewall de negação por padrão com allowlist no agente de nuvem, aprovação por ação e restrição de ferramentas por agente na IDE.",
+   "Documentação que declara limites por escrito, incluindo negativas incômodas (não vale para autocompletar inline, não determinismo, matriz de suporte por superfície, buraco do firewall em MCP e setup steps)."
+  ],
+  "fraquezas": [
+   "Nenhum portão: as instruções são viés e não política — o Copilot não valida a própria saída contra elas, e o code review dele comenta mas não bloqueia merge nem pede mudanças.",
+   "Comportamento inconsistente entre superfícies do próprio produto: instruções de organização não alcançam as IDEs, CLI e VS Code discordam sobre AGENTS.md, e há relato aberto e sem resposta de code review que ignora as instruções por completo.",
+   "Sem orçamento de contexto: nada limita o tamanho dos arquivos, que são anexados a cada requisição — custo de inferência medido em +20% e nenhum mecanismo de poda ou arquivamento quando o projeto cresce."
+  ],
+  "criticas_encontradas": [
+   "Discussion #187926 (aberta, marcada 'Unanswered', sem resposta da GitHub de fev/2026 até jun/2026): o Copilot Code Review ignora tanto `.github/copilot-instructions.md` quanto `.github/instructions/*.instructions.md`. Usuário: 'Reviews always use the default template with no indication that instructions were read' e regras de domínio 'are never enforced'; outro relata instrução simples de formato de PR ignorada 'every time'.",
+   "Estudo controlado independente da ETH Zurich (Gloaguen, Mündler, Müller, Raychev, Vechev, 2026 — arXiv:2602.11988) sobre arquivos de contexto de repositório: não melhoram a taxa de sucesso em geral e aumentam o custo de inferência em mais de 20%; arquivos gerados por LLM reduzem sucesso ~3%; escritos por desenvolvedor melhoram ~4% de forma inconsistente, com queda de >2% no Sonnet 4.5. Vale para múltiplos LLMs e agentes.",
+   "CodeIF-Bench: 'contexto adicional do repositório' degrada ativamente a capacidade do modelo de seguir instruções — mais contexto, menos aderência.",
+   "github/copilot-cli issue #1981: instruções são puladas em silêncio quando `.github` está no .gitignore, sem aviso nos logs nem menção na documentação.",
+   "github/copilot-cli issue #713 ('Custom instructions are not included automatically despite the documentation saying they should be') e #1088 ('Instructions are ignored').",
+   "github/copilot-cli issue #489: `AGENTS.md` é ignorado quando `copilot-instructions.md` existe — a CLI só aplica um, enquanto o VS Code funde os dois no mesmo repositório. Usuário também pede visibilidade de quais arquivos foram realmente usados.",
+   "Discussion #178538: o Copilot Web não aplica integralmente as custom instructions durante a revisão de PR; Chat no VS Code e revisor na web não se comportam igual.",
+   "microsoft/vscode issue #307617: arquivos de memória do agente não são revertidos ao restaurar checkpoint ou editar mensagem anterior — o rollback é incompleto. Issue #285271: o agente continua pensando e editando depois de restaurar um checkpoint. Issue #290217: restaurar não volta para o Plan Mode.",
+   "Limitação de segurança admitida na própria documentação: o firewall do agente 'only applies to processes started by the agent via its Bash tool' e 'does not apply to Model Context Protocol (MCP) servers or processes started in configured Copilot setup steps'.",
+   "Instruções de organização, o principal argumento de política corporativa, são 'currently only supported for Copilot Chat on GitHub.com, Copilot code review on GitHub.com and Copilot cloud agent on GitHub.com' — não alcançam VS Code, JetBrains nem as demais IDEs.",
+   "Crítica de 'context rot' e proliferação de arquivos: projetos acumulam CLAUDE.md, .cursorrules, copilot-instructions.md, AGENTS.md e gemini.md com conteúdo quase igual, divergindo devagar; os arquivos apodrecem como qualquer documentação.",
+   "Análise independente sobre o gate de merge: 'Copilot only leaves comments, never approving or requesting changes, and Copilot itself cannot block merges or issue Request changes' — o bloqueio depende de rulesets do GitHub, não do Copilot.",
+   "Documentação oficial reconhece falha por escrito: 'Due to the non-deterministic nature of AI, Copilot may not always follow your custom instructions in exactly the same way every time', e alerta que instruções de estilo, de nível de detalhe e de consulta a recursos externos 'may not have the intended results'."
+  ],
+  "fontes": [
+   "https://docs.github.com/en/copilot/concepts/response-customization",
+   "https://docs.github.com/copilot/customizing-copilot/adding-custom-instructions-for-github-copilot",
+   "https://code.visualstudio.com/docs/copilot/customization/custom-instructions",
+   "https://code.visualstudio.com/docs/agent-customization/custom-agents",
+   "https://code.visualstudio.com/docs/copilot/chat/chat-checkpoints",
+   "https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/customize-the-agent-firewall",
+   "https://docs.github.com/en/copilot/reference/copilot-allowlist-reference",
+   "https://docs.github.com/en/copilot/tutorials/roll-out-at-scale/govern-at-scale/maintain-codebase-standards",
+   "https://docs.github.com/en/copilot/concepts/policies",
+   "https://docs.github.com/en/copilot/concepts/agents/code-review",
+   "https://github.blog/changelog/2026-04-02-copilot-organization-custom-instructions-are-generally-available/",
+   "https://github.blog/changelog/2026-04-03-organization-firewall-settings-for-copilot-cloud-agent/",
+   "https://github.blog/changelog/2026-08-12-agent-plugins-1-0-in-vs-code-copilot-cli-and-the-copilot-app/",
+   "https://github.blog/changelog/2025-07-23-github-copilot-coding-agent-now-supports-instructions-md-custom-instructions/",
+   "https://github.com/github/awesome-copilot",
+   "https://github.com/orgs/community/discussions/187926",
+   "https://github.com/orgs/community/discussions/178538",
+   "https://github.com/github/copilot-cli/issues/489",
+   "https://github.com/github/copilot-cli/issues/1981",
+   "https://github.com/github/copilot-cli/issues/713",
+   "https://github.com/github/copilot-cli/issues/1088",
+   "https://github.com/microsoft/vscode/issues/307617",
+   "https://github.com/microsoft/vscode/issues/285271",
+   "https://arxiv.org/abs/2602.11988",
+   "https://www.sri.inf.ethz.ch/publications/gloaguen2026agentsmd",
+   "https://news.ycombinator.com/item?id=49476140",
+   "https://medium.com/kairi-ai/githubs-2025-copilot-review-can-t-satisfy-the-merge-gate-f1de0e535788",
+   "https://code.visualstudio.com/blogs/2026/06/17/improving-token-efficiency-in-github-copilot",
+   "https://www.theregister.com/2025/08/12/vs_code_previews_chat_checkpoints/"
+  ],
+  "incertezas": [
+   "Não encontrei nenhum limite documentado de tamanho ou de tokens para os arquivos de instrução — nem na documentação da GitHub nem na do VS Code. 'Não encontrei' não é 'não existe'.",
+   "Não encontrei documentação sobre validação de schema do frontmatter (`applyTo`, `tools`, `model`): não consegui confirmar se um glob inválido ou um nome de ferramenta inexistente falha com erro visível ou é ignorado em silêncio. Isso afeta diretamente C1 e C4 — se houvesse validação ruidosa, C1 poderia subir.",
+   "Não encontrei mecanismo oficial para propagar arquivos de instrução de repositório para N repositórios (algo como template de organização ou herança pelo repositório `.github`); a própria documentação de governança em escala só recomenda escrever à mão em cada repositório. Se esse mecanismo existir e eu não achei, C11 vira 5.",
+   "Não encontrei medição publicada de uso real do mecanismo em si — quantos repositórios têm `copilot-instructions.md`, quantos plugins são instalados. Os números de adoção que achei são do Copilot como produto, não da camada de instruções. É isso que segura C11 e C5 abaixo de 5.",
+   "Não confirmei se os chat checkpoints existem fora do VS Code (JetBrains, Visual Studio, CLI). Se forem só do VS Code, C12 está corretamente em 4; se forem universais, ainda assim os bugs abertos de restauração incompleta impediriam o 5.",
+   "Fonte de terceiros afirma haver 'optional merge gating with rulesets' capaz de bloquear PR com achados não resolvidos do Copilot; não consegui confirmar isso na documentação oficial, que diz o contrário (Copilot só comenta). Mantive C3 em 2 pela fonte oficial, mas se o gating existir de fato, C3 sobe para 4.",
+   "O estudo da ETH Zurich avalia arquivos de contexto de repositório em geral (AGENTS.md e equivalentes), não especificamente a implementação do Copilot com `applyTo`. É a evidência mais próxima que existe, mas não é um teste do produto Copilot."
+  ]
+ },
+ {
+  "nome": "OpenAI Codex CLI",
+  "o_que_e": "É o programa de linha de comando da OpenAI que coloca um assistente de IA dentro do terminal para ler, escrever e rodar código no seu próprio computador. Ele lê um arquivo de instruções do projeto chamado AGENTS.md, pede sua aprovação antes de agir (ou não, se você mandar), e roda os comandos dentro de uma \"caixa de areia\" do sistema operacional que limita o que ele pode tocar fora da pasta do projeto. O código é aberto (Apache-2.0) e funciona no macOS, Linux e Windows, mas a proteção é mais forte no macOS e no Linux.",
+  "categoria": "Agente de codificação em terminal (CLI), de fornecedor, com sandbox de sistema operacional",
+  "notas": [
+   {
+    "criterio": "C1",
+    "nota": 4,
+    "porque": "Orçamento cobrado por máquina: project_doc_max_bytes corta o AGENTS.md em 32 KiB combinados, e há compactação automática de contexto; mas a poda é cega (trunca em silêncio) e a compactação perde regras no meio da tarefa.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C2",
+    "nota": 2,
+    "porque": "Memories (preview) grava markdown legível em ~/.codex/memories/, mas guarda preferências e convenções geradas, não decisões com alternativas rejeitadas; a própria doc manda pôr o que importa no AGENTS.md, escrito à mão.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C3",
+    "nota": 4,
+    "porque": "Hooks PreToolUse e PermissionRequest NEGAM a chamada de ferramenta (exit 2 ou permissionDecision deny), e requirements.toml impõe limites que o usuário não pode contornar; sem medição publicada de uso, e a doc avisa que o modelo pode driblar escrevendo scripts.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C4",
+    "nota": 4,
+    "porque": "Subagents em GA, definidos em arquivos TOML com escopo de ferramentas próprio, mais skills, profiles e três modos de sandbox/aprovação aplicados pela máquina em cada sessão.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C5",
+    "nota": 3,
+    "porque": "Existe telemetria publicada (52,7% dos comentários viram mudança de código, >100 mil PRs/dia, curvas de precisão-recall), mas ela mede o agente de code review da OpenAI, não o CLI como processo, é auto-relatada e sem grupo de controle.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C6",
+    "nota": 4,
+    "porque": "Instalação de uma linha (script, npm, brew), código aberto e grátis, incluso nos planos ChatGPT e capaz de rodar modelos locais; o peso vem do setup de sandbox no Windows e da curva de config.toml/hooks.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C7",
+    "nota": 4,
+    "porque": "Apache-2.0 com provedores de modelo plugáveis (ollama, LM Studio, qualquer endpoint compatível) e AGENTS.md/SKILL.md em padrões abertos que outras ferramentas leem; mas hooks, subagents e config.toml são formatos só do Codex e o caminho bem suportado é conta OpenAI.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C8",
+    "nota": 4,
+    "porque": "A doc declara por escrito onde falha: hooks \"não são fronteira de enforcement completa\", o proxy não filtra web search/MCP/browser, rebinding de DNS é best-effort, modo full access pode causar perda de dados, e memórias não existem no EEE/UK/Suíça.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C9",
+    "nota": 5,
+    "porque": "Mantido pela OpenAI com cadência altíssima (700+ releases), ~400 contribuidores, ~114 mil estrelas, e uso real publicado: 4 milhões de desenvolvedores semanais em abril/2026 e ~66 milhões de downloads npm em 30 dias.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C10",
+    "nota": 4,
+    "porque": "Sandbox de SO de verdade e deny-by-default: Seatbelt/sandbox-exec no macOS, bubblewrap+Landlock+seccomp no Linux, token restrito no Windows, com .git/ e .codex/ forçados a somente-leitura e DYLD_/LD_ limpos; teto em 4 porque o processo principal e os servidores MCP ficam fora do sandbox, o Windows cai para modo fraco, e não há medição publicada de eficácia.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C11",
+    "nota": 4,
+    "porque": "requirements.toml imposto por admin (política de aprovação, modo de sandbox, allowlist de MCP) que o usuário não pode burlar, distribuído pela página de Policies do workspace ou MDM, mais plugins como unidade versionada e .codex/ versionado no repositório; a camada gerenciada exige plano Business/Enterprise.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C12",
+    "nota": 2,
+    "porque": "O /undo e os ghost commits foram implementados e depois removidos (PR #8424); Esc-Esc rebobina só a conversa, não os arquivos; sobra git manual e o modo worktree, que isola por checkout inteiro e não por passo — issues abertas e muito votadas pedindo a volta.",
+    "evidencia": "derivado"
+   }
+  ],
+  "forcas": [
+   "Isolamento de sistema operacional real e inspecionável: Seatbelt no macOS e bubblewrap+Landlock+seccomp no Linux, deny-by-default, rede bloqueada por padrão em workspace-write, .git/ e .codex/ automaticamente somente-leitura para impedir escalada via git hooks, e comandos `codex debug seatbelt` / `codex debug landlock` que mostram o que está sendo aplicado.",
+   "Portão duplo cobrado por máquina: hooks PreToolUse/PermissionRequest podem negar a execução de Bash, apply_patch e ferramentas MCP, e requirements.toml deixa o admin travar política de aprovação, modo de sandbox e allowlist de MCP sem que o desenvolvedor consiga contornar.",
+   "Código aberto (Apache-2.0), provedores de modelo plugáveis (ollama, LM Studio, endpoint próprio) e artefatos de processo em padrões abertos (AGENTS.md, SKILL.md) que outras ferramentas leem, sobre uma base com manutenção e adoção enormes."
+  ],
+  "fraquezas": [
+   "Desfazer é o buraco: o /undo existiu e foi retirado, Esc-Esc rebobina a conversa mas deixa os arquivos alterados, e há relatos de arquivos não versionados sobrescritos sem recurso — a recuperação é git manual.",
+   "No Windows o isolamento é o mais fraco e o mais quebradiço: exige setup próprio que falha com frequência (vários issues abertos), política corporativa costuma bloquear a instalação, e quando o modo elevated falha ele cai sozinho para unelevated, com isolamento de rede pior.",
+   "Contexto e memória são frágeis: o AGENTS.md é truncado em 32 KiB sem aviso no TUI, a compactação automática perde regras do AGENTS.md no meio da tarefa, e as memórias são por usuário, sem sincronizar entre máquinas e indisponíveis no EEE, Reino Unido e Suíça."
+  ],
+  "criticas_encontradas": [
+   "Issue #16784 (openai/codex), fechada como duplicata de #9203, pedindo a volta do Undo/Redo: o autor argumenta que \"Git is a useful fallback, but it is not a substitute for an in-tool undo model\", citando casos de Codex refatorar 8 arquivos e quebrar testes ou sobrescrever documento não commitado.",
+   "Issue #11626 e discussão #9618 pedem um /rewind que restaure contexto E código; a implementação original (Feature::GhostCommit) foi revertida no PR #8424 dias depois de ser considerada pronta, e o /undo experimental foi removido por causar problemas.",
+   "Issue #5082: clicar em \"Undo\" nas mudanças de arquivo fazia stage das alterações no git — comportamento que o próprio título classifica como algo que \"absolutamente não deveria\" acontecer.",
+   "Issue #25792: a compactação de contexto esquece regras do AGENTS.md e o progresso da tarefa regride de 97% para 42% porque o agente perde os requisitos que estava seguindo.",
+   "Issue #7138: o AGENTS.md é silenciosamente truncado, sem aviso, log ou indicação no TUI.",
+   "Falhas recorrentes do sandbox no Windows: issues #29418 e #29089 (codex-windows-sandbox-setup.exe falha com \"The specified module could not be found\"), #26737 (setup falha em workspace limpo), #17135 (recurso Windows Sandbox exigido mas bloqueado por política corporativa), #29622 e #38898.",
+   "Hacker News (item 44833209): \"I find the Codex CLI to be the worst of the CLI tools I've used\", com queixas de falta de plan mode, impossibilidade de enfileirar mensagem enquanto o modelo trabalha, aprovação de comando não granular por comando, e bugs de autenticação abertos por semanas.",
+   "Hacker News (item 45650188): usuário considera o Codex CLI bom, mas \"missing tons of features\" frente a alternativas — só migraria com paridade de recursos.",
+   "Redução silenciosa da janela de contexto: em julho/2026 o contexto padrão do GPT-5.6 no Codex caiu de ~372k para 272k tokens (~27%), descoberta por uma mudança de configuração no GitHub e não por anúncio; a comunidade OpenAI abriu tópico ligando a queda a piora na qualidade do código.",
+   "A própria documentação oficial de hooks alerta: \"Treat tool hooks as a useful guardrail, not a complete enforcement boundary\" — o modelo pode contornar políticas de PreToolUse escrevendo e executando scripts.",
+   "Análise independente de sandbox (agent-safehouse): o processo principal do Codex roda FORA do sandbox, servidores MCP são iniciados como processos filhos irrestritos (risco de cadeia de suprimentos), o sandbox do Windows é opcional, e credenciais em ~/.codex/ ficam acessíveis a qualquer processo do mesmo usuário.",
+   "Documentação oficial de segurança: o proxy de rede \"does not filter web search, app or connector tool calls, MCP server connections, browser or Computer Use activity, Codex cloud tasks\", e a proteção contra DNS rebinding é assumidamente parcial."
+  ],
+  "fontes": [
+   "https://developers.openai.com/codex/agent-approvals-security (redireciona para https://learn.chatgpt.com/docs/agent-approvals-security)",
+   "https://learn.chatgpt.com/docs/hooks",
+   "https://learn.chatgpt.com/docs/config-file/config-advanced",
+   "https://learn.chatgpt.com/docs/windows/windows-sandbox",
+   "https://raw.githubusercontent.com/openai/codex/main/README.md",
+   "https://agent-safehouse.dev/docs/agent-investigations/codex",
+   "https://deepwiki.com/openai/codex/2.4-sandbox-and-approval-policies",
+   "https://github.com/openai/codex/issues/16784",
+   "https://github.com/openai/codex/issues/25792",
+   "https://github.com/openai/codex/issues/7138",
+   "https://github.com/openai/codex/issues/5082",
+   "https://github.com/openai/codex/discussions/9618",
+   "https://github.com/openai/codex/issues/29418",
+   "https://github.com/openai/codex/issues/17135",
+   "https://news.ycombinator.com/item?id=44833209",
+   "https://news.ycombinator.com/item?id=45650188",
+   "https://alignment.openai.com/scaling-code-verification/",
+   "https://developers.openai.com/codex/guides/agents-md",
+   "https://codex.danielvaughan.com/2026/04/18/codex-built-in-memory-system-deep-dive/",
+   "https://www.digitalapplied.com/blog/openai-codex-4m-weekly-developers-growth-data",
+   "https://community.openai.com/t/substantial-decrease-in-token-context-limit-causing-decrease-in-code-quality/1388563"
+  ],
+  "incertezas": [
+   "Não li o código-fonte Rust do sandbox no repositório; a descrição do mecanismo vem da documentação oficial, do DeepWiki e de uma análise independente de terceiros.",
+   "Não confirmei se o /undo ou um /rewind que restaure arquivos voltou em versões posteriores às fontes lidas (as referências mais recentes que achei são de meados de 2026); a cadência de releases é altíssima e isso pode ter mudado.",
+   "Os números de adoção (4 milhões de desenvolvedores semanais, ~114 mil estrelas, ~66 milhões de downloads npm) vêm de anúncios do fornecedor e de blogs agregadores; não verifiquei diretamente no GitHub nem no npm.",
+   "Não encontrei nenhum estudo controlado, benchmark independente ou telemetria sobre o DESFECHO de usar o Codex CLI como processo (defeito, tempo, qualidade). A telemetria que existe mede o agente de code review da OpenAI, não o CLI.",
+   "Não encontrei se o requirements.toml consegue impor hooks obrigatórios (além de política de aprovação, modo de sandbox e allowlist de MCP), nem se há relatório publicado de quantas organizações usam essa camada gerenciada.",
+   "Não encontrei medição pública sobre com que frequência o sandbox efetivamente barra uma ação perigosa em uso real — o mecanismo é verificável, a eficácia medida não."
+  ]
+ },
+ {
+  "nome": "Devin (Cognition) — Knowledge, Playbooks e o sandbox em nuvem",
+  "o_que_e": "Devin é um \"programador de aluguel\" que roda na nuvem: você abre uma tarefa por Slack, IDE ou navegador e ele ganha uma máquina virtual Linux só dele, onde clona o repositório, escreve código, roda os testes e abre um pull request sozinho. Para não errar sempre do mesmo jeito, ele tem duas gavetas de instruções que a equipe escreve: o Knowledge (dicas e convenções que ele lembra quando o assunto aparece) e os Playbooks (roteiros passo a passo para tarefas que se repetem, com critério de sucesso). É um produto fechado e pago por consumo — você não instala num arquivo do seu projeto, você aluga o serviço da empresa Cognition.",
+  "categoria": "Agente autônomo de engenharia em nuvem — plataforma SaaS proprietária, com VM por sessão, CLI/Desktop, integração Slack/IDE/GitHub e camada de processo (Knowledge, Playbooks, Plugins)",
+  "notas": [
+   {
+    "criterio": "C1",
+    "nota": 3,
+    "porque": "Há indexação real em escala (DeepWiki + Devin Search, 1,4 milhão de repositórios indexados) e Knowledge com escopo por repositório, mas a recuperação é semântica por 'trigger description' e a doc diz que ele 'busca Knowledge quando relevante, não tudo de uma vez' — sem orçamento de contexto publicado nem arquivamento/poda de itens mortos; o único teto cobrado por máquina é de gasto (limite de ACU derruba a sessão), não de contexto.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C2",
+    "nota": 2,
+    "porque": "Knowledge é durável e a ferramenta até sugere atualizações (Knowledge Suggestions), mas registra convenção e dica, não decisão com alternativa rejeitada; mora no painel da Cognition e não encontrei exportação documentada — só as regras de plugin (AGENTS.md, rules/) ficam legíveis em git fora da ferramenta.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C3",
+    "nota": 3,
+    "porque": "Existem bloqueios reais (regras deny negam a chamada de ferramenta, teto de ACU para a sessão), mas o caminho de portão de processo — os lifecycle hooks de plugin — é declarado na própria doc como 'best effort and fail open... don't rely on them for crucial guardrails yet', e nada verifica mecanicamente se o Playbook foi seguido; Devin Review é opinativo e quem barra o merge é a branch protection do GitHub, não o Devin.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C4",
+    "nota": 4,
+    "porque": "MultiDevin instancia 1 Devin gerente e até 10 trabalhadores, cada um em sua própria máquina, e o gerente mescla os resultados; plugins carregam subagentes próprios (agents/<nome>.md, invocados como plugin:nome). Não é só prosa — são processos separados —, mas MultiDevin é só Enterprise e os subagentes são só locais (CLI/Desktop).",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C5",
+    "nota": 4,
+    "porque": "Caso raro no mercado: existe medição pública de desfecho e ela é independente — a Answer.AI relatou 3 sucessos, 3 inconclusivos e 14 falhas em 20 tarefas reais, e um estudo empírico (arXiv 2602.08915) mediu 2.252 PRs do Devin em 32 semanas com 61,6% de aceitação (4º entre 5 agentes; 45,6% em correção de bug). A telemetria do fornecedor (67% de PRs mesclados vs 34% no ano anterior) não tem metodologia divulgada. Nada isola o efeito de Knowledge/Playbooks.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C6",
+    "nota": 2,
+    "porque": "Não há caminho gratuito para repositório privado: entrada de US$ 20/mês mais ACU por consumo (~US$ 2,25 cada, ~1 ACU por 15 min de trabalho), e o relato independente de um mês de uso mostra tarefas grandes custando ~20 ACUs (~US$ 40) com 2 de 3 falhando — 'nothing for your $40'. Some-se o setup de ambiente, snapshots e escrita de Knowledge antes de funcionar bem.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C7",
+    "nota": 1,
+    "porque": "Prende ao fornecedor por construção: a VM, o roteamento de modelo, o Knowledge e os Playbooks vivem no produto da Cognition, e não encontrei exportação nem formato aberto para levá-los a outra ferramenta; o único pedaço portátil é a convenção AGENTS.md/rules dentro dos plugins.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C8",
+    "nota": 3,
+    "porque": "Há limites escritos e específicos — hooks que 'falham abrindo' e não servem de guardrail, ausência de emulador iOS, regra de bolso de 'três horas ou menos' por tarefa, subagentes só locais —, mas não há página dedicada de limitações: a doc 'When to use Devin' afirma que ele dá conta da maioria das tarefas de engenharia e não lista o que não usar.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C9",
+    "nota": 4,
+    "porque": "Cognition é empresa financiada com cadência de release semanal a quinzenal (notas de versão datadas até 2 de setembro de 2026), adoção declarada em milhares de empresas e presença mensurada por terceiros (2.252 PRs observados no estudo do arXiv). É fechado, então não há comunidade que contribua, e a reputação pública ficou marcada pela polêmica da demo inicial.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C10",
+    "nota": 4,
+    "porque": "É o ponto mais forte: cada sessão na nuvem roda em VM Linux isolada, sem root na máquina do cliente; a CLI tem sandbox de SO e sistema de permissões com precedência (deny checado primeiro e bloqueia na hora, depois ask, depois allow), configurável em .devin/config.json, com allowlist de organização que sobrepõe a local; SOC 2 Tipo II desde setembro de 2024 e opção de VPC dedicada. Não achei medição publicada da eficácia do isolamento, por isso não é 5.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C11",
+    "nota": 4,
+    "porque": "Manifesto gerenciado de plugins distribuído a todas as sessões e usuários de CLI da conta, com categorias required/optional/forbidden e hierarquia declarada — enterprise > org > repo > usuário, onde 'a lower level can never re-permit what a higher level forbids'; some-se Knowledge de organização com promoção, mapeamento de grupos de IdP e teto de ACU por membro. Distribuição cobrada por máquina, sem medição pública de uso.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C12",
+    "nota": 4,
+    "porque": "Checkpoint de verdade: dá para percorrer a linha do tempo da sessão e restaurar um ponto anterior, revertendo arquivos E memória do agente, além de Machine Snapshots como estado-base reutilizável e um PR por sessão. Mecanismo do produto, não git manual — mas sem medição publicada de uso.",
+    "evidencia": "derivado"
+   }
+  ],
+  "forcas": [
+   "Isolamento de verdade: VM Linux dedicada por sessão, sandbox de SO na CLI e regras de permissão deny/ask/allow com precedência que bloqueiam a chamada antes de executar — mecanismo, não recomendação",
+   "Governança de equipe cobrada por máquina: manifesto de plugins com required/optional/forbidden e hierarquia enterprise > org > repo > usuário, mais tetos de ACU por organização, por membro e por sessão que param o agente ao estourar",
+   "Desfazer por passo: restauração de checkpoint reverte arquivos e memória do agente pela linha do tempo da sessão, coisa que a maioria das alternativas deixa para o git manual"
+  ],
+  "fraquezas": [
+   "Aprisionamento total ao fornecedor: Knowledge e Playbooks moram no painel da Cognition, sem exportação documentada, e o processo não sai de lá para outra IDE ou modelo",
+   "Custo imprevisível por sessão: ACU sobe com tarefa mal definida (o agente explora, volta atrás e refaz testes queimando crédito) e você paga igual quando o resultado é descartado",
+   "O portão de processo é fraco justamente onde importa: os lifecycle hooks são declarados 'best effort and fail open', e nada verifica mecanicamente se o Playbook foi cumprido"
+  ],
+  "criticas_encontradas": [
+   "Answer.AI (janeiro de 2025), avaliação independente de um mês com 20 tarefas reais: 14 falhas, 3 inconclusivas e 3 sucessos. A conclusão mais dura não é o número, é a imprevisibilidade — a equipe não conseguiu discernir nenhum padrão para prever quais tarefas dariam certo.",
+   "Ainda na Answer.AI: pedido de deploy de múltiplos apps no Railway, que a plataforma não suporta, fez o Devin passar um dia alucinando funcionalidades inexistentes em vez de reconhecer o impedimento e escalar. Também gerou 'spaghetti code' em integrações e criou scripts Python desnecessários em vez de editar notebooks em repositórios nbdev.",
+   "Veredito dos mesmos autores contra a autonomia: as tarefas que ele consegue fazer são tão pequenas e bem definidas que sairia mais rápido fazer à mão, do jeito de quem pede — recomendaram ferramentas dirigidas pelo desenvolvedor, tipo Cursor.",
+   "Estudo empírico independente (arXiv 2602.08915), 2.252 PRs do Devin ao longo de 32 semanas: 61,6% de aceitação, quarto lugar entre cinco agentes, atrás de OpenAI Codex (77,9%), Cursor (74,5%), Claude Code (71,9%) e GitHub Copilot (68,0%); em correção de bug cai para 45,6%.",
+   "Relato independente de um mês de uso (Frontier AI): ótimo em tarefas de ~1 hora bem delimitadas (1–5 ACUs, US$ 2–10), mas em tarefa full-stack ficou preso em laço de erro de linter, ignorou orientação e entregou código inaproveitável; tarefas grandes custaram ~20 ACUs (~US$ 40) com 2 de 3 falhando. Os autores levantaram a dúvida de sustentação: já tinham esgotado a maioria das tarefas em que esperavam sucesso.",
+   "Reputação: a demo inicial de resolução de tarefas do Upwork foi contestada publicamente (Internet of Bugs) por não corresponder ao que o cliente pedia e por 'consertar' erros que humano nenhum cometeria; discussões no Hacker News acusam a empresa de ter queimado credibilidade com o exagero, e o The Register publicou reportagem sobre os testes desfavoráveis.",
+   "Modelo de cobrança instável: o preço saiu de US$ 500/mês, virou pague-conforme-o-uso com ACU a US$ 2,25 após a reação negativa, e passou por nova reestruturação em 2026 — sinal de que a própria empresa não achou o ponto de equilíbrio, e um risco de orçamento para quem padroniza o processo em cima disso.",
+   "Autoconfissão na doc: os hooks de plugin, o caminho natural para impor guardrails de processo, são descritos como 'best effort and fail open' com o aviso explícito de não confiar neles para guardrails cruciais."
+  ],
+  "fontes": [
+   "https://docs.devin.ai/product-guides/knowledge",
+   "https://docs.devin.ai/essential-guidelines/instructing-devin-effectively",
+   "https://docs.devin.ai/essential-guidelines/when-to-use-devin",
+   "https://docs.devin.ai/cli/extensibility/plugins/overview",
+   "https://docs.devin.ai/cli/reference/permissions",
+   "https://docs.devin.ai/cli/sandbox",
+   "https://docs.devin.ai/product-guides/plugin-ecosystem",
+   "https://docs.devin.ai/enterprise/security-access/security/enterprise-security",
+   "https://docs.devin.ai/release-notes",
+   "https://docs.devin.ai/onboard-devin/repo-setup",
+   "https://docs.devin.ai/admin/billing/enterprise",
+   "https://docs.devin.ai/work-with-devin/devin-review",
+   "https://docs.devin.ai/work-with-devin/deepwiki",
+   "https://www.answer.ai/posts/2025-01-08-devin.html",
+   "https://arxiv.org/html/2602.08915v1",
+   "https://cognition.com/blog/devin-annual-performance-review-2025",
+   "https://cognition.com/blog/deepwiki",
+   "https://frontierai.substack.com/p/one-month-of-using-devin",
+   "https://news.ycombinator.com/item?id=41607251",
+   "https://www.theregister.com/2025/01/23/ai_developer_devin_poor_reviews",
+   "https://en.wikipedia.org/wiki/Devin_AI"
+  ],
+  "incertezas": [
+   "Preço atual exato: a página oficial cognition.com/pricing devolveu 404 nas minhas tentativas, então os valores (US$ 20 de entrada, ACU a ~US$ 2,25, plano de equipe reestruturado em abril de 2026 com entrada mais baixa) vêm de fontes secundárias e podem estar desatualizados ou errados. Não confirmei na fonte primária.",
+   "Não encontrei página oficial dedicada a checkpoints — a descrição de que a restauração reverte arquivos E memória veio de trecho citado da doc via busca, não de leitura direta da página; a URL que tentei deu 404.",
+   "Não encontrei nenhuma exportação documentada de Knowledge ou Playbooks para fora do produto. Isso é 'não encontrei', não 'não existe' — pode haver via API v2 que não inspecionei.",
+   "Não encontrei formato de armazenamento nem versionamento em git dos Playbooks (a página docs.devin.ai/product-guides/playbooks deu 404); o que confirmei versionado em git são os Blueprints de ambiente e o repositório de plugins.",
+   "Não verifiquei se as regras de permissão deny/ask/allow da CLI valem também para as sessões na nuvem, ou se são exclusivas do agente local — a doc de plugins avisa que subagentes são só locais, o que sugere assimetria entre os dois ambientes.",
+   "Não achei medição pública que isole o efeito de Knowledge ou Playbooks no desfecho. Todos os números de eficácia que encontrei medem o agente inteiro, não a camada de processo — por isso C5 não é 5.",
+   "O estudo do arXiv (2602.08915) eu li apenas na versão HTML resumida por ferramenta; não conferi a metodologia completa nem se os PRs atribuídos ao Devin foram identificados de forma confiável."
+  ]
+ },
+ {
+  "categoria": "Agente de codificação em terminal (CLI), de fornecedor — Google; código aberto Apache 2.0",
+  "nome": "Gemini CLI",
+  "o_que_e": "É um programa do Google que você roda no terminal e que conversa com os modelos Gemini para ler, escrever e executar coisas no seu projeto — como um programador assistente que enxerga suas pastas e roda comandos. Você deixa instruções permanentes num arquivo de texto chamado GEMINI.md (um geral seu, um do projeto, um de cada subpasta), cria atalhos próprios em arquivos TOML, e pode prender o agente dentro de um contêiner Docker ou de um sandbox do macOS para ele não estragar nada fora dali. O código é aberto, mas atenção: desde 18 de junho de 2026 o Google desligou o atendimento para contas individuais (grátis, AI Pro e AI Ultra) e empurrou essas pessoas para um sucessor fechado chamado Antigravity CLI; hoje o Gemini CLI só continua funcionando com chave de API paga ou licença corporativa.",
+  "notas": [
+   {
+    "criterio": "C1",
+    "nota": 4,
+    "porque": "Compressão automática dispara por contagem de tokens ao cruzar limiar configurável (padrão 0,7 do limite do modelo), resumindo em snapshot XML e preservando o GEMINI.md verbatim; .geminiignore exclui caminhos e subagentes isolam contexto — tudo por máquina. Mas não há teto cobrado sobre o próprio arquivo de instruções nem poda/arquivamento do que se acumula.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C2",
+    "nota": 2,
+    "porque": "GEMINI.md é durável, markdown legível fora da ferramenta e hierárquico, e a compressão o preserva intacto — mas registrar decisão é convenção livre: não achei nenhum esquema, campo ou validação para decisão + alternativas rejeitadas, e nada verifica se foi escrito.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C3",
+    "nota": 4,
+    "porque": "Hook BeforeTool com {\"decision\":\"deny\"} ou saída 2 cancela a chamada da ferramenta, e o Policy Engine com allowlist em coreTools nega o que não foi liberado; Trusted Folders impede carregar .gemini/settings.json de pasta não confiável. Ressalva: os docs oficiais não declaram o comportamento em falha do hook.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C4",
+    "nota": 4,
+    "porque": "Subagentes em .gemini/agents/*.md com frontmatter YAML: o array tools é allowlist por agente (\"only has access to the tools you explicitly grant it\"), contexto isolado, max_turns padrão 30, timeout de 10 min e proibição de aninhar — escopo cobrado por máquina, não por convenção.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C5",
+    "nota": 1,
+    "porque": "Não encontrei nenhum estudo, telemetria ou benchmark sobre DESFECHO do processo. Os números públicos (SWE-bench Verified 78% do Gemini 3 Flash, Terminal-Bench 2.1 90,8% do 3.8 Flash) medem MODELOS, não o processo da ferramenta; não há score publicado do Gemini CLI como produto.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C6",
+    "nota": 3,
+    "porque": "Instalar é trivial (npm/npx) e o GEMINI.md é opcional, sem cerimônia por sessão; mas o gratuito para indivíduos acabou em 18/06/2026 (exige chave paga ou licença corporativa) e relatos independentes apontam consumo alto — 432K tokens contra 261K do concorrente na mesma tarefa, e um caso de 600 milhões de tokens.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C7",
+    "nota": 2,
+    "porque": "Só fala com modelos Gemini, sem troca de fornecedor; o próprio Google cortou o acesso individual e migrou para um sucessor fechado em Go (Antigravity CLI, comando agy), que é a demonstração mais crua do risco de aprisionamento. Sobe de 1 porque o GEMINI.md é markdown puro, há MCP, e a licença Apache 2.0 permite bifurcar.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C8",
+    "nota": 3,
+    "porque": "Há limites por escrito e específicos — \"Sandboxing reduces but doesn't eliminate all risks\", \"Hooks run as your user. They can do anything you can do\", \"Project hooks are untrusted by default\", e a doc de quota esclarece que um prompt não equivale a uma requisição. Mas não achei seção consolidada de não-objetivos, e o comportamento do hook em falha fica sem documentação.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C9",
+    "nota": 3,
+    "porque": "Mantido pelo Google mais comunidade, 106,8k estrelas, 14,5k forks, releases estáveis semanais às terças e commits ativos até 04/09/2026. Rebaixado porque o mantenedor anunciou transição para o Antigravity CLI, limitou o repositório a atualizações de manutenção para clientes corporativos, e a reação da comunidade foi de revolta com o trabalho voluntário.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C10",
+    "nota": 4,
+    "porque": "Isolamento de SO real e variado: Docker/Podman (imagem ghcr.io/google/gemini-cli), gVisor/runsc com kernel em espaço de usuário, LXC/LXD, e Seatbelt sandbox-exec no macOS com seis perfis nomeados (permissive-open é o padrão), somados a allowlist de ferramentas e aprovação por ação. Não é 5 porque precisa ser ligado (-s, GEMINI_SANDBOX ou settings.json) e não há medição publicada de uso.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C11",
+    "nota": 4,
+    "porque": "settings.json em três níveis com o de sistema administrado por TI e protegido por permissões de arquivo (endurecido em commit de 04/09/2026 com checagem de dono), guia corporativo, e extensões que empacotam comandos, MCP, hooks e subagentes via gemini extensions install <url>. Fraqueza real: a instalação copia a extensão e exige gemini extensions update manual, então as versões derivam entre pessoas.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C12",
+    "nota": 4,
+    "porque": "Checkpointing cria commit num repositório git sombra em ~/.gemini/history/<project_hash> antes de cada ferramenta que altera arquivo, e /restore devolve arquivos, conversa e re-propõe a chamada — granularidade por passo, criada por máquina. Ressalva: vem desligado por padrão e cobre ferramentas de arquivo, não efeitos colaterais de shell.",
+    "evidencia": "derivado"
+   }
+  ],
+  "forcas": [
+   "Isolamento de execução de verdade e em camadas: contêiner (Docker/Podman), gVisor com kernel em espaço de usuário, LXC/LXD e Seatbelt nativo do macOS com seis perfis — somados a allowlist de ferramentas, Trusted Folders e concessão de ferramentas por subagente.",
+   "Desfazer com precisão de passo: repositório git sombra fora do git do projeto, snapshot antes de cada ferramenta que escreve, e /restore que recupera arquivos e conversa juntos e ainda re-propõe a chamada.",
+   "Aberto sob Apache 2.0 com cadência publicada (estável semanal, noturno diário), 106,8k estrelas e commits ativos — quem quiser pode bifurcar e continuar sem pedir licença ao Google."
+  ],
+  "fraquezas": [
+   "Aprisionamento consumado: só fala com modelos Gemini e, em 18/06/2026, o Google desligou contas individuais (grátis, AI Pro, AI Ultra) e migrou todo mundo para um sucessor FECHADO em Go, deixando o repositório aberto em modo de manutenção para clientes corporativos.",
+   "Memória de decisão é só um markdown livre — nenhum esquema, campo ou validação para decisão e alternativas rejeitadas; nada distingue GEMINI.md bem cuidado de GEMINI.md abandonado.",
+   "Zero prova de desfecho: os benchmarks divulgados medem os modelos Gemini, não o processo da ferramenta, e não há score publicado do Gemini CLI como produto."
+  ],
+  "criticas_encontradas": [
+   "Destruição de arquivos do usuário (jul/2025): um mkdir falhou, o agente tratou como sucesso e executou move * para pasta inexistente — no Windows isso renomeia cada arquivo sobre o anterior, apagando tudo menos o último. O agente respondeu \"I have failed you completely and catastrophically\". Registrado na AI Incident Database como incidente 1178 e na issue #4586 do repositório.",
+   "Revolta com a transição para o Antigravity CLI (discussão #27274): comentários como \"basically, we're making the project closed source. That's it.\" e \"I hate google so much\"; contribuidores questionaram se o trabalho voluntário deles agora só beneficia clientes corporativos, já que o sucessor foi reescrito em Go, incompatível com o código doado.",
+   "Windows praticamente inutilizável: issue #10197 \"Gemini CLI is practically unusable on Windows\"; issue #18366 relata congelamento da UI ao colar mais de ~500 caracteres por processamento caractere a caractere com complexidade O(n²), e travamento do terminal ao renderizar mensagens acima de 10.000 caracteres; issue #19248 trava no laço \"Initializing...\" após aceitar Trust folder.",
+   "Ineficiência de tokens em comparações independentes: 432K tokens de entrada contra 261K do Claude Code na mesma tarefa; relatos de consumo cerca de 4x maior, e um usuário citando 600 milhões de tokens queimando 70 libras em créditos, sem controle de gasto no cliente.",
+   "Análise independente sobre hooks de agente do Gemini argumenta que a semântica de segurança é invertida — \"a pre_tool_execution hook is a policy nudge with an audit trail, not a boundary\" — porque script com saída não-zero, JSON malformado, resposta HTTP não-2xx e timeout resolvem todos para allow: \"a timeout is an approval\".",
+   "Qualidade e obediência inferiores nas comparações: saída mais verbosa e supercomentada, recusas excessivamente cautelosas de executar código básico, travamento em laços de implementação em tarefas complexas, e limitação de taxa frequente que força rebaixamento de modelo.",
+   "Confusão de quota admitida na discussão #4122: o limite diário é agregado entre todos os modelos (trocar de Pro para Flash não aumenta nada) e um único prompt pode disparar dezenas de requisições — usuários relatam esgotar o limite com cerca de 100 pedidos simples ou 50 complexos."
+  ],
+  "fontes": [
+   "https://github.com/google-gemini/gemini-cli — README, licença Apache 2.0, cadência de releases, 106,8k estrelas/14,5k forks",
+   "https://github.com/google-gemini/gemini-cli/commits/main — commits ativos até 04/09/2026, incluindo endurecimento de permissões em config de sistema (#29115)",
+   "https://github.com/google-gemini/gemini-cli/discussions/27274 — anúncio oficial da transição para Antigravity CLI e reação da comunidade",
+   "https://github.com/google-gemini/gemini-cli/discussions/28017 — Gemini CLI parou de atender contas individuais",
+   "https://github.com/google-gemini/gemini-cli/discussions/4122 — esclarecimento sobre limite diário agregado e prompt != requisição",
+   "https://github.com/google-gemini/gemini-cli/issues/4586 — perda de arquivos em operação de move no Windows",
+   "https://github.com/google-gemini/gemini-cli/issues/10197 — Gemini CLI praticamente inutilizável no Windows",
+   "https://github.com/google-gemini/gemini-cli/issues/18366 — congelamento de UI ao colar e ao renderizar mensagens grandes",
+   "https://github.com/google-gemini/gemini-cli/issues/19248 — travamento no Initializing após Trust folder",
+   "https://incidentdatabase.ai/cite/1178/ — AI Incident Database, incidente de exclusão de arquivos",
+   "https://geminicli.com/docs/cli/sandbox/ — Docker/Podman, gVisor, LXC/LXD, perfis Seatbelt e a ressalva de risco residual",
+   "https://geminicli.com/docs/cli/checkpointing/ — repositório git sombra, /restore, desligado por padrão",
+   "https://geminicli.com/docs/core/subagents/ — subagentes em markdown com allowlist de ferramentas e contexto isolado",
+   "https://geminicli.com/docs/cli/gemini-md/ — hierarquia global, projeto e subpasta do GEMINI.md",
+   "https://geminicli.com/docs/cli/trusted-folders/ — bloqueio de carregamento de config de pasta não confiável",
+   "https://geminicli.com/docs/cli/enterprise/ — settings.json de sistema, workspace e usuário",
+   "https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/reference.md — decision deny e código de saída 2 para bloquear ferramenta",
+   "https://geminicli.com/docs/hooks/best-practices/ — avisos de que hooks rodam como o usuário e hooks de projeto são não confiáveis por padrão",
+   "https://geminicli.com/docs/extensions/ — gemini extensions install/update e empacotamento para equipes",
+   "https://geminicli.com/docs/resources/quota-and-pricing/ — quotas e preços",
+   "https://umesh-malik.com/blog/gemini-agent-hooks-fail-open — análise independente sobre hooks que falham abrindo",
+   "https://github.com/google-gemini/gemini-cli/issues/12068 — discussão sobre o limiar de compressão em 0,7",
+   "https://realpython.com/gemini-cli-vs-claude-code/ — comparação independente",
+   "https://www.datacamp.com/blog/gemini-cli-vs-claude-code — comparação independente",
+   "https://developers.slashdot.org/story/25/07/26/0642239/ — repercussão do incidente de perda de dados"
+  ],
+  "incertezas": [
+   "A análise de 'fail open' (umesh-malik) usa vocabulário dos agent hooks da API Gemini (pre_tool_execution, code_execution, agent_config, max_total_tokens), não o do CLI (BeforeTool, decision deny, saída 2). Não confirmei que o CLI herda o mesmo comportamento em falha — a documentação oficial do CLI simplesmente não declara o que acontece quando o hook trava, estoura o timeout ou devolve JSON inválido. Isso é uma lacuna documental verificada, não um defeito comprovado do CLI.",
+   "Não consegui verificar em fonte primária o número de instalações ou usuários ativos reais — estrelas e forks não são adoção, e não achei telemetria publicada.",
+   "Não encontrei declaração oficial sobre por quanto tempo o repositório continuará recebendo manutenção para clientes corporativos, nem se há data de fim anunciada.",
+   "Não encontrei uma seção explícita de não-objetivos ('o que esta ferramenta não faz') na documentação; a nota de C8 se apoia em avisos espalhados por páginas de sandbox, hooks e quota.",
+   "Não verifiquei se a compressão automática em 0,7 continua sendo o padrão na versão atual — o valor vem de issue e de documentação, e a issue #12068 questiona justamente esse número.",
+   "Os números da camada gratuita (60 req/min, 1000 req/dia, 250/dia com chave não paga) são anteriores ao corte de 18/06/2026 e hoje só valem historicamente para contas individuais."
+  ]
+ },
+ {
+  "nome": "Ecossistema ADR (adr-tools, MADR, Log4brains)",
+  "o_que_e": "É o hábito de anotar cada decisão importante de arquitetura num arquivo de texto curto guardado junto com o código, criado por Michael Nygard em 2011. Cada arquivo diz o contexto, a decisão tomada e as consequências; quando a equipe muda de ideia, o arquivo antigo não é apagado, e sim marcado como \"substituído\". Em volta disso nasceram ferramentas: o adr-tools (scripts de terminal que numeram e marcam a substituição), o template MADR (que acrescenta campos para as opções consideradas e os prós e contras de cada uma) e o Log4brains (que transforma os arquivos num site pesquisável).",
+  "categoria": "Padrão de documentação de decisão arquitetural (formato de texto + ferramentas de apoio), não é framework de agente",
+  "notas": [
+   {
+    "criterio": "C1 Contexto e escala",
+    "nota": 1,
+    "porque": "Não existe nenhum controle sobre o que é lido nem orçamento de tamanho cobrado. O que há é a recomendação do Nygard de manter cada registro em 'uma ou duas páginas' — convenção humana, sem medição. Pior: o registro cresce de forma monotônica por desenho (numeração sequencial nunca reusada, superseded permanece no repositório), então a pasta só engorda. Na prática a escala quase nunca é testada: o estudo MSR (IEEE Access, 2023, +900 repositórios) achou média de 6,03 ADRs por repositório e menos de 2% passando de 25 registros. Log4brains acrescenta busca e timeline, mas para o leitor humano — não seleciona o que um agente carrega.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C2 Memória de decisão",
+    "nota": 3,
+    "porque": "Avaliado com rigor máximo, e o resultado é honesto: na REPRESENTAÇÃO da lista-morta o ADR empata ou ganha de quase todo mundo, por um custo próximo de zero. O MADR 4.0.0 tem campo formal 'Considered Options' MAIS uma seção 'Pros and Cons of the Options' com prós e contras por opção, MAIS 'Decision Drivers' e 'Confirmation'. A supersessão preserva o registro antigo em vez de apagá-lo, e o adr-tools automatiza a marcação com 'adr new -s N'. Tudo em markdown puro no git: durável e legível sem ferramenta nenhuma, por qualquer pessoa, IDE ou modelo, daqui a dez anos. Quem alega a lista-morta como tese central precisa admitir que o MADR já a resolve. O que trava a nota em 3 e não em 4 é só uma coisa, mas decisiva pela régua: NADA cobra por máquina. Não há esquema validado, não há commit bloqueado, não há CI que falhe por decisão não registrada — o markdownlint sugerido pelo MADR valida formatação de markdown, não a presença dos campos. E a evidência empírica mostra o preço disso: ~50% dos repositórios com ADR contêm apenas 1 a 5 registros, sinal de abandono após o piloto. Agrava: o template dominante na prática é o do Nygard, que NÃO tem campo de opções rejeitadas — a lista-morta formal existe no MADR, que é minoria no uso real.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C3 Portão automático",
+    "nota": 1,
+    "porque": "O núcleo do ecossistema não bloqueia nada. Nygard não propõe portão; adr-tools não traz hook nem verificação de CI; Log4brains usa CI apenas para publicar o site estático. O MADR documenta um workflow de GitHub Actions, mas rodando markdownlint — falha por formatação de markdown, não por decisão ausente ou registro contraditório. Existem terceiros fora do ecossistema nomeado (ADR Guard, adrkit) que prometem falhar o build, mas são periféricos e imaturos: o adrkit tem 12 estrelas, está pré-1.0, e a própria documentação diz que sua Action nunca falha o job.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C4 Papéis especializados",
+    "nota": 1,
+    "porque": "O MADR tem no frontmatter os campos decision-makers, consulted e informed — papéis HUMANOS declarados como texto livre, sem escopo executável e sem limite algum. Não existe conceito de agente, modo, sessão ou permissão diferenciada. O ecossistema foi desenhado antes de existir agente de IA e nunca foi adaptado para isso no núcleo.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C5 Prova de eficácia",
+    "nota": 1,
+    "porque": "Não encontrei nenhuma medição pública de DESFECHO (defeito, retrabalho, tempo, qualidade) atribuída ao uso de ADR. O que existe: o ThoughtWorks Technology Radar colocou 'Lightweight Architecture Decision Records' no anel Adopt (nov/2017 a mai/2018, sem atualização desde então) — recomendação de consultoria, que a régua exclui explicitamente; e o estudo MSR revisado por pares (Buchgeher et al., IEEE Access 2023) que mede ADOÇÃO, não desfecho — e cujo resultado é desfavorável à prática, não a favor: metade dos repositórios para entre 1 e 5 registros. Contagem de estrelas (5.700 no adr-tools, 2.500 no MADR) não é prova de eficácia de processo.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C6 Custo de adoção",
+    "nota": 5,
+    "porque": "É o ponto mais forte, e nada no mercado é mais barato para começar: copiar um arquivo markdown para docs/decisions. Zero runtime, zero servidor, zero dependência de modelo ou IDE, licença MIT/CC0. O adr-tools é shell puro (grep, sed, awk), instalável por brew/apt; nem ele é obrigatório — o padrão funciona sem ferramenta alguma. O peso por sessão não é zero: escrever bem os prós e contras de três opções custa tempo humano real e recorrente, e a evidência mostra que metade dos times para de pagar esse custo. Mas isso é falta de cobrança (já penalizado em C2 e C3), não custo de entrada; penalizar duas vezes seria distorção.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C7 Portabilidade",
+    "nota": 5,
+    "porque": "O artefato é markdown puro versionado no git — o formato mais portátil que existe. Legível em qualquer editor, qualquer IDE, qualquer modelo, e legível sem ferramenta nenhuma se todas morrerem. Não há aprisionamento em fornecedor, plataforma ou modelo de IA; licenças MIT e CC0-1.0. As ferramentas têm fricção própria (adr-tools exige shell POSIX, o que atrapalha no Windows; Log4brains exige Node), mas nenhuma delas é necessária para ler ou escrever o registro.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C8 Honestidade sobre limites",
+    "nota": 1,
+    "porque": "Nenhum dos três projetos declara por escrito o que NÃO faz. O post original do Nygard não contém nenhuma afirmação sobre o que ADRs não conseguem resolver e sequer trata explicitamente das opções rejeitadas. O README do MADR não traz seção de limitações — 'decisions that matter' delimita o que é, não o que não faz. Mais revelador: a página oficial de ferramentas do adr.github.io lista dezenas de projetos e transfere ao leitor a tarefa de descobrir sozinho o status e a maturidade de cada um — o oposto de declarar limites. A literatura crítica é abundante, mas escrita por terceiros.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C9 Manutenção e comunidade",
+    "nota": 3,
+    "porque": "O padrão está vivo e é vocabulário comum da indústria há 15 anos, com organização própria (adr.github.io) que mantém até uma seção de 'tooling interessante, porém sem manutenção'. As ferramentas de referência, porém, estão paradas: o adr-tools — o mais citado, 5.700 estrelas, 633 forks — teve o último commit no master em 30/03/2020, com 32 issues e 37 PRs abertos; o Log4brains (1.600 estrelas) está sem release no npm há mais de um ano, com o Snyk sinalizando projeto possivelmente descontinuado ou de baixa atenção. Só o MADR está ativo (4.0.0 em setembro de 2024) — e é justamente o que não tem ferramenta própria. Sem ferramenta viva, tudo recai sobre disciplina humana.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C10 Segurança e isolamento",
+    "nota": 0,
+    "porque": "Não existe. ADR é formato de documento: não executa nada, não governa execução, não tem permissão, sandbox ou allowlist. O adr-tools é shell script rodando sem restrição no terminal do usuário. O ecossistema nunca teve essa ambição.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C11 Distribuição em equipe",
+    "nota": 3,
+    "porque": "O CONTEÚDO se distribui de forma exemplar: os registros vivem no repositório, versionados no git junto com o código — é exatamente o que o ThoughtWorks Radar destaca como acerto (source control, não wiki), garantindo que todos vejam o mesmo estado por clone, sem deriva. Mas isso é o git fazendo o trabalho, não o ecossistema: nada valida nem bloqueia. A FERRAMENTA e o TEMPLATE derivam livremente — adr-tools se instala por pessoa via brew/apt sem versão travada, e migrar do MADR 3 para o 4 é cópia manual de arquivo. Sem mecanismo que garanta a mesma versão em N pessoas.",
+    "evidencia": "derivado"
+   },
+   {
+    "criterio": "C12 Desfazer e recuperar",
+    "nota": 1,
+    "porque": "Não há o que desfazer, porque o ADR não executa trabalho. O que existe é a supersessão: registrar uma decisão nova que substitui a anterior, preservando a antiga marcada como superseded — o adr-tools automatiza a marcação com a opção -s. Isso é reversão SEMÂNTICA de uma decisão, não reversão passo a passo do que um agente fez no código. Os arquivos são revertíveis por commit, mas de novo é o git, não o ecossistema. Nada aqui reverte ação de agente.",
+    "evidencia": "derivado"
+   }
+  ],
+  "forcas": [
+   "Custo de entrada e portabilidade imbatíveis: um arquivo markdown no git, sem runtime, sem servidor, sem dependência de modelo ou IDE, licença MIT/CC0 — legível daqui a dez anos mesmo que todas as ferramentas morram.",
+   "O MADR 4.0.0 formaliza a lista de opções rejeitadas melhor que quase todo o mercado: campo 'Considered Options' mais 'Pros and Cons of the Options' com prós e contras por opção, e a supersessão preserva o registro antigo em vez de apagá-lo. Quem vende a 'lista-morta' como tese central precisa reconhecer que o ADR já entrega isso por praticamente nada.",
+   "Padrão de fato com 15 anos e vocabulário compartilhado na indústria — ThoughtWorks Radar no anel Adopt, 5.700 estrelas no adr-tools, 2.500 no MADR, organização própria em adr.github.io — e totalmente independente de qualquer fornecedor de IA."
+  ],
+  "fraquezas": [
+   "Zero cobrança por máquina: não bloqueia commit, não falha CI por decisão ausente, não valida esquema, não nega nada. Tudo depende de disciplina humana — e a evidência empírica mostra o resultado: cerca de 50% dos repositórios com ADR param entre 1 e 5 registros, média de 6,03 por repositório, menos de 2% passando de 25.",
+   "Ferramentas de referência paradas ou dormentes: o adr-tools, o mais citado do ecossistema, está sem commit no master desde 30/03/2020 (quase seis anos, com 32 issues e 37 PRs abertos); o Log4brains está sem release no npm há mais de um ano. Só o MADR segue ativo — e é justamente o que não traz ferramenta própria.",
+   "Nenhum desenho para agente de IA: não controla o que é lido nem tem orçamento de contexto, não tem papéis com escopo executável, não isola execução, não reverte passo. E o template dominante no uso real é o do Nygard, que sequer tem campo para opções rejeitadas — a lista-morta formal está no MADR, que é minoria."
+  ],
+  "criticas_encontradas": [
+   "Estudo MSR revisado por pares (Buchgeher et al., 'Using Architecture Decision Records in Open Source Projects', IEEE Access 2023, +900 repositórios do GitHub): a adoção de ADRs ainda é baixa, e cerca de 50% dos repositórios que têm ADRs contêm apenas de 1 a 5 registros — padrão de piloto que não vira prática. Média de 6,03 ADRs por repositório e menos de 2% com histórico acima de 25 registros.",
+   "O mesmo estudo constata que o template mais usado na prática é o do Nygard, e não o MADR — ou seja, a maioria dos ADRs reais NÃO tem campo formal de opções consideradas e rejeitadas.",
+   "InfoQ, 'Has Your Architectural Decision Record Lost Its Purpose?': deriva de escopo é o problema central — times transformam o ADR em 'Any Decision Record' e, se toda decisão é arquitetural, nenhuma é. Aponta ainda uso como documento de proteção pessoal (diluir responsabilidade entre aprovadores) e mistura de decisão de produto com decisão de arquitetura, o que torna a arquitetura real mais difícil de enxergar.",
+   "talesfrom.dev, 'The ambiguity of architecture decision records': decisões produzidas em isolamento de quem executa; registros que envelhecem e passam a ignorar os fatos ocorridos depois; e a observação de que ninguém os lê. O autor argumenta que o valor está no processo colaborativo de desenho, não no documento.",
+   "Argumento de decadência estrutural (Java Code Geeks, mai/2026 — página bloqueou o acesso direto, li apenas o resumo do buscador): o custo de manter o ADR é pago justamente por quem tem menos contexto para saber se o registro ainda é verdade; a distância entre 'decidimos X' e 'X é como o sistema funciona hoje' seria uma garantia estrutural de decadência embutida no próprio formato, não uma falha cultural.",
+   "A página oficial de ferramentas (adr.github.io/adr-tooling) mantém uma seção explícita de 'tooling interessante, porém sem manutenção' e pede que o próprio leitor verifique status e maturidade de cada item — sinal de fragmentação e de que o ecossistema não se responsabiliza pela saúde das ferramentas que lista.",
+   "Snyk sobre o Log4brains: sem versões novas no npm nos últimos 12 meses, podendo ser considerado projeto descontinuado ou de baixa atenção dos mantenedores.",
+   "Tentativas de portão automático são de terceiros e imaturas: o adrkit se anuncia como 'enforceable in CI' mas tem 12 estrelas, está pré-1.0, e a documentação diz que sua GitHub Action nunca falha o job."
+  ],
+  "fontes": [
+   "https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions",
+   "https://github.com/npryce/adr-tools",
+   "https://github.com/npryce/adr-tools/commits/master",
+   "https://adr.github.io/madr/",
+   "https://github.com/adr/madr",
+   "https://raw.githubusercontent.com/adr/madr/main/template/adr-template.md",
+   "https://github.com/thomvaill/log4brains",
+   "https://adr.github.io/adr-tooling/",
+   "https://www.thoughtworks.com/radar/techniques/lightweight-architecture-decision-records",
+   "https://research.jku.at/en/publications/using-architecture-decision-records-in-open-source-projects-an-ms/",
+   "https://ieeexplore.ieee.org/document/10155430/",
+   "https://www.infoq.com/articles/architectural-decision-record-purpose/",
+   "https://talesfrom.dev/blog/the-ambiguity-of-architecture-decision-records",
+   "https://snyk.io/advisor/npm-package/@log4brains/cli",
+   "https://github.com/mbeacom/adrkit"
+  ],
+  "incertezas": [
+   "Não consegui ler o estudo 'Architecture Decision Records in Practice: An Action Research Study' (ECSA 2024) — o PDF baixou como binário e a máquina não tem renderizador. É a fonte com maior chance de conter medição de desfecho; se alguém conseguir lê-la, C5 pode subir. Não afirmo que não existe medição: afirmo que não encontrei.",
+   "Não encontrei a data exata do último commit do Log4brains no GitHub — o sinal de dormência vem da ausência de release no npm há mais de 12 meses (Snyk) e de atividade residual do mantenedor em out/dez de 2024.",
+   "Não verifiquei casos NOMEADOS de adoção em empresas grandes com dados próprios; a evidência de adoção que encontrei é agregada (estudo MSR, contagem de estrelas) ou de consultoria (ThoughtWorks Radar).",
+   "Não encontrei declaração escrita de limites em nenhum dos três projetos do núcleo — mas não varri toda a documentação do Log4brains, então C8 é 'não encontrei', não 'não existe'.",
+   "A página do Java Code Geeks retornou 403; a crítica de decadência estrutural está registrada a partir do resumo do buscador, não da leitura integral do artigo.",
+   "O ThoughtWorks Radar não atualiza esse blip desde maio de 2018 — não encontrei reavaliação posterior, então não sei se a recomendação seria mantida hoje."
+  ]
+ }
+]

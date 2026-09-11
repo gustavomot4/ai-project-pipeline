@@ -63,6 +63,10 @@ EXCLUIR_ARQUIVOS = {
     # ela desligaria justamente os avisos que ali sao corretos. Config de projeto nasce no
     # projeto — e o `check.py` reconhece a ausencia dela como "vale o padrao do kit".
     ".kit-config.json",
+    # Os congelados do KIT apontam para `docs/` do kit, que não vai para projeto nenhum.
+    # Copiado, o registro nasceria acusando dois arquivos ausentes e o projeto novo
+    # reprovaria no primeiro commit. Congelado de projeto nasce no projeto.
+    ".kit-congelados",
     "scripts/new_project.py",
     # Testa os scripts DO KIT (inclusive o `new_project.py`, que nem vai junto). Copiado
     # para um projeto, ele reprova no primeiro `task.py test` — e suíte que nasce vermelha
@@ -578,7 +582,7 @@ def main() -> int:
     print()
     print("Próximos passos:")
     print(f"  1. cd {destino} && git init")
-    print(f"  2. python {pasta_docs}/scripts/install_hook.py")
+    print(f"  2. python {pasta_docs}/scripts/task.py travas   (as quatro; os hooks de git são por clone)")
     print(f"  3. Abra a pasta como vault do Obsidian ({pasta_docs}/c_technical_docs/a_obsidian_guide.md)")
     print(f"  4. Instale as skills de {pasta_docs}/b_process/skills/ na sua ferramenta de IA")
     # `->` em ASCII, não a seta U+2192: ela não existe em cp1252, e com a saída

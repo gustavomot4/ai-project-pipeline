@@ -52,5 +52,7 @@ status: atual
 - **Linha de exemplo do template encostada no teto e' armadilha para quem declarar o teto:** a linha de QA semeada estava a UM caractere do limite de 120, e acrescentar uma coluna a estourou — reprovando o projeto por uma linha que o proprio kit escreveu. Margem em template nao e' folga, e' requisito.
 - **Quando matar a copia e' impossivel, o guarda e' a unica opcao — e ele guarda COMPORTAMENTO, nao texto:** a regra e' "mate a copia, um le do outro", mas o hook nao consegue importar vizinho (`runpy.run_path` nao poe a pasta do script no caminho de busca, e hook que quebra ao carregar bloqueia toda chamada de ferramenta). Ai o teste exige que as copias CONCORDEM onde devem, e as deixa divergir onde precisam.
 
+- **Hash de congelamento se calcula sobre um ponto fixo da normalização do git — nem sobre o disco de quem congelou, nem sobre o blob:** toda sequência de CR antes de LF vira LF (binário vai cru), e aí o disco do Windows, o blob e o clone do CI dão o mesmo número. Por quê: o critério do TAP GO recebeu o hash da cópia CRLF, o `eol=lf` normalizou o commit, e a instrução de verificação escrita dentro do próprio documento passou a acusar de adulteração um arquivo intacto. Nunca rodou, então ninguém viu — verificação que ninguém executa é portão que emudece antes de nascer.
+
 ## Deste projeto
 - <data> — <lição em 1 linha>

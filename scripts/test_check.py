@@ -846,6 +846,16 @@ class TestTodaChecagemTemIsca(unittest.TestCase):
                                 "| D-60 | 2026-08-27 | ADOTADO | decisao curta | "
                                 + "evidencia " * 30 + "|\n")),
                  "Linha de registro acima de"),
+            # A 19 ANEXA ao registro uma linha com hash que não é o do arquivo: é o estado exato
+            # de "alguém editou o congelado depois de congelar", sem rodar o congelar.py dentro
+            # da isca. Anexar, e não sobrescrever: sobrescrever acordaria também a checagem de
+            # append-only, e a isca reprovaria por dois motivos. O arquivo mora em d_history/.
+            19: (lambda r: (
+                    (r / "d_history/criterio_isca.md").write_text(
+                        "---\ntags: [criterio]\n---\n# Criterio\nlimiar: 2 de 3\n", encoding="utf-8"),
+                    self.anexar(r, ".kit-congelados",
+                                "CONGELADO | " + "0" * 64 + " | 2026-09-10 | d_history/criterio_isca.md\n")),
+                 "congelado editado"),
         }
 
     def test_toda_falha_numerada_tem_isca(self):
@@ -2304,6 +2314,589 @@ class TestPadraoDaEquipe(unittest.TestCase):
             self.assertNotIn("instale a trava", depois,
                              "continua mandando instalar o que ja esta instalado")
             self.assertIn("cai sozinha", depois, "o novo texto nao explica a saida real")
+
+
+class TestCongelamento(unittest.TestCase):
+    """Congelar é o que torna um experimento honesto: o critério escrito antes do dado.
+
+    O primeiro congelado do kit foi feito à mão, e a mão errou de um jeito que só aparece
+    num Windows: o hash saiu da cópia CRLF, o `eol=lf` normalizou o commit, e a instrução de
+    verificação escrita dentro do documento passou a acusar de adulteração um arquivo intacto.
+    Cada teste aqui guarda uma das formas de um congelamento mentir — acusando quem não
+    mexeu, ou calando para quem mexeu."""
+
+    CRITERIO = "d_history/criterio.md"
+
+    def preparar(self, tmp):
+        repo = montar_kit(Path(tmp) / "repo")
+        (repo / self.CRITERIO).write_text(
+            "---\ntags: [criterio]\n---\n# Criterio\nlimiar: 2 de 3\n", encoding="utf-8")
+        return repo
+
+    def congelar(self, repo, *args):
+        return rodar_script("congelar.py", *args, cwd=repo)
+
+    def sujar(self, repo):
+        with (repo / self.CRITERIO).open("a", encoding="utf-8") as f:
+            f.write("x")
+
+    def test_congelar_e_depois_conferir_passa(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            r = self.congelar(repo, str(repo / self.CRITERIO))
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn(self.CRITERIO, (repo / ".kit-congelados").read_text(encoding="utf-8"))
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 0, c.stdout)
+
+    def test_um_byte_mudado_reprova(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            self.congelar(repo, str(repo / self.CRITERIO))
+            self.sujar(repo)
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 1, c.stdout)
+            self.assertIn("congelado editado", c.stdout)
+
+    def test_fim_de_linha_nao_e_edicao(self):
+        """O defeito que motivou o script, nas DUAS direções: congelado em LF e aberto num
+        Windows (CRLF); e congelado numa cópia CRLF e conferido no checkout LF do CI — que é
+        exatamente o que aconteceu com o critério do TAP GO. O mesmo conteúdo tem dois sha256
+        crus, e congelamento que acusa quem não mexeu ensina a desligá-lo.
+
+        A primeira versão deste teste escrevia o arquivo com `write_text`, que no Windows já
+        grava CRLF — e a conversão para CRLF virava CR-CR-LF. O teste acusava o script pelo
+        defeito que o script existe para evitar, cometido dentro do próprio teste. Por isso
+        os dois estados são montados em BYTES."""
+        lf = b"---\ntags: [criterio]\n---\n# Criterio\nlimiar: 2 de 3\n"
+        crlf = lf.replace(b"\n", b"\r\n")
+        for congelado, conferido, nome in ((lf, crlf, "LF->CRLF"), (crlf, lf, "CRLF->LF")):
+            with self.subTest(direcao=nome), area_temporaria() as tmp:
+                repo = self.preparar(tmp)
+                alvo = repo / self.CRITERIO
+                alvo.write_bytes(congelado)
+                r = self.congelar(repo, str(alvo))
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                alvo.write_bytes(conferido)
+                c = rodar_check(repo)
+                self.assertEqual(c.returncode, 0, c.stdout)
+
+    def test_congelado_apagado_reprova(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            self.congelar(repo, str(repo / self.CRITERIO))
+            (repo / self.CRITERIO).unlink()
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 1, c.stdout)
+            self.assertIn("congelado ausente", c.stdout)
+
+    def test_liberar_exige_motivo_e_deixa_rastro(self):
+        """Desistir é permitido; desistir calado, não — o contrato do SEM-PORTAO."""
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            self.congelar(repo, str(repo / self.CRITERIO))
+            antes = (repo / ".kit-congelados").read_text(encoding="utf-8")
+            r = self.congelar(repo, "--liberar", str(repo / self.CRITERIO))
+            self.assertNotEqual(r.returncode, 0, "liberou sem motivo")
+            self.assertEqual((repo / ".kit-congelados").read_text(encoding="utf-8"), antes)
+            r = self.congelar(repo, "--liberar", str(repo / self.CRITERIO), "limiar mal definido")
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            registro = (repo / ".kit-congelados").read_text(encoding="utf-8")
+            self.assertIn("LIBERADO", registro)
+            self.assertIn("limiar mal definido", registro)
+            self.sujar(repo)
+            self.assertEqual(rodar_check(repo).returncode, 0, "o liberado continuou cobrado")
+
+    def test_recongelar_com_outro_conteudo_recusa(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            self.congelar(repo, str(repo / self.CRITERIO))
+            self.sujar(repo)
+            r = self.congelar(repo, str(repo / self.CRITERIO))
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("documento novo", r.stdout)
+
+    def test_registro_ilegivel_reprova(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            (repo / ".kit-congelados").write_text("congelei o criterio ontem\n", encoding="utf-8")
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 1, c.stdout)
+            self.assertIn(".kit-congelados", c.stdout)
+
+    def test_fora_do_vault_recusa(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            fora = Path(tmp) / "fora.md"
+            fora.write_text("x\n", encoding="utf-8")
+            r = self.congelar(repo, str(fora))
+            self.assertEqual(r.returncode, 2, r.stdout)
+            registro = repo / ".kit-congelados"
+            self.assertFalse(registro.exists() and "fora.md" in registro.read_text(encoding="utf-8"))
+
+    def test_evidencia_relata_os_congelados(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            self.congelar(repo, str(repo / self.CRITERIO))
+            self.sujar(repo)
+            r = rodar_script("evidencia.py", str(repo), "--json")
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            dados = json.loads(r.stdout)["instalacao"]["congelados"]
+            self.assertIn(self.CRITERIO, dados["editados"])
+
+    def test_projeto_novo_nao_herda_os_congelados_do_kit(self):
+        """Os congelados do kit apontam para `docs/`, que não vai para projeto. Herdados,
+        fariam o projeto novo nascer reprovando por dois arquivos 'ausentes'."""
+        with area_temporaria() as tmp:
+            kit = montar_kit(Path(tmp) / "kit")
+            destino = Path(tmp) / "novo"
+            r = rodar_script("new_project.py", str(destino), "--nome", "App Teste", cwd=kit)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertFalse((vault_de(destino) / ".kit-congelados").exists(),
+                             "os congelados do kit vazaram para o projeto")
+            self.assertTrue((vault_de(destino) / "scripts/congelar.py").exists(),
+                            "o projeto novo não recebeu o congelar.py")
+
+    def test_os_congelados_do_proprio_kit_estao_intactos(self):
+        """Os congelados reais do kit — o critério do TAP GO e os critérios do benchmarking —
+        conferidos a cada rodada da suíte, em Linux e em Windows."""
+        r = rodar_script("congelar.py")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("integro", r.stdout)
+
+    def test_o_criterio_do_tapgo_e_o_mesmo_de_agosto(self):
+        """A ponte com o hash antigo. O changelog registrou `a9f129bd…`, calculado sobre a
+        cópia CRLF; o registro novo guarda o conteúdo em LF. Se a versão CRLF do arquivo de
+        hoje reproduz o hash de agosto, o conteúdo nunca mudou — e a acusação que a instrução
+        manual faria hoje é falsa."""
+        import hashlib
+        atual = (KIT / "docs/f_criterio_conclusao_tapgo_260827.md").read_bytes().replace(b"\r\n", b"\n")
+        self.assertEqual(hashlib.sha256(atual.replace(b"\n", b"\r\n")).hexdigest(),
+                         "a9f129bd84af97c0f845a7b9c6c96ff0f6b5251386a0edbffb462832fddc8de7")
+
+
+    # ---- achados da revisão adversarial desta versão, antes do primeiro commit ------------
+
+    def anexar_bytes(self, repo, texto):
+        with (repo / ".kit-congelados").open("a", encoding="utf-8", newline="\n") as f:
+            f.write(texto)
+
+    def test_cr_cr_lf_sobrevive_ao_commit_e_ao_clone(self):
+        """CR-CR-LF no disco vira CR-LF no blob: o git tira UM CR por CRLF. Com a normalização
+        antiga, o check local passava e o do CI — que vê o clone — acusava de editado um arquivo
+        que ninguém tocou. Aqui o CI é simulado de verdade: commit e git clone."""
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            alvo = repo / "d_history/crcrlf.md"
+            alvo.write_bytes(b"---\r\r\ntags: [x]\r\r\n---\r\r\n# Criterio\r\r\nlimiar: 2 de 3\r\r\n")
+            self.assertEqual(self.congelar(repo, str(alvo)).returncode, 0)
+            git(repo, "add", "-A")
+            git(repo, *GIT_ID, "commit", "-qm", "congela")
+            clone = Path(tmp) / "clone"
+            git(Path(tmp), "clone", "-q", str(repo), str(clone))
+            c = rodar_check(clone)
+            self.assertEqual(c.returncode, 0, c.stdout)
+
+    def test_task_congelar_usa_a_pasta_de_quem_chama(self):
+        """O task.py rodava o congelar no vault: `task.py congelar README.md`, chamado de
+        e_qa/, congelava o README.md da RAIZ — e o de e_qa/ ficava editável."""
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            self.assertTrue((repo / "e_qa/README.md").exists())
+            r = subprocess.run([sys.executable, str(repo / "scripts/task.py"), "congelar", "README.md"],
+                               cwd=str(repo / "e_qa"), capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", env=AMBIENTE_UTF8, timeout=120)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            registro = (repo / ".kit-congelados").read_text(encoding="utf-8")
+            self.assertIn("| e_qa/README.md", registro)
+            self.assertNotIn("| README.md\n", registro)
+
+    def test_arquivo_que_o_gitignore_esconde_nao_se_congela(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            (repo / "backups").mkdir()
+            (repo / "backups/crit.md").write_bytes(b"x\n")
+            antes = (repo / ".kit-congelados").read_bytes()
+            r = self.congelar(repo, str(repo / "backups/crit.md"))
+            self.assertNotEqual(r.returncode, 0, r.stdout)
+            self.assertIn(".gitignore", r.stdout)
+            self.assertEqual((repo / ".kit-congelados").read_bytes(), antes)
+
+    def test_recongelar_a_mao_sem_liberar_reprova(self):
+        """O remendo que um agente faz ao ler 'hash não bate': recalcula e anexa."""
+        import hashlib
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            self.congelar(repo, str(repo / self.CRITERIO))
+            self.sujar(repo)
+            novo = hashlib.sha256((repo / self.CRITERIO).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+            self.anexar_bytes(repo, f"CONGELADO | {novo} | 2026-09-10 | {self.CRITERIO}\n")
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 1, c.stdout)
+            self.assertIn("recongelado", c.stdout)
+
+    def test_comentar_a_linha_reprova(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            self.congelar(repo, str(repo / self.CRITERIO))
+            self.sujar(repo)
+            reg = repo / ".kit-congelados"
+            linhas = reg.read_text(encoding="utf-8").splitlines()
+            linhas[-1] = "# " + linhas[-1]
+            reg.write_bytes(("\n".join(linhas) + "\n").encode("utf-8"))
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 1, c.stdout)
+            self.assertIn("COMENTADO", c.stdout)
+
+    def test_apagar_o_registro_que_esta_no_git_reprova(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            (repo / ".kit-congelados").unlink()
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 1, c.stdout)
+            self.assertIn("sumiu do disco", c.stdout)
+
+    def test_editar_linha_antiga_do_registro_reprova(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            reg = repo / ".kit-congelados"
+            t = reg.read_bytes().decode("utf-8")
+            t2, n = re.subn(r"\| \d{4}-\d{2}-\d{2} \|", "| 1999-01-01 |", t, count=1)
+            self.assertEqual(n, 1, "o registro do kit não tem linha com data para editar")
+            reg.write_bytes(t2.encode("utf-8"))
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 1, c.stdout)
+            self.assertIn("append-only", c.stdout)
+
+    def test_registro_com_bom_passa(self):
+        """O PowerShell 5.1 grava UTF-8 com BOM. O BOM não é conteúdo."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            reg = repo / ".kit-congelados"
+            reg.write_bytes(b"\xef\xbb\xbf" + reg.read_bytes())
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 0, c.stdout)
+
+    def test_registro_em_cp1252_reprova_com_mensagem_e_sem_traceback(self):
+        """Traceback no meio do portão engole todas as outras FALHAs: fecha, mas mudo."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            reg = repo / ".kit-congelados"
+            linha = "CONGELADO | " + "0" * 64 + " | 2026-09-10 | d_history/critério.md\n"
+            reg.write_bytes(reg.read_bytes() + linha.encode("cp1252"))
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 1, c.stdout + c.stderr)
+            self.assertIn("UTF-8", c.stdout)
+            self.assertNotIn("Traceback", c.stdout + c.stderr)
+
+    def test_motivo_com_quebra_de_linha_nao_quebra_o_registro(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            self.congelar(repo, str(repo / self.CRITERIO))
+            r = self.congelar(repo, "--liberar", str(repo / self.CRITERIO), "linha1\r\nlinha2\u2028fim")
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.sujar(repo)
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 0, c.stdout)
+
+    def test_varios_arquivos_de_uma_vez_e_tudo_ou_nada(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            b = repo / "d_history/b.md"
+            b.write_bytes(b"b\n")
+            r = self.congelar(repo, str(repo / self.CRITERIO), str(b))
+            self.assertEqual(r.returncode, 0, r.stdout)
+            registro = (repo / ".kit-congelados").read_text(encoding="utf-8")
+            self.assertIn(self.CRITERIO, registro)
+            self.assertIn("d_history/b.md", registro)
+            c = repo / "d_history/c.md"
+            c.write_bytes(b"c\n")
+            antes = (repo / ".kit-congelados").read_bytes()
+            r = self.congelar(repo, str(c), str(repo / "d_history/nao_existe.md"))
+            self.assertNotEqual(r.returncode, 0, r.stdout)
+            self.assertEqual((repo / ".kit-congelados").read_bytes(), antes, "congelou metade")
+
+    def test_binario_nao_perde_o_cr(self):
+        """No binário o git não converte nada: um CR a mais é mudança de verdade."""
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            alvo = repo / "d_history/anexo.bin"
+            alvo.write_bytes(b"\x00\x01cabecalho\nresto\n")
+            self.assertEqual(self.congelar(repo, str(alvo)).returncode, 0)
+            alvo.write_bytes(b"\x00\x01cabecalho\r\nresto\n")
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 1, c.stdout)
+            self.assertIn("congelado editado", c.stdout)
+
+    def test_liberado_escrito_a_mao_sem_motivo_reprova(self):
+        """O caminho mais provável de um agente contornar: anexar uma linha a um arquivo de
+        texto. A CLI sempre grava motivo; quem precisa cobrar a linha escrita à mão é o portão."""
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            self.congelar(repo, str(repo / self.CRITERIO))
+            self.anexar_bytes(repo, f"LIBERADO | - | 2026-09-10 | {self.CRITERIO}\n")
+            self.sujar(repo)
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 1, c.stdout)
+            self.assertIn("sem motivo", c.stdout)
+
+    def test_sem_o_congelar_py_o_portao_falha_fechado(self):
+        """Configuração quebrada falha FECHADO: registro sem quem o leia não é 'nada a conferir'."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            (repo / "scripts/congelar.py").unlink()
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 1, c.stdout)
+            self.assertIn("NÃO foram conferidos", c.stdout)
+
+    def test_registro_sem_quebra_no_fim_nao_cola_linhas(self):
+        with area_temporaria() as tmp:
+            repo = self.preparar(tmp)
+            reg = repo / ".kit-congelados"
+            reg.write_bytes(reg.read_bytes().rstrip(b"\r\n"))
+            self.assertEqual(self.congelar(repo, str(repo / self.CRITERIO)).returncode, 0)
+            lista = self.congelar(repo)
+            self.assertEqual(lista.returncode, 0, lista.stdout)
+            self.assertIn(f"integro  {self.CRITERIO}", lista.stdout)
+            self.assertEqual(rodar_check(repo).returncode, 0)
+
+    def test_linha_colada_vira_erro_e_nao_caminho_truncado(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            reg = repo / ".kit-congelados"
+            reg.write_bytes(reg.read_bytes().rstrip(b"\r\n")
+                            + b"CONGELADO | " + b"0" * 64 + b" | 2026-09-10 | d_history/x.md\n")
+            c = rodar_check(repo)
+            self.assertEqual(c.returncode, 1, c.stdout)
+            self.assertIn("campo a mais", c.stdout)
+
+
+class TestKitInstalado(unittest.TestCase):
+    """"O kit tem quatro travas" e "este clone roda quatro travas" são afirmações diferentes.
+
+    O benchmarking de set/2026 creditou ao kit as quatro, e no único projeto real rodava UMA:
+    hook de git não viaja com o clone, e nenhum passo de instalação mandava ligar as outras
+    três. O relatório de evidência não dizia nada — e todo número dele tinha sido produzido
+    com uma trava, não com quatro."""
+
+    def instalacao(self, repo):
+        r = rodar_script("evidencia.py", str(repo), "--json")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return json.loads(r.stdout)["instalacao"]
+
+    def sem_config_de_agente(self, repo):
+        for nome in ("settings.json", "settings.local.json"):
+            cfg = repo / ".claude" / nome
+            if cfg.exists():
+                cfg.unlink()
+
+    def test_clone_novo_relata_o_que_esta_desligado(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.sem_config_de_agente(repo)
+            inst = self.instalacao(repo)
+            self.assertEqual(inst["travas_ligadas"], 0, inst)
+            self.assertEqual(inst["travas_verificaveis"], 4, inst)
+            saida = rodar_script("evidencia.py", str(repo)).stdout
+            self.assertIn("travas ligadas: 0 de 4", saida)
+            self.assertIn("task.py travas", saida)
+
+    def test_todas_liga_as_quatro_e_repetir_nao_duplica(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.sem_config_de_agente(repo)
+            for _ in range(2):
+                r = rodar_script("install_hook.py", "--todas", cwd=repo)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertEqual(self.instalacao(repo)["travas"],
+                             {"pre-commit": True, "commit-msg": True,
+                              "escopo": True, "pulo do portão": True})
+            texto = (repo / ".claude/settings.json").read_text(encoding="utf-8")
+            self.assertEqual(texto.count("escopo_hook.py"), 1, "a trava de escopo duplicou")
+            self.assertEqual(texto.count("portao_hook.py"), 1, "a trava do pulo duplicou")
+
+    def test_escopo_e_portao_na_mesma_chamada_ligam_as_duas(self):
+        """QA-17: o laço devolvia na primeira trava pedida — `--escopo --portao` ligava só o
+        escopo e dizia OK."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.sem_config_de_agente(repo)
+            r = rodar_script("install_hook.py", "--escopo", "--portao", cwd=repo)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            travas = self.instalacao(repo)["travas"]
+            self.assertTrue(travas["escopo"], travas)
+            self.assertTrue(travas["pulo do portão"], "a segunda trava ficou de fora")
+            self.assertFalse(travas["pre-commit"],
+                             "pedir só as travas de agente não pode instalar hook de git")
+
+    def test_sem_git_diz_nao_verificavel_e_nao_desligada(self):
+        """Zero e 'não medido' não dividem a casa (v13.16): sem git, os hooks de commit não
+        foram lidos — dizer 'desligados' seria o relatório inventando um fato."""
+        with area_temporaria() as tmp:
+            repo = Path(tmp) / "repo"
+            shutil.copytree(KIT, repo, ignore=shutil.ignore_patterns(".git", "__pycache__"))
+            inst = self.instalacao(repo)
+            self.assertIsNone(inst["travas"]["pre-commit"], inst)
+            self.assertIsNone(inst["travas"]["commit-msg"], inst)
+            # A cópia leva o .claude/settings.json do kit, com a trava do pulo: sem .git, o
+            # censo lê o .claude do próprio vault, e não o da raiz do disco.
+            self.assertTrue(inst["travas"]["pulo do portão"], inst)
+            self.assertIn("não verificável", rodar_script("evidencia.py", str(repo)).stdout)
+
+    def test_permissao_que_cita_o_script_nao_e_trava(self):
+        """O settings.local.json do projeto real tem permissões citando scripts do kit.
+        Procurar o nome no texto contaria uma PERMISSÃO como trava."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.sem_config_de_agente(repo)
+            (repo / ".claude").mkdir(exist_ok=True)
+            (repo / ".claude/settings.local.json").write_text(
+                json.dumps({"permissions": {"allow": ["Bash(python scripts/portao_hook.py *)",
+                                                      "Bash(python scripts/escopo_hook.py *)"]}}),
+                encoding="utf-8")
+            travas = self.instalacao(repo)["travas"]
+            self.assertFalse(travas["pulo do portão"], travas)
+            self.assertFalse(travas["escopo"], travas)
+
+    def test_hook_de_outra_origem_nao_conta(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            (repo / ".git/hooks/pre-commit").write_text("#!/bin/sh\necho oi\n", encoding="utf-8")
+            self.assertFalse(self.instalacao(repo)["travas"]["pre-commit"])
+
+
+    def test_todas_remover_desliga_as_quatro(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.sem_config_de_agente(repo)
+            rodar_script("install_hook.py", "--todas", cwd=repo)
+            r = rodar_script("install_hook.py", "--todas", "--remover", cwd=repo)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertEqual(self.instalacao(repo)["travas"],
+                             {"pre-commit": False, "commit-msg": False,
+                              "escopo": False, "pulo do portão": False})
+
+    def test_escopo_e_portao_remover_na_mesma_chamada(self):
+        """O QA-17 do lado da remoção: o laço antigo removia só a primeira."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.sem_config_de_agente(repo)
+            rodar_script("install_hook.py", "--todas", cwd=repo)
+            r = rodar_script("install_hook.py", "--escopo", "--portao", "--remover", cwd=repo)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertEqual(self.instalacao(repo)["travas"],
+                             {"pre-commit": True, "commit-msg": True,
+                              "escopo": False, "pulo do portão": False})
+
+    def test_caminho_padrao_nao_liga_travas_de_agente(self):
+        """`task.py hook` continua sendo o que era: os dois ganchos de git, e só."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.sem_config_de_agente(repo)
+            r = rodar_script("install_hook.py", cwd=repo)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertEqual(self.instalacao(repo)["travas"],
+                             {"pre-commit": True, "commit-msg": True,
+                              "escopo": False, "pulo do portão": False})
+
+    def test_todas_com_pre_commit_alheio_nao_anuncia_sucesso(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.sem_config_de_agente(repo)
+            (repo / ".git/hooks/pre-commit").write_text("#!/bin/sh\necho outro\n", encoding="utf-8")
+            r = rodar_script("install_hook.py", "--todas", cwd=repo)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("ATENÇÃO", r.stdout)
+            self.assertNotIn("commite-o e elas vão junto", r.stdout)
+
+
+    # ---- achados da lente de travas da revisão adversarial -------------------------------
+
+    def test_trava_cujo_script_sumiu_nao_conta(self):
+        """O comando gravado falha aberto quando o script não está no caminho: sai 0 calado.
+        Contar a trava pelo nome no settings dava [x] a uma trava que não roda."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.sem_config_de_agente(repo)
+            rodar_script("install_hook.py", "--todas", cwd=repo)
+            (repo / "scripts/portao_hook.py").unlink()
+            inst = self.instalacao(repo)
+            self.assertFalse(inst["travas"]["pulo do portão"], inst)
+            self.assertTrue(inst["travas"]["escopo"], inst)
+            self.assertIn("não existe", rodar_script("evidencia.py", str(repo)).stdout)
+
+    def test_disable_all_hooks_desliga_as_de_agente(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.sem_config_de_agente(repo)
+            rodar_script("install_hook.py", "--todas", cwd=repo)
+            (repo / ".claude/settings.local.json").write_text('{"disableAllHooks": true}', encoding="utf-8")
+            travas = self.instalacao(repo)["travas"]
+            self.assertFalse(travas["escopo"], travas)
+            self.assertFalse(travas["pulo do portão"], travas)
+
+    def test_settings_ilegivel_nao_vira_desligada(self):
+        """Arquivo que existe e não se deixa ler é 'não verificado', não 'desligado'."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.sem_config_de_agente(repo)
+            (repo / ".claude").mkdir(exist_ok=True)
+            (repo / ".claude/settings.json").write_text('{"hooks": ', encoding="utf-8")
+            travas = self.instalacao(repo)["travas"]
+            self.assertIsNone(travas["escopo"], travas)
+            self.assertIn("ilegível", rodar_script("evidencia.py", str(repo)).stdout)
+
+    def test_settings_com_bom_e_lido(self):
+        """O PowerShell 5.1 grava UTF-8 com BOM; o BOM não pode desligar trava nenhuma."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            self.sem_config_de_agente(repo)
+            rodar_script("install_hook.py", "--escopo", cwd=repo)
+            cfg = repo / ".claude/settings.json"
+            cfg.write_bytes(b"\xef\xbb\xbf" + cfg.read_bytes())
+            self.assertTrue(self.instalacao(repo)["travas"]["escopo"])
+
+    def test_portao_desligado_nao_promete_reprovar(self):
+        """'O portão reprova o próximo commit' com o pre-commit desligado é promessa falsa: o
+        commit passa."""
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            with (repo / "docs/f_criterio_conclusao_tapgo_260827.md").open("a", encoding="utf-8") as f:
+                f.write("x")
+            saida = rodar_script("evidencia.py", str(repo)).stdout
+            self.assertNotIn("reprova o próximo commit", saida)
+            self.assertIn("o commit", saida)
+            self.assertIn("passa, e só o CI pega", saida)
+
+    def test_registro_ilegivel_nao_derruba_o_relatorio(self):
+        with area_temporaria() as tmp:
+            repo = montar_kit(Path(tmp) / "repo")
+            reg = repo / ".kit-congelados"
+            reg.unlink()
+            reg.mkdir()
+            r = rodar_script("evidencia.py", str(repo))
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertNotIn("Traceback", r.stderr)
+
+    def test_projeto_com_vault_em_subpasta(self):
+        """Vault em e_doc/0_Context: a dica leva o caminho do vault, e as travas do .claude DO
+        VAULT — onde uma sessão aberta ali as encontra — são ditas, não ignoradas."""
+        with area_temporaria() as tmp:
+            kit = montar_kit(Path(tmp) / "kit")
+            destino = Path(tmp) / "app"
+            r = rodar_script("new_project.py", str(destino), "--nome", "App", cwd=kit)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            git(destino, "init", "-q")
+            docs = vault_de(destino)
+            (docs / ".claude").mkdir(exist_ok=True)
+            (docs / ".claude/settings.json").write_text(json.dumps({"hooks": {"PreToolUse": [
+                {"matcher": "Bash", "hooks": [{"type": "command",
+                                               "command": "python scripts/portao_hook.py"}]}]}}),
+                encoding="utf-8")
+            saida = rodar_script("evidencia.py", str(docs), cwd=docs).stdout
+            prefixo = docs.relative_to(destino).as_posix()
+            self.assertIn(f"python {prefixo}/scripts/task.py travas", saida)
+            self.assertIn("NO VAULT", saida)
 
 
 class TestAsDuasCasasDoVault(unittest.TestCase):

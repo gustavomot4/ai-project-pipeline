@@ -129,6 +129,142 @@ universo = "\n".join(list(texto.values()) + [ler(p) for p in extras])
 
 R = {"projeto": raiz.name, "medido_em": date.today().isoformat()}
 
+# --- o kit instalado NESTE clone
+#
+# O benchmarking de set/2026 creditou ao kit "quatro travas de máquina" — e no único projeto
+# real roda UMA, o pre-commit: sem hook de mensagem, sem trava de escopo, sem trava do pulo.
+# Nada avisava. Hook de git não viaja com o clone, e o `.claude/settings.json` só viaja se
+# alguém o commitou. "O kit tem quatro travas" e "este clone roda quatro travas" são
+# afirmações diferentes — e todo número deste relatório foi produzido pela segunda.
+def _ativo(arq: Path, assinatura: str) -> bool:
+    try:
+        return arq.is_file() and assinatura in arq.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+
+
+def _config_de_agente(pasta: Path):
+    """`(comandos PreToolUse, hooks desligados?, arquivos ilegíveis)` do settings.json e do
+    settings.local.json de `pasta`. Lê o JSON em vez de procurar o nome do script no texto:
+    uma PERMISSÃO que cita `portao_hook.py` não é trava. Lê com utf-8-sig, porque o PowerShell
+    5.1 grava UTF-8 com BOM — e arquivo que existe e não se deixa ler é "não verificado", não
+    "desligado"."""
+    comandos, desligado, ilegiveis = [], False, []
+    for nome in ("settings.json", "settings.local.json"):
+        arq = pasta / nome
+        if not arq.is_file():
+            continue
+        try:
+            dados = json.loads(arq.read_bytes().decode("utf-8-sig"))
+        except (OSError, ValueError):
+            ilegiveis.append(nome)
+            continue
+        if not isinstance(dados, dict):
+            ilegiveis.append(nome)
+            continue
+        if dados.get("disableAllHooks") is True:
+            desligado = True
+        ganchos = dados.get("hooks") or {}
+        grupos = ganchos.get("PreToolUse") if isinstance(ganchos, dict) else None
+        for grupo in grupos if isinstance(grupos, list) else []:
+            for h in (grupo.get("hooks") or []) if isinstance(grupo, dict) else []:
+                if isinstance(h, dict) and isinstance(h.get("command"), str):
+                    comandos.append(h["command"])
+    return comandos, desligado, ilegiveis
+
+
+def _trava_de_agente(script: str, comandos: list, desligado: bool, ilegiveis: list, base: Path):
+    """`(ligada, nota)`. O comando que o install_hook grava FALHA ABERTO quando o script não
+    está no caminho — sai 0, calado, de propósito. Então o nome do script aparecer no settings
+    não basta: o arquivo que o comando executaria tem de existir. A revisão adversarial desta
+    versão mostrou o censo dando [x] a uma trava que não rodava."""
+    achados = [c for c in comandos if script in c]
+    if not achados:
+        if ilegiveis:
+            return None, f"{' e '.join(ilegiveis)} ilegível: não verificada"
+        return False, ""
+    if desligado:
+        return False, "disableAllHooks ligado: o Claude Code não roda hook nenhum"
+    for c in achados:
+        m = (re.search(r"os\.path\.join\(b,\s*'([^']+)'\)", c)
+             or re.search(r"([\w./\\-]*" + re.escape(script) + ")", c))
+        if m and (base / m.group(1)).is_file():
+            return True, ""
+    return False, f"instalada, mas o {script} que ela chama não existe: o hook sai 0 calado"
+
+
+def _vizinho(nome: str):
+    """Carrega um script irmão sem gravar bytecode — relatório que escreve no repositório
+    altera o que mede. Quem sabe ler o registro de congelados é o `congelar.py`; aqui só
+    se pergunta a ele."""
+    import importlib.util
+    arq = Path(__file__).resolve().parent / nome
+    if not arq.is_file():
+        return None
+    sys.dont_write_bytecode = True
+    spec = importlib.util.spec_from_file_location(f"_kit_{arq.stem}", arq)
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    return modulo
+
+
+_dir_hooks = None
+if (topo / ".git").exists():
+    _saida_hooks = (git(topo, "rev-parse", "--git-path", "hooks") or "").strip()
+    if _saida_hooks:
+        _dir_hooks = Path(_saida_hooks) if Path(_saida_hooks).is_absolute() else topo / _saida_hooks
+# As travas de agente moram no .claude do repositório — onde o install_hook as escreve e onde a
+# sessão aberta na raiz as encontra. Sem repositório nenhum, o laço acima subiu até a raiz do
+# disco procurando .git: o .claude a ler, então, é o do próprio vault, e não o da raiz do disco.
+_base_agente = topo if (topo / ".git").exists() else raiz
+_cmds, _desligado, _ilegiveis = _config_de_agente(_base_agente / ".claude")
+_escopo, _nota_escopo = _trava_de_agente("escopo_hook.py", _cmds, _desligado, _ilegiveis, _base_agente)
+_pulo, _nota_pulo = _trava_de_agente("portao_hook.py", _cmds, _desligado, _ilegiveis, _base_agente)
+# `None` quando não dá para ler (sem git, os hooks de commit não existem para ninguém):
+# "desligada" e "não verificada" não dividem a mesma casa — é o 0.0 do v13.16 de novo.
+TRAVAS = {
+    "pre-commit": (None if _dir_hooks is None else _ativo(_dir_hooks / "pre-commit", "check.py"),
+                   "portão de higiene a cada commit"),
+    "commit-msg": (None if _dir_hooks is None else _ativo(_dir_hooks / "commit-msg", "mensagem_hook.py"),
+                   "padrão da mensagem de commit"),
+    "escopo": (_escopo, "escrita fora do módulo em andamento (Claude Code)"),
+    "pulo do portão": (_pulo, "--no-verify sem motivo declarado (Claude Code)"),
+}
+NOTAS_TRAVAS = {"escopo": _nota_escopo, "pulo do portão": _nota_pulo}
+# O vault em subpasta pode ter o PRÓPRIO .claude (o new_project o cria), e uma sessão aberta
+# no vault usa esse, não o da raiz. O censo conta o da raiz; o do vault é dito, não ignorado.
+_nota_vault = ""
+if raiz != _base_agente and (raiz / ".claude").is_dir():
+    _cmds_vault = _config_de_agente(raiz / ".claude")[0]
+    if any(s in c for c in _cmds_vault for s in ("escopo_hook.py", "portao_hook.py")):
+        _nota_vault = (f"Há travas também em {prefixo}.claude/ — valem para sessão aberta NO "
+                       "VAULT. O censo acima é o da raiz do repositório, onde o install_hook escreve.")
+_congelados = None
+if (raiz / ".kit-congelados").exists() or tem_git:
+    _mod_cong = _vizinho("congelar.py")
+    if _mod_cong is not None:
+        try:
+            _sit, _err = _mod_cong.conferir(raiz)
+            _err = list(_mod_cong.conferir_registro_no_git(raiz)) + list(_err)
+        except Exception as _e:  # o check.py protege a mesma chamada: relatório morto não relata
+            _sit, _err = [], [f"a conferência morreu ({type(_e).__name__}: {_e})"]
+        _congelados = {"total": len(_sit),
+                       "integros": sum(1 for _, s in _sit if s == "integro"),
+                       "editados": [c for c, s in _sit if s == "editado"],
+                       "ausentes": [c for c, s in _sit if s == "ausente"],
+                       "erros": _err}
+        if not _sit and not _err:
+            _congelados = None
+R["instalacao"] = {
+    "versao_kit": ler(raiz / ".kit-version").strip() or None,
+    "travas": {nome: ativo for nome, (ativo, _) in TRAVAS.items()},
+    "notas_travas": {nome: nota for nome, nota in NOTAS_TRAVAS.items() if nota},
+    "travas_ligadas": sum(1 for ativo, _ in TRAVAS.values() if ativo is True),
+    "travas_verificaveis": sum(1 for ativo, _ in TRAVAS.values() if ativo is not None),
+    "nota_vault": _nota_vault or None,
+    "congelados": _congelados,
+}
+
 # --- orçamentos
 TETOS = dict(TETOS_PADRAO)
 cfg = raiz / CONFIG
@@ -340,6 +476,7 @@ def _pontos(r: dict) -> dict:
         "decisões rejeitadas": (r.get("decisoes") or {}).get("rejeitadas"),
         "skills com rastro": (r.get("skills") or {}).get("dispararam"),
         "questões respondidas": (r.get("questoes") or {}).get("respondidas"),
+        "travas ligadas": (r.get("instalacao") or {}).get("travas_ligadas"),
     }
 
 
@@ -382,6 +519,49 @@ if MARCO:
 
 print(f"EVIDÊNCIA MECÂNICA — {R['projeto']} — medido em {R['medido_em']}")
 print("Tudo abaixo saiu do git e dos arquivos. Nada saiu do que um documento diz de si.")
+
+titulo("O kit instalado neste clone")
+_inst = R["instalacao"]
+print(f"  versão: {_inst['versao_kit'] or 'sem marca .kit-version (é o próprio kit, ou projeto anterior à marca)'}")
+_lig, _ver = _inst["travas_ligadas"], _inst["travas_verificaveis"]
+print(f"  travas ligadas: {_lig} de {_ver}"
+      + ("" if _ver == len(TRAVAS) else f" verificáveis — {len(TRAVAS) - _ver} não foram lidas"))
+for _nome, (_ativo_t, _desc) in TRAVAS.items():
+    _marca = "?" if _ativo_t is None else ("x" if _ativo_t else " ")
+    _nota = NOTAS_TRAVAS.get(_nome) or ("não verificável: sem git" if _ativo_t is None else "")
+    print(f"    [{_marca}] {_nome:<15} {_desc}" + (f"   ({_nota})" if _nota else ""))
+if _nota_vault:
+    print(f"  {_nota_vault}")
+if _lig < len(TRAVAS):
+    _com_git = (topo / ".git").exists()
+    if not _com_git:
+        print("  As travas de git exigem um repositório: rode `git init` antes.")
+    if '"travas"' in ler(raiz / "scripts" / "task.py"):
+        print(f"  Ligar as que faltam: python {prefixo if _com_git else ''}scripts/task.py travas")
+    else:
+        print("  O task.py deste projeto é anterior à tarefa `travas`: atualize o processo antes")
+        print("  (new_project.py <projeto> --upgrade, a partir do kit).")
+    print("  Hook de git não viaja com o clone: cada clone liga os seus, uma vez.")
+print("  Os números abaixo foram produzidos com ESTAS travas — não com as que o kit oferece.")
+_c = _inst["congelados"]
+if _c is not None:
+    _linha = f"  congelados: {_c['total']} · íntegros {_c['integros']}"
+    if _c["editados"]:
+        _linha += f" · EDITADOS: {', '.join(_c['editados'])}"
+    if _c["ausentes"]:
+        _linha += f" · AUSENTES: {', '.join(_c['ausentes'])}"
+    if _c["erros"]:
+        _linha += f" · REGISTRO com {len(_c['erros'])} problema(s)"
+    if not (_c["editados"] or _c["ausentes"] or _c["erros"]):
+        print(_linha)
+    elif TRAVAS["pre-commit"][0] is True:
+        print(_linha + "   <== o portão reprova o próximo commit")
+    else:
+        # "O portão reprova" com o pre-commit desligado é prometer um bloqueio que este clone
+        # não tem: o commit passa. A revisão reproduziu com um commit de verdade.
+        print(_linha)
+        print("    <== o check.py reprova — mas o pre-commit está desligado neste clone: o commit")
+        print("        passa, e só o CI pega, se rodar o check.")
 
 titulo("Orçamentos")
 afrouxados = []
@@ -503,13 +683,16 @@ print("     Todo número aqui descreve o que aconteceu COM o kit, nunca o que te
 print("     acontecido sem — e a diferença entre as duas coisas é a pergunta inteira.")
 print("  2. Se uma skill era aplicável. 'Nunca disparou' não é acusação.")
 print("  3. Quantos commits pularam o portão SEM declarar. O pulo declarado agora é contado")
-print("     acima; o pulo feito fora do agente, ou com o hook desligado, segue invisível.")
+print("     acima; o pulo feito fora do agente, ou com o hook desligado, segue invisível —")
+print("     e as travas das OUTRAS máquinas também: o topo deste relatório fala só deste clone.")
 print("  4. Quanto de contexto uma sessão gastou de fato. Ele mede o TAMANHO do arquivo")
 print("     que a regra manda ler; quanto o agente carregou é comportamento, não arquivo.")
 print("  5. Qualidade. Um registro pode estar completo, datado, dentro do teto — e errado.")
 print("  6. Se a ORIGEM declarada é verdadeira. Quem escreve 'portão' na linha é quem")
 print("     achou o defeito, e ninguém confere. O campo tira o número de irrespondível")
 print("     para autodeclarado — que é melhor, e não é o mesmo que verificado.")
+print("  7. Hooks e políticas de nível de USUÁRIO ou gerenciados (~/.claude, política da")
+print("     organização). O censo do topo lê só o .claude deste repositório.")
 print("\n  `python scripts/task.py marco` grava este relatório em e_qa/evidencia_AAMMDD.json")
 print("  e mostra o delta contra o anterior. Um projeto é um relato; a série é a medida —")
 print("  e tendência não se reconstrói depois, só se acumula.")
